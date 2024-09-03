@@ -117,7 +117,7 @@
                       </el-radio-group>
                   </el-form-item>
                   <el-form-item label="消息处理脚本"  prop="script">
-                      <el-input type="textarea" v-model="composeService.script" rows="12"/>
+                      <el-input type="textarea" v-model="composeService.script" :rows="12"/>
                   </el-form-item>
               </el-form>
               <div style="margin-top: 20px">

@@ -20,7 +20,7 @@
                 </el-form-item>
             </el-form-item>
             <el-form-item label="脚本">
-                <el-input type="textarea" v-model="hook.script" rows="10" style="width: 600px" />
+                <el-input type="textarea" v-model="hook.script" :rows="10" style="width: 600px" />
             </el-form-item>
       </el-form>
       <template #footer>

@@ -19,10 +19,10 @@
                 </el-radio-group>
             </el-form-item>
             <el-form-item label="变量当前值">
-                <el-input type="textarea" v-model="hook.var_value" rows="6" style="width: 600px" />
+                <el-input type="textarea" v-model="hook.var_value" :rows="6" style="width: 600px" />
             </el-form-item>
             <el-form-item label="变更更新方式">
-                <el-input type="textarea" v-model="hook.var_write" rows="6" style="width: 600px" placeholder="可以使用CURRENT_DATE代表当前日期，CURRENT_DATETIME代表当前日期时间，或者填写SQL来执行查询，或者填写InvokeURI来执行预先定义好的查询，当使用SQL查询或InvokeURI时，返回的结果最好只有一个字段，或者只包含一个以_value结尾的字段作为该变更最终的更新值。"/>
+                <el-input type="textarea" v-model="hook.var_write" :rows="6" style="width: 600px" placeholder="可以使用CURRENT_DATE代表当前日期，CURRENT_DATETIME代表当前日期时间，或者填写SQL来执行查询，或者填写InvokeURI来执行预先定义好的查询，当使用SQL查询或InvokeURI时，返回的结果最好只有一个字段，或者只包含一个以_value结尾的字段作为该变更最终的更新值。"/>
             </el-form-item>
       </el-form>
       <template #footer>

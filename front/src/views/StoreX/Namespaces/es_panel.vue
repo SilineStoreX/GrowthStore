@@ -76,7 +76,7 @@
                         <el-input v-model="composeService.description"></el-input>
                     </el-form-item>
                     <el-form-item label="请求参数模板"  prop="request_body">
-                        <el-input type="textarea" v-model="composeService.request_body" rows="6" placeholder="如果模板被设置，则会根据模板来与传入的参数来进行转换产生最终的请求" />
+                        <el-input type="textarea" v-model="composeService.request_body" :rows="6" placeholder="如果模板被设置，则会根据模板来与传入的参数来进行转换产生最终的请求" />
                     </el-form-item>
                     <el-form-item label="脚本语言"  prop="lang">
                         <el-radio-group v-model="composeService.lang">
@@ -84,7 +84,7 @@
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item label="响应处理脚本"  prop="script">
-                        <el-input type="textarea" v-model="composeService.script" rows="8"/>
+                        <el-input type="textarea" v-model="composeService.script" :rows="8"/>
                     </el-form-item>
                 </el-form>
                 <div style="margin-top: 20px">

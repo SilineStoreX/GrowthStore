@@ -8,7 +8,7 @@
     >
       <el-form :model="hook" label-width="100px" :inline="true" style="max-width: 600px">
             <el-form-item label="索引名称">
-                <el-input v-model="hook.index" rows="10" style="width: 600px" />
+                <el-input v-model="hook.index" :rows="10" style="width: 600px" />
             </el-form-item>
             <el-form-item v-if="updateIndexMode" label="更新索引内容">
               <el-radio-group v-model="hook.mode" style="width: 600px">
@@ -18,7 +18,7 @@
                 </el-radio-group>
             </el-form-item>
             <el-form-item label="更新内容(JSON)">
-                <el-input type="textarea" v-model="hook.jsonbody" rows="10" style="width: 600px" />
+                <el-input type="textarea" v-model="hook.jsonbody" :rows="10" style="width: 600px" />
             </el-form-item>
       </el-form>
       <template #footer>

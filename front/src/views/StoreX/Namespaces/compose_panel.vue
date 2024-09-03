@@ -77,7 +77,7 @@
                       </el-form-item>
                   </el-form-item>                    
                     <el-form-item label="脚本"  prop="script">
-                        <el-input type="textarea" v-model="composeService.script" rows="12"/>
+                        <el-input type="textarea" v-model="composeService.script" :rows="12"/>
                     </el-form-item>
                     <el-form-item label="Hook"  prop="hooks">
                         <el-table :data="composeService.hooks">

@@ -157,7 +157,7 @@
                             <el-icon><InfoFilled /></el-icon>
                           </el-tooltip>
                         </template>
-                        <el-input type="textarea" v-model="composeService.rest_body" rows="8"/>
+                        <el-input type="textarea" v-model="composeService.rest_body" :rows="8"/>
                     </el-form-item>
                     <el-form-item label="返回验证"  prop="return_validate">
                         <template #label>
