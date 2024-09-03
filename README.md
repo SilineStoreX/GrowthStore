@@ -25,7 +25,8 @@ GrowthStore是一个基于Rust体系的成长型的企业级后台服务的开�
 - 如果闪退，说明运行过程中出现了异常，很大的原因是监听的端口已被占用造成的，这时，可以进入目录<安装目录>/assets/configs/下，修改Config.toml文件中的listen章节中的port的值。
 - 运行成功后，打开浏览器，在地址栏中输入 http://localhost:17800/ ，来验证一下是否安装成功，安装成功的话，这个时候会显示Store X的管理员登录界面；
 - 在<安装目录>下运行，需要如下方式执行：
-- ./store-server
-- ./store-server & #在后台执行
-- nohup ./store-server &  #重定向输入输出，且在后台执行，一般来说，相让其在后台运行，我们应该使用该方法
-
+```bash
+./store-server
+./store-server & #在后台执行
+nohup ./store-server &  #重定向输入输出，且在后台执行，一般来说，相让其在后台运行，我们应该使用该方法
+```
