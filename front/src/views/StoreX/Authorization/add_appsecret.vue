@@ -28,7 +28,7 @@
             <el-input v-model="hook.orgname" style="width: 600px" />
         </el-form-item>
         <el-form-item label="长期有效JwtToken">
-            <el-input type="textarea" v-model="hook.token" rows="6" style="width: 600px" placeholder="点击Generate Token生成长期有效的JwtToken"/>
+            <el-input type="textarea" v-model="hook.token" :rows="6" style="width: 600px" placeholder="点击Generate Token生成长期有效的JwtToken"/>
         </el-form-item>
       </el-form>
       <template #footer>
