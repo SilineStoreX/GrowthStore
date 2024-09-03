@@ -1,0 +1,1670 @@
+filename = "rivermap.toml"
+db_url = "mysql://chimes:ks123456@192.168.1.18:3306/swms"
+redis_url = "redis://@localhost:6379/9"
+relaxy_timezone = true
+subfolder_bydate = false
+subfolder_bytype = false
+download_direct = false
+upload_to_oss = false
+namespace = "com.siline.rivermap"
+querys = []
+
+[[objects]]
+name = "SyncTaskLogs"
+object_name = "sync_tasklogs"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_id"
+prop_name = "task_id"
+col_length = 80
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "node_id"
+prop_name = "node_id"
+col_length = 60
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "node_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_name"
+prop_name = "task_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "log_level"
+prop_name = "log_level"
+col_length = 30
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "log_level"
+relation_array = false
+
+[[objects.fields]]
+field_name = "subject"
+prop_name = "subject"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "subject"
+relation_array = false
+
+[[objects.fields]]
+field_name = "description"
+prop_name = "description"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "description"
+relation_array = false
+
+[[objects.fields]]
+field_name = "success"
+prop_name = "success"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "success"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+generator = "cur_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+generator = "mod_datetime"
+relation_array = false
+
+[[objects]]
+name = "RivermapAssetSource"
+object_name = "rivermap_asset_source"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_id"
+prop_name = "asset_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "source_name"
+prop_name = "source_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "source_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "source_type"
+prop_name = "source_type"
+col_length = 30
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "source_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "data_source"
+prop_name = "data_source"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "data_source"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_method"
+prop_name = "query_method"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_method"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_addr"
+prop_name = "query_addr"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_addr"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_body"
+prop_name = "query_body"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_body"
+relation_array = false
+
+[[objects.fields]]
+field_name = "schedule_on"
+prop_name = "schedule_on"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "schedule_on"
+relation_array = false
+
+[[objects.fields]]
+field_name = "schedule_cron"
+prop_name = "schedule_cron"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "schedule_cron"
+relation_array = false
+
+[[objects.fields]]
+field_name = "scolling"
+prop_name = "scolling"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "scolling"
+relation_array = false
+
+[[objects.fields]]
+field_name = "x"
+prop_name = "x"
+col_type = "string"
+field_type = "double"
+pkey = false
+base64 = false
+detail_only = false
+title = "x"
+relation_array = false
+
+[[objects.fields]]
+field_name = "y"
+prop_name = "y"
+col_type = "string"
+field_type = "double"
+pkey = false
+base64 = false
+detail_only = false
+title = "y"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "RivermapAssetMapping"
+object_name = "rivermap_asset_mapping"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_id"
+prop_name = "asset_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "source_id"
+prop_name = "source_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "source_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "link_id"
+prop_name = "link_id"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "link_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "field_name"
+prop_name = "field_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "field_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "source_field"
+prop_name = "source_field"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "source_field"
+relation_array = false
+
+[[objects.fields]]
+field_name = "conversion"
+prop_name = "conversion"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "conversion"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "RivermapServers"
+object_name = "rivermap_servers"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "server_name"
+prop_name = "server_name"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "server_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "server_code"
+prop_name = "server_code"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "server_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "server_type"
+prop_name = "server_type"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "server_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "status"
+prop_name = "status"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+detail_only = false
+title = "status"
+relation_array = false
+
+[[objects.fields]]
+field_name = "configuration"
+prop_name = "configuration"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "configuration"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+generator = "cur_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+generator = "mod_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_by"
+prop_name = "update_by"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_by"
+generator = "mod_user_name"
+relation_array = false
+
+[[objects]]
+name = "RivermapFolder"
+object_name = "rivermap_folder"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "parent_id"
+prop_name = "parent_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "parent_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "folder_name"
+prop_name = "folder_name"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "folder_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "remark"
+prop_name = "remark"
+col_length = 400
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "remark"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_date"
+prop_name = "create_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_date"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_date"
+prop_name = "update_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_date"
+relation_array = false
+
+[[objects]]
+name = "RivermapAssetReplacement"
+object_name = "rivermap_asset_replacement"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_id"
+prop_name = "asset_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "field_name"
+prop_name = "field_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "field_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "source_value"
+prop_name = "source_value"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "source_value"
+relation_array = false
+
+[[objects.fields]]
+field_name = "replace_to"
+prop_name = "replace_to"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "replace_to"
+relation_array = false
+
+[[objects.fields]]
+field_name = "replacement_type"
+prop_name = "replacement_type"
+col_length = 30
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "replacement_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_type"
+prop_name = "query_type"
+col_length = 30
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_method"
+prop_name = "query_method"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_method"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_addr"
+prop_name = "query_addr"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_addr"
+relation_array = false
+
+[[objects.fields]]
+field_name = "query_body"
+prop_name = "query_body"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "query_body"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "RivermapFiles"
+object_name = "rivermap_files"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "file_name"
+prop_name = "file_name"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "file_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "original_name"
+prop_name = "original_name"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "original_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "folder"
+prop_name = "folder"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "folder"
+relation_array = false
+
+[[objects.fields]]
+field_name = "tags"
+prop_name = "tags"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "tags"
+relation_array = false
+
+[[objects.fields]]
+field_name = "remark"
+prop_name = "remark"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "remark"
+relation_array = false
+
+[[objects.fields]]
+field_name = "file_size"
+prop_name = "file_size"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "file_size"
+relation_array = false
+
+[[objects.fields]]
+field_name = "file_size_display"
+prop_name = "file_size_display"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "file_size_display"
+relation_array = false
+
+[[objects.fields]]
+field_name = "file_type"
+prop_name = "file_type"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "file_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "storage_path"
+prop_name = "storage_path"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "storage_path"
+relation_array = false
+
+[[objects.fields]]
+field_name = "access_url"
+prop_name = "access_url"
+col_length = 260
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "access_url"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_date"
+prop_name = "create_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_date"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_date"
+prop_name = "update_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_date"
+relation_array = false
+
+[[objects]]
+name = "RivermapAssets"
+object_name = "rivermap_assets"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_name"
+prop_name = "asset_name"
+col_length = 120
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_code"
+prop_name = "asset_code"
+col_length = 60
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_desc"
+prop_name = "asset_desc"
+col_length = 600
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_desc"
+relation_array = false
+
+[[objects.fields]]
+field_name = "content_map"
+prop_name = "content_map"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "content_map"
+relation_array = false
+
+[[objects.fields]]
+field_name = "subset_only"
+prop_name = "subset_only"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "subset_only"
+relation_array = false
+
+[[objects.fields]]
+field_name = "image_url"
+prop_name = "image_url"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "image_url"
+relation_array = false
+
+[[objects.fields]]
+field_name = "x"
+prop_name = "x"
+col_type = "string"
+field_type = "double"
+pkey = false
+base64 = false
+detail_only = false
+title = "x"
+relation_array = false
+
+[[objects.fields]]
+field_name = "y"
+prop_name = "y"
+col_type = "string"
+field_type = "double"
+pkey = false
+base64 = false
+detail_only = false
+title = "y"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+generator = "cur_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+generator = "mod_datetime"
+relation_array = false
+
+[[objects.insert_hooks]]
+lang = "rhai"
+script = '''
+print("add the assets " + args);
+'''
+before = false
+event = true
+
+[[objects.update_hooks]]
+lang = "rhai"
+script = '''
+print("update the assert: ", args);
+'''
+before = false
+event = true
+
+[[objects]]
+name = "SyncTaskCrontasks"
+object_name = "sync_crontasks"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_length = 50
+col_type = "string"
+field_type = "varchar"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_name"
+prop_name = "task_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_desc"
+prop_name = "task_desc"
+col_length = 400
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_desc"
+relation_array = false
+
+[[objects.fields]]
+field_name = "cron_express"
+prop_name = "cron_express"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "cron_express"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_id"
+prop_name = "asset_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "node_id"
+prop_name = "node_id"
+col_length = 60
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "node_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_config"
+prop_name = "task_config"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_config"
+relation_array = false
+
+[[objects.fields]]
+field_name = "execute_result"
+prop_name = "execute_result"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+detail_only = false
+title = "execute_result"
+relation_array = false
+
+[[objects.fields]]
+field_name = "result_summary"
+prop_name = "result_summary"
+col_length = 65535
+col_type = "string"
+field_type = "text"
+pkey = false
+base64 = false
+detail_only = false
+title = "result_summary"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "RivermapIcons"
+object_name = "rivermap_icons"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "image_url"
+prop_name = "image_url"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "image_url"
+relation_array = false
+
+[[objects.fields]]
+field_name = "image_name"
+prop_name = "image_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "image_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "catalog"
+prop_name = "catalog"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "catalog"
+relation_array = false
+
+[[objects]]
+name = "RivermapRivermap"
+object_name = "rivermap_rivermap"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "map_name"
+prop_name = "map_name"
+col_length = 120
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "map_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "map_code"
+prop_name = "map_code"
+col_length = 60
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "map_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "map_desc"
+prop_name = "map_desc"
+col_length = 600
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "map_desc"
+relation_array = false
+
+[[objects.fields]]
+field_name = "content_graph"
+prop_name = "content_graph"
+col_length = 4294967295
+col_type = "string"
+field_type = "longtext"
+pkey = false
+base64 = false
+detail_only = false
+title = "content_graph"
+relation_array = false
+
+[[objects.fields]]
+field_name = "subset_only"
+prop_name = "subset_only"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "subset_only"
+relation_array = false
+
+[[objects.fields]]
+field_name = "image_url"
+prop_name = "image_url"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "image_url"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "SyncTaskVariables"
+object_name = "sync_variables"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "task_id"
+prop_name = "task_id"
+col_length = 80
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "task_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "var_name"
+prop_name = "var_name"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "var_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "var_type"
+prop_name = "var_type"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "var_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "var_value"
+prop_name = "var_value"
+col_length = 300
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "var_value"
+relation_array = false
+
+[[objects.fields]]
+field_name = "state"
+prop_name = "state"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+detail_only = false
+title = "state"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+generator = "cur_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+generator = "mod_datetime"
+relation_array = false
+
+[[objects]]
+name = "RivermapAssetStruct"
+object_name = "rivermap_asset_struct"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "asset_id"
+prop_name = "asset_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+detail_only = false
+title = "asset_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "field_name"
+prop_name = "field_name"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "field_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "field_caption"
+prop_name = "field_caption"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "field_caption"
+relation_array = false
+
+[[objects.fields]]
+field_name = "field_type"
+prop_name = "field_type"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "field_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "uniqueness"
+prop_name = "uniqueness"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "uniqueness"
+relation_array = false
+
+[[objects.fields]]
+field_name = "is_scoped"
+prop_name = "is_scoped"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "is_scoped"
+relation_array = false
+
+[[objects.fields]]
+field_name = "scoped_name"
+prop_name = "scoped_name"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "scoped_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "indicator_type"
+prop_name = "indicator_type"
+col_length = 50
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+detail_only = false
+title = "indicator_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "is_external"
+prop_name = "is_external"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+detail_only = false
+title = "is_external"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[plugins]]
+name = "callback"
+protocol = "compose"
+config = "callback.pltoml"
+enable = true
+
+[[plugins]]
+name = "synctask"
+protocol = "synctask"
+config = "synctask.pltoml"
+enable = true
+
+[[plugins]]
+name = "es"
+protocol = "elasticsearch"
+config = "es.pltoml"
+enable = true

@@ -1,0 +1,20 @@
+write_threads = 12
+
+[[variables]]
+var_name = "last_edit_time"
+var_type = "datetime"
+var_value = "1900-01-01 00:00:00"
+var_write = "CURRENT_DATETIME"
+
+[[services]]
+task_id = "sync_employee"
+cron_express = "0/50 * * * * ? *"
+source_uri = "object://com.siline/Employee#query"
+source_request = '''
+{
+     "and": [ {"field": "id", "op":"<", "value":100}, {"field": "last_edit_time", "op":">", "value":"{{ last_edit_time }}"}]
+}'''
+paged_request = false
+update_variable_epoch = false
+target_uri = "elasticsearch://com.siline/rivermap#sync_employee"
+task_desc = "同步Employee信息"

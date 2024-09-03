@@ -1,0 +1,93 @@
+app_keys = []
+rsa_private_key = "MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAoX7UzJgx7+N2XQ5/QWBHNSEe/l6EnWcC7PI03o3oal3nlBRJfRW6RGkw9rcg/2h08X4j2kAKFUkl9l5jff23XwIDAQABAkB+h1OMtNWzQMDU6e3UN+2yd6/D1iQK+tF0+dNoZ0CoTIntMvvhrzaYRXPc5CXjUmZ7BthNDpkiHGsSOp3OKthxAiEAzCdplSfyrLhyKSl+Y+M5HCd6WYSd1o99S7lO9Rt1A9cCIQDKghNnRoS3U60kVocBTpQtpp1kiYpCUQ4SS1nOtuN3uQIgPn3t/t9clGxdXaY67x6V071t4UsL+aqwouZVegfumL8CIQCp9IUIVdyoZ2eWabAgXqxpq73IVM5eXdxraiXTIRbCsQIgbP7KXXuloNG5/O8FeKTN+ThcZrkPqka98KiBTx+Jmgo="
+rsa_public_key = "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKF+1MyYMe/jdl0Of0FgRzUhHv5ehJ1nAuzyNN6N6Gpd55QUSX0VukRpMPa3IP9odPF+I9pAChVJJfZeY339t18CAwEAAQ=="
+
+log_file = "storex.log"
+log_console = true
+log_json = true
+log_rotation = "50MB"
+log_keepfiles = 5
+
+[web]
+app_name = "store-server"
+code_page = "gbk"
+
+[listen]
+ip = "0.0.0.0"
+port = 17800
+domain = "local"
+acme = false
+tls = false
+slot = "permisionkey"
+force_pass = true
+
+[[managers]]
+username = "admin"
+full_name = "Admin"
+credentials = "rsa:FJq5gIN9u28lT/IuRVqNjQ4KTFWVCZHKBmHC2CXoIa1ElW9gzGtOJtUK/XvY3lfwETSeRDfYovWahfw8vSoPFg=="
+
+[[plugins]]
+protocol = "weixin"
+plugin_dylib = "store_plugin_weixin"
+logger = "debug"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "rhai"
+plugin_dylib = "store_plugin_rhai"
+logger = "debug"
+plugin_type = "lang"
+
+[[plugins]]
+protocol = "compose"
+plugin_dylib = "store_plugin_compose"
+logger = "debug"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "restapi"
+plugin_dylib = "store_plugin_restapi"
+logger = "debug"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "mqtt"
+plugin_dylib = "store_plugin_mqtt"
+logger = "debug"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "kafka"
+plugin_dylib = "store_plugin_kafka"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "elasticsearch"
+plugin_dylib = "store_plugin_es"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "rivermap"
+plugin_dylib = "store_plugin_rivermap"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "synctask"
+plugin_dylib = "store_plugin_synctask"
+logger = "info"
+plugin_type = "func"
+
+[[loggers]]
+logger = "chimes_store_core"
+level = "debug"
+
+[[loggers]]
+logger = "kafka"
+level = "info"
+
+[[loggers]]
+logger = "paho_mqtt"
+level = "info"

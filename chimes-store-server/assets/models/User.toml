@@ -1,0 +1,1486 @@
+filename = "User.toml"
+db_url = "mysql://chimes:ks123456@192.168.1.30:3306/shuguangpark"
+aes_solt = "thisisbeth"
+aes_key = "thisisaaeskeyforencryption"
+rsa_public_key = "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKF+1MyYMe/jdl0Of0FgRzUhHv5ehJ1nAuzyNN6N6Gpd55QUSX0VukRpMPa3IP9odPF+I9pAChVJJfZeY339t18CAwEAAQ=="
+rsa_private_key = "MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAoX7UzJgx7+N2XQ5/QWBHNSEe/l6EnWcC7PI03o3oal3nlBRJfRW6RGkw9rcg/2h08X4j2kAKFUkl9l5jff23XwIDAQABAkB+h1OMtNWzQMDU6e3UN+2yd6/D1iQK+tF0+dNoZ0CoTIntMvvhrzaYRXPc5CXjUmZ7BthNDpkiHGsSOp3OKthxAiEAzCdplSfyrLhyKSl+Y+M5HCd6WYSd1o99S7lO9Rt1A9cCIQDKghNnRoS3U60kVocBTpQtpp1kiYpCUQ4SS1nOtuN3uQIgPn3t/t9clGxdXaY67x6V071t4UsL+aqwouZVegfumL8CIQCp9IUIVdyoZ2eWabAgXqxpq73IVM5eXdxraiXTIRbCsQIgbP7KXXuloNG5/O8FeKTN+ThcZrkPqka98KiBTx+Jmgo="
+redis_url = "redis://@localhost:6379/0"
+relaxy_timezone = true
+max_filesize = 10
+upload_filepath = 'E:\temp\tmp'
+subfolder_bydate = true
+subfolder_bytype = true
+download_prefix = "http://localhost:17800/api/file/get/"
+download_direct = true
+upload_to_oss = false
+namespace = "com.siline"
+
+[[objects]]
+name = "AcAttTicket"
+object_name = "ac_att_ticket"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "TICKET_ID"
+prop_name = "ticketId"
+col_length = 32
+col_type = "string"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "TICKET_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "TICKET_TYPE"
+prop_name = "ticketType"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "TICKET_TYPE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "ATTACHMENT_ID"
+prop_name = "attachmentId"
+col_length = 32
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "ATTACHMENT_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CREATE_TIME"
+prop_name = "createTime"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CREATE_TIME"
+relation_array = false
+
+[[objects]]
+name = "ZitherProcedure"
+object_name = "zither_procedure"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "ID"
+prop_name = "ID"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CODE"
+prop_name = "CODE"
+col_length = 64
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CODE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "NAME"
+prop_name = "NAME"
+col_length = 128
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "DESCRIPTION"
+prop_name = "DESCRIPTION"
+col_length = 256
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "DESCRIPTION"
+relation_array = false
+
+[[objects.fields]]
+field_name = "LEVEL"
+prop_name = "LEVEL"
+col_length = 1
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "LEVEL"
+relation_array = false
+
+[[objects.fields]]
+field_name = "TAG"
+prop_name = "TAG"
+col_length = 32
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "TAG"
+relation_array = false
+
+[[objects.fields]]
+field_name = "TYPE"
+prop_name = "TYPE"
+col_length = 20
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "TYPE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "PROC_JSON"
+prop_name = "PROC_JSON"
+col_length = 4294967295
+col_type = "string"
+field_type = "longtext"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "PROC_JSON"
+relation_array = false
+
+[[objects.fields]]
+field_name = "SORT_NO"
+prop_name = "SORT_NO"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "SORT_NO"
+relation_array = false
+
+[[objects.fields]]
+field_name = "IS_SHOW"
+prop_name = "IS_SHOW"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "IS_SHOW"
+relation_array = false
+
+[[objects.fields]]
+field_name = "C_CODE"
+prop_name = "C_CODE"
+col_length = 64
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "C_CODE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "C_NAME"
+prop_name = "C_NAME"
+col_length = 128
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "C_NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "T_CODE"
+prop_name = "T_CODE"
+col_length = 64
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "T_CODE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "T_NAME"
+prop_name = "T_NAME"
+col_length = 128
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "T_NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "I_CODE"
+prop_name = "I_CODE"
+col_length = 64
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "I_CODE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "I_NAME"
+prop_name = "I_NAME"
+col_length = 128
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "I_NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "S_CODE"
+prop_name = "S_CODE"
+col_length = 64
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "S_CODE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "S_NAME"
+prop_name = "S_NAME"
+col_length = 128
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "S_NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "PROJECT_ID"
+prop_name = "PROJECT_ID"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "PROJECT_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "REQUEST_METHOD"
+prop_name = "REQUEST_METHOD"
+col_length = 100
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "REQUEST_METHOD"
+relation_array = false
+
+[[objects.fields]]
+field_name = "SERVICE_URI"
+prop_name = "SERVICE_URI"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "SERVICE_URI"
+relation_array = false
+
+[[objects.fields]]
+field_name = "IS_READY"
+prop_name = "IS_READY"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "IS_READY"
+relation_array = false
+
+[[objects.fields]]
+field_name = "UPDATE_TIME"
+prop_name = "UPDATE_TIME"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "UPDATE_TIME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CREATE_TIME"
+prop_name = "CREATE_TIME"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CREATE_TIME"
+relation_array = false
+
+[[objects]]
+name = "Employee"
+object_name = "ac_base_employee"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "employee_ext_id"
+prop_name = "employee_ext_id"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "employee_ext_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "employee_code"
+prop_name = "employee_code"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "employee_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "employee_name"
+prop_name = "employee_name"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "employee_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "nationality"
+prop_name = "nationality"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "nationality"
+relation_array = false
+
+[[objects.fields]]
+field_name = "org_code"
+prop_name = "org_code"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "org_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "org_name"
+prop_name = "org_name"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "org_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "job_code"
+prop_name = "job_code"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "job_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "job_name"
+prop_name = "job_name"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "job_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "nation"
+prop_name = "nation"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "nation"
+relation_array = false
+
+[[objects.fields]]
+field_name = "sex"
+prop_name = "sex"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "sex"
+relation_array = false
+
+[[objects.fields]]
+field_name = "marriage"
+prop_name = "marriage"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "marriage"
+relation_array = false
+
+[[objects.fields]]
+field_name = "marriage_date"
+prop_name = "marriage_date"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "marriage_date"
+relation_array = false
+
+[[objects.fields]]
+field_name = "id_card"
+prop_name = "id_card"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "id_card"
+relation_array = false
+
+[[objects.fields]]
+field_name = "id_card_end"
+prop_name = "id_card_end"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "id_card_end"
+relation_array = false
+
+[[objects.fields]]
+field_name = "id_card_address"
+prop_name = "id_card_address"
+col_length = 200
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "id_card_address"
+relation_array = false
+
+[[objects.fields]]
+field_name = "birthday"
+prop_name = "birthday"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "birthday"
+relation_array = false
+
+[[objects.fields]]
+field_name = "age"
+prop_name = "age"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "age"
+relation_array = false
+
+[[objects.fields]]
+field_name = "political"
+prop_name = "political"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "political"
+relation_array = false
+
+[[objects.fields]]
+field_name = "join_party"
+prop_name = "join_party"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "join_party"
+relation_array = false
+
+[[objects.fields]]
+field_name = "registration"
+prop_name = "registration"
+col_length = 10
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "registration"
+relation_array = false
+
+[[objects.fields]]
+field_name = "registration_address"
+prop_name = "registration_address"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "registration_address"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_degree"
+prop_name = "last_degree"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_degree"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_degree_property"
+prop_name = "last_degree_property"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_degree_property"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_degree_level"
+prop_name = "last_degree_level"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_degree_level"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_major"
+prop_name = "last_major"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_major"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_school"
+prop_name = "last_school"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_school"
+relation_array = false
+
+[[objects.fields]]
+field_name = "email"
+prop_name = "email"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "email"
+relation_array = false
+
+[[objects.fields]]
+field_name = "qq"
+prop_name = "qq"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "qq"
+relation_array = false
+
+[[objects.fields]]
+field_name = "msn"
+prop_name = "msn"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "msn"
+relation_array = false
+
+[[objects.fields]]
+field_name = "mobile"
+prop_name = "mobile"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "mobile"
+relation_array = false
+
+[[objects.fields]]
+field_name = "telephone"
+prop_name = "telephone"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "telephone"
+relation_array = false
+
+[[objects.fields]]
+field_name = "home_address"
+prop_name = "home_address"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "home_address"
+relation_array = false
+
+[[objects.fields]]
+field_name = "postal_code"
+prop_name = "postal_code"
+col_length = 10
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "postal_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "staff_type_code"
+prop_name = "staff_type_code"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "staff_type_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "staff_type_name"
+prop_name = "staff_type_name"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "staff_type_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "staff_state"
+prop_name = "staff_state"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "staff_state"
+relation_array = false
+
+[[objects.fields]]
+field_name = "person_unit_code"
+prop_name = "person_unit_code"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "person_unit_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "person_unit_name"
+prop_name = "person_unit_name"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "person_unit_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "insurance_unit_code"
+prop_name = "insurance_unit_code"
+col_length = 16
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "insurance_unit_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "insurance_unit_name"
+prop_name = "insurance_unit_name"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "insurance_unit_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "corp_begin"
+prop_name = "corp_begin"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "corp_begin"
+relation_array = false
+
+[[objects.fields]]
+field_name = "tryout_length"
+prop_name = "tryout_length"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "tryout_length"
+relation_array = false
+
+[[objects.fields]]
+field_name = "tryout_end"
+prop_name = "tryout_end"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "tryout_end"
+relation_array = false
+
+[[objects.fields]]
+field_name = "tryout_pass"
+prop_name = "tryout_pass"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "tryout_pass"
+relation_array = false
+
+[[objects.fields]]
+field_name = "tryout_pass_salary_start"
+prop_name = "tryout_pass_salary_start"
+col_length = 255
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "tryout_pass_salary_start"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_major_type_code"
+prop_name = "last_major_type_code"
+col_length = 16
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_major_type_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_major_type_name"
+prop_name = "last_major_type_name"
+col_length = 50
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_major_type_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "creator_code"
+prop_name = "creator_code"
+col_length = 10
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "creator_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "creator_name"
+prop_name = "creator_name"
+col_length = 20
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "creator_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_editor_code"
+prop_name = "last_editor_code"
+col_length = 10
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_editor_code"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_editor_name"
+prop_name = "last_editor_name"
+col_length = 20
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_editor_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "last_edit_time"
+prop_name = "last_edit_time"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "last_edit_time"
+relation_array = false
+
+[[objects.select_hooks]]
+lang = "rhai"
+script = '''
+print("args: " + args);
+let caller = required("object://com.siline/BaseUser");
+let user = caller.select(ctx, 1);
+print("user: " + user);
+'''
+before = true
+event = false
+
+[[objects]]
+name = "BaseUser"
+object_name = "ac_base_user"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "ID"
+prop_name = "ID"
+col_type = "integer"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CREATE_TIME"
+prop_name = "CREATE_TIME"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CREATE_TIME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "EMAIL"
+prop_name = "EMAIL"
+col_length = 255
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "EMAIL"
+relation_array = false
+
+[[objects.fields]]
+field_name = "ENABLED"
+prop_name = "ENABLED"
+col_type = "bool"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "ENABLED"
+relation_array = false
+
+[[objects.fields]]
+field_name = "LAST_PASSWORD_RESET_TIME"
+prop_name = "LAST_PASSWORD_RESET_TIME"
+col_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "LAST_PASSWORD_RESET_TIME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "PASSWORD"
+prop_name = "PASSWORD"
+col_length = 255
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "PASSWORD"
+relation_array = false
+
+[[objects.fields]]
+field_name = "PHONE"
+prop_name = "PHONE"
+col_length = 255
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "PHONE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "USERNAME"
+prop_name = "USERNAME"
+col_length = 255
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "USERNAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "DEPT_ID"
+prop_name = "DEPT_ID"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "DEPT_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "JOB_ID"
+prop_name = "JOB_ID"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "JOB_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "AVATAR_ID"
+prop_name = "AVATAR_ID"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "AVATAR_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "EMPLOYEE_ID"
+prop_name = "EMPLOYEE_ID"
+col_length = 80
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "EMPLOYEE_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "EMPLOYEE_NO"
+prop_name = "EMPLOYEE_NO"
+col_length = 80
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "EMPLOYEE_NO"
+relation_array = false
+
+[[objects.fields]]
+field_name = "FULLNAME"
+prop_name = "FULLNAME"
+col_length = 120
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "FULLNAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "APPROVE_LEVEL"
+prop_name = "APPROVE_LEVEL"
+col_type = "integer"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "APPROVE_LEVEL"
+relation_array = false
+
+[[objects.fields]]
+field_name = "SORT_NO"
+prop_name = "SORT_NO"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "SORT_NO"
+relation_array = false
+
+[[objects.fields]]
+field_name = "DEGREE"
+prop_name = "DEGREE"
+col_length = 40
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "DEGREE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "GENDER"
+prop_name = "GENDER"
+col_length = 1
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "GENDER"
+relation_array = false
+
+[[objects.fields]]
+field_name = "ORG_ID"
+prop_name = "ORG_ID"
+col_length = 100
+col_type = "string"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "ORG_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "DATA_SCOPE_EXT"
+prop_name = "DATA_SCOPE_EXT"
+col_type = "json"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "DATA_SCOPE_EXT"
+relation_array = false
+
+[[objects]]
+name = "ZitherConfigs"
+object_name = "zither_configs"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "CONFIG_ID"
+prop_name = "CONFIG_ID"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CONFIG_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CONFIG_NAME"
+prop_name = "CONFIG_NAME"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CONFIG_NAME"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CONFIG_TYPE"
+prop_name = "CONFIG_TYPE"
+col_length = 40
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CONFIG_TYPE"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CONFIG_DESC"
+prop_name = "CONFIG_DESC"
+col_length = 200
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = true
+detail_only = false
+title = "CONFIG_DESC"
+desensitize = "aes"
+relation_array = false
+
+[[objects.fields]]
+field_name = "PROJECT_ID"
+prop_name = "PROJECT_ID"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "PROJECT_ID"
+relation_array = false
+
+[[objects.fields]]
+field_name = "TEST_PASS"
+prop_name = "TEST_PASS"
+col_type = "bool"
+field_type = "tinyint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "TEST_PASS"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CREATE_USER"
+prop_name = "CREATE_USER"
+col_length = 60
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CREATE_USER"
+generator = "mod_user_name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "USER_ID"
+prop_name = "USER_ID"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "USER_ID"
+generator = "mod_user_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "CREATE_TIME"
+prop_name = "CREATE_TIME"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "CREATE_TIME"
+generator = "cur_datetime"
+relation_array = false
+
+[[objects.fields]]
+field_name = "UPDATE_TIME"
+prop_name = "UPDATE_TIME"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "UPDATE_TIME"
+generator = "mod_datetime"
+relation_array = false
+
+[[querys]]
+name = "FindRoles"
+object_name = ""
+pagable = false
+query_body = """
+select cr.*  
+from ac_base_role cr inner join  ac_base_users_roles ur on cr.ID  = ur.ROLE_ID 
+inner join ac_base_user cu on cu.ID  = ur.user_id 
+where cu.username = #{username}"""
+enable_cache = true
+cache_time = 120
+data_permission = false
+
+[[querys.params]]
+field_name = "username"
+prop_name = "username"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "username"
+relation_array = false
+
+[[querys]]
+name = "test"
+object_name = ""
+pagable = true
+query_body = "adsf"
+count_query = "adf"
+enable_cache = false
+data_permission = false
+
+[[plugins]]
+name = "weixin"
+protocol = "restapi"
+config = "weixin.pltoml"
+enable = true
+
+[[plugins]]
+name = "stayhere"
+protocol = "compose"
+config = "stayhere.pltoml"
+enable = true
+
+[[plugins]]
+name = "mqtt"
+protocol = "mqtt"
+config = "mqtt.pltoml"
+enable = true
+
+[[plugins]]
+name = "kafka"
+protocol = "kafka"
+config = "kafka.pltoml"
+enable = true
+
+[[plugins]]
+name = "rivermap"
+protocol = "elasticsearch"
+config = "rivermap.pltoml"
+enable = true

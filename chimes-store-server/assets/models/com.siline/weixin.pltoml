@@ -1,0 +1,52 @@
+app_id = "wxb91ac24bc0044ac0"
+app_secret = "15a409d08dda48182491932778e40ee2"
+api_server = "https://api.weixin.qq.com"
+enable_oauth2 = true
+oauth2_validate_url = "/cgi-bin/token"
+oauth2_request_method = "GET"
+oauth_request_type = "QUERY"
+oauth2_request_body = '''
+{
+   "grant_type": "client_credential",
+   "appid":"{{config.app_id}}",
+    "secret": "{{config.app_secret}}"
+}'''
+oauth2_token_express = "access_token"
+oauth2_expired_express = "expires_in"
+token_pass_style = "Query"
+token_identifier = "access_token"
+
+[[services]]
+name = "get_quota"
+rest_url = "/cgi-bin/openapi/quota/get"
+rest_method = "POST"
+rest_desc = "获取接口使用量"
+rest_api = true
+no_access_token = false
+rest_body = "{{ to_json(value=args[1]) }}"
+rest_content_type = "JSON"
+return_validate = "$.[?(@.errcode == 0 || @.errcode == 47001)]"
+return_data = "$"
+use_auth = false
+perm_roles = []
+bypass_permission = true
+
+[[services]]
+name = "wx_get_openid"
+rest_url = "/sns/jscode2session"
+rest_method = "GET"
+rest_desc = "根据Code获得openid"
+rest_api = true
+no_access_token = true
+rest_body = '''
+{
+    "grant_type": "authorization_code",
+    "appid": "{{ config.app_id }}",
+    "secret": "{{ config.app_secret }}",
+    "js_code": "{{ jsonpath(arg=args[1], path='$.code') }}"
+}
+'''
+rest_content_type = "QUERY"
+use_auth = false
+perm_roles = []
+bypass_permission = true

@@ -1,0 +1,90 @@
+[workspace]
+# Try
+# require version 2 to avoid "feature" additiveness for dev-dependencies
+# https://doc.rust-lang.org/cargo/reference/resolver.html#feature-resolver-version-2
+resolver = "2"
+
+members = [
+    "chimes-store-macro",
+    "chimes-dbs-factory",
+    "chimes-store-core",
+    "chimes-store-dbs",
+    "store-plugin-weixin",
+    "store-plugin-rhai",
+    "store-plugin-compose",
+    "store-plugin-restapi",
+    "store-plugin-mqtt",
+    "store-plugin-kafka",
+    "chimes-store-server",
+    "chimes-starter",
+]
+
+[workspace.package]
+authors = ["Long Zou <longzou@hotmail.com>"]
+edition = "2021"
+version = "0.1.0"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+categories = ["store"]
+description = "An BaaS store engine."
+keywords = ["Chimes", "Store", "SQL", "Server"]
+repository = "https://gitee.com/longzou/chimes-store"
+rust-version = "1.75"
+
+
+[patch.crates-io]
+chimes-store-macro = { path = "chimes-store-macro" }
+chimes-dbs-factory = { path = "chimes-dbs-factory" }
+chimes-store-core = { path = "chimes-store-core" }
+chimes-store-dbs = { path = "chimes-store-dbs" }
+store-plugin-weixin = { path = "store-plugin-weixin" }
+store-plugin-compose = { path = "store-plugin-compose" }
+store-plugin-restapi = { path = "store-plugin-restapi" }
+store-plugin-rhai = { path = "store-plugin-rhai" }
+store-plugin-kafka = { path = "store-plugin-kafka" }
+store-plugin-mqtt = { path = "store-plugin-mqtt" }
+
+[workspace.dependencies]
+chimes-dbs-factory = "*"
+chimes-store-core = "*"
+lazy_static = "1.4.0"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+rbs = { version = "4.5" }
+rbatis = {version = "4.5"}
+anyhow = "1"
+fastdate = { version = "0.3" }
+substring = "1.4.0"
+async-std = "1.7.0"
+reqwest = { version ="0.12", features = ["json"] }
+chrono = "0.4.19"
+futures-lite = "2.3.0"
+## tera feature humansize is occurred to broken link in linux, so we remove the humansize feature 
+tera = { version = "1", default-features = false, features = ["urlencode", "slug", "chrono", "chrono-tz", "rand" ] }
+jsonpath-rust = "0.6"
+
+[workspace.dependencies.salvo]
+default-features = true
+features = [
+    "affix-state",
+    "acme",
+    "cors",
+    "logging",
+    "oapi",
+    "quinn",
+    "serve-static",
+    "sse",
+    "jwt-auth",
+]
+version = "*"
+
+
+[profile.dev]
+opt-level = 1
+lto = false
+
+[profile.release]
+opt-level = 3
+lto = false

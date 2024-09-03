@@ -1,0 +1,13 @@
+@forward "element-plus/theme-chalk/src/common/var.scss" with (
+  $colors: (
+    "primary": (
+      "base": #825ee4,
+    ),
+  ),
+  $header: (
+    "padding": 0,
+  )
+);
+
+// 使用 @use 'xxx.scss' as *; 代替 @import 'xxx.scss';。因为 sass 团队说他们最终会删除 @import 语法。
+@use "element-plus/theme-chalk/src/index.scss" as *;

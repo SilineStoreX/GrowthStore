@@ -1,0 +1,69 @@
+[package]
+authors = ["Long Zou <longzou@hotmail.com>"]
+categories = ["store"]
+default-run = "store-server"
+description = "An BaaS store engine."
+edition = "2021"
+keywords = ["Chimes", "Store", "SQL", "Server"]
+license = "MIT OR Apache-2.0"
+name = "store-server"
+repository = "https://github.com/cgisky1980/ai00_rwkv_server"
+rust-version = "1.75"
+version = "0.1.0"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+anyhow.workspace = true
+url = "2.5.0"
+clap = { version = "4.3", features = ["derive"] }
+derivative = "2.2.0"
+flume = "0.11.0"
+itertools = "0.12"
+log.workspace = true
+regex = "1.8"
+lazy_static.workspace = true
+base64 = "0.21.0"
+captcha = "0.0.9"
+rand = "0.8.5"
+libloading = "*"
+flexi_logger = { version = "0.28", features = ["async", "specfile", "json", "compress"] }
+## simple_logger = { version = "5", features = ["stderr", "colored"] }
+toml = "0.8.6"
+jsonwebtoken = "9.1"
+substring.workspace = true
+chrono.workspace = true
+async-std.workspace = true
+fancy-regex = "*"
+walkdir = "*"
+zip = { version = "2.1", default-features = false, features = ["bzip2","deflate64","deflate","lzma"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+rbs.workspace = true
+rbatis.workspace = true
+chimes-store-core.workspace = true
+chimes-store-dbs = "*"
+store-plugin-compose = "*"
+store-plugin-restapi = "*"
+store-plugin-weixin = "*"
+store-plugin-rhai = "*"
+store-plugin-kafka = "*"
+store-plugin-mqtt = "*"
+salvo.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-service="0.6.0"
+windows={ version="0.48.0", features = [ "Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Time", "Win32_System_ProcessStatus", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper", "Win32_System_SystemInformation","Win32_System_Diagnostics_Debug"]}
+
+[target.'cfg(not(windows))'.dependencies]
+libc = "*"
+nix = { version = "*", features = ["default"] }
+
+[features]
+default = ["plugin_rlib"]
+plugin_dylib = []
+plugin_rlib = []
+

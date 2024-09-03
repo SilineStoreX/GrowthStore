@@ -1,0 +1,215 @@
+.login-container {
+  height: 100vh;
+  display: flex;
+  .login-left {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    .affix {
+      position: absolute;
+      padding: 0 20px;
+      top: 20px;
+      width: 80%;
+      height: 80px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+      > span {
+        font-weight: bold;
+        color: var(--axin-color-text);
+      }
+      .app_title {
+        font-size: 38pt;
+      }
+      .app_cap {
+        font-size: 38pt;
+      }
+      .app_desc {
+        padding-left: 20px;
+        font-size: 12pt;
+        font-weight: normal;
+      }
+    }
+    .form {
+      width: 360px;
+      > span {
+        display: block;
+        margin-bottom: 40px;
+        font-size: 26px;
+        font-weight: bold;
+        color: var(--axin-color-text);
+      }
+      :deep(.el-form-item__content) {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+      }
+      :deep(.el-form-item__content button) {
+        width: 46%;
+      }
+      :deep(.el-form-item) {
+        margin-bottom: 20px;
+      }
+      :deep(.el-input) {
+        --el-input-border-radius: 8px;
+        height: 48px;
+      }
+      :deep(.el-button) {
+        height: 48px;
+        width: 100%;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+    }
+    .bottaffix a {
+      padding: 10px;
+    }
+  }
+  .login-right {
+    width: 50%;
+    height: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+
+    .inner {
+      width: 100%;
+      height: 100%;
+      background-image: url("@/assets/images/login-bg.jpg");
+      background-size: cover;
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      > span {
+        position: fixed;
+        color: #fff;
+        z-index: 1;
+        font-size: 30px;
+        font-weight: bold;
+        letter-spacing: 2px;
+      }
+      @-webkit-keyframes rubberBand {
+        from {
+          -webkit-transform: scale3d(1, 1, 1);
+          transform: scale3d(1, 1, 1);
+        }
+
+        30% {
+          -webkit-transform: scale3d(1.25, 0.75, 1);
+          transform: scale3d(1.25, 0.75, 1);
+        }
+
+        40% {
+          -webkit-transform: scale3d(0.75, 1.25, 1);
+          transform: scale3d(0.75, 1.25, 1);
+        }
+
+        50% {
+          -webkit-transform: scale3d(1.15, 0.85, 1);
+          transform: scale3d(1.15, 0.85, 1);
+        }
+
+        65% {
+          -webkit-transform: scale3d(0.95, 1.05, 1);
+          transform: scale3d(0.95, 1.05, 1);
+        }
+
+        75% {
+          -webkit-transform: scale3d(1.05, 0.95, 1);
+          transform: scale3d(1.05, 0.95, 1);
+        }
+
+        to {
+          -webkit-transform: scale3d(1, 1, 1);
+          transform: scale3d(1, 1, 1);
+        }
+      }
+
+      @keyframes rubberBand {
+        from {
+          -webkit-transform: scale3d(1, 1, 1);
+          transform: scale3d(1, 1, 1);
+        }
+
+        30% {
+          -webkit-transform: scale3d(1.25, 0.75, 1);
+          transform: scale3d(1.25, 0.75, 1);
+        }
+
+        40% {
+          -webkit-transform: scale3d(0.75, 1.25, 1);
+          transform: scale3d(0.75, 1.25, 1);
+        }
+
+        50% {
+          -webkit-transform: scale3d(1.15, 0.85, 1);
+          transform: scale3d(1.15, 0.85, 1);
+        }
+
+        65% {
+          -webkit-transform: scale3d(0.95, 1.05, 1);
+          transform: scale3d(0.95, 1.05, 1);
+        }
+
+        75% {
+          -webkit-transform: scale3d(1.05, 0.95, 1);
+          transform: scale3d(1.05, 0.95, 1);
+        }
+
+        to {
+          -webkit-transform: scale3d(1, 1, 1);
+          transform: scale3d(1, 1, 1);
+        }
+      }
+
+      .rubberBand {
+        -webkit-animation-name: rubberBand;
+        animation-name: rubberBand;
+      }
+
+      .animated {
+        -webkit-animation-duration: 1s;
+        animation-duration: 1s;
+        -webkit-animation-fill-mode: both;
+        animation-fill-mode: both;
+      }
+    }
+    .inner::after {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        310deg,
+        var(--axin-color-purple),
+        var(--el-color-primary)
+      );
+      opacity: 0.6;
+    }
+  }
+}
+
+@media screen and (max-width: 960px) {
+  .login-left {
+    width: 100% !important;
+  }
+  .login-right {
+    display: none;
+  }
+}

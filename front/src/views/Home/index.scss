@@ -1,0 +1,31 @@
+.home {
+  height: 100%;
+}
+
+.dashboard-editor-container {
+  padding: 10px 10px 10px 10px;
+  background-color: rgb(240, 242, 245);
+  position: relative;
+  .github-corner {
+    position: absolute;
+    top: 0;
+    border: 0;
+    right: 0;
+  }
+
+  .chart-wrapper {
+    background: #fff;
+    padding: 16px 16px 0;
+    margin-bottom: 1px;
+  }
+}
+
+.el-col-8 {
+  width: 33%;
+}
+
+@media (max-width:1024px) {
+  .chart-wrapper {
+    padding: 8px;
+  }
+}

@@ -1,0 +1,10 @@
+app_id = "a"
+app_secret = "a"
+api_server = "a"
+enable_oauth2 = false
+oauth2_validate_url = "a"
+oauth2_request_body = "aa"
+oauth2_token_express = "aa"
+oauth2_expired_express = "a"
+token_identifier = "a"
+services = []

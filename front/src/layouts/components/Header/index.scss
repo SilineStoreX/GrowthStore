@@ -1,0 +1,81 @@
+.header {
+  padding-left: 20px;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  &-left {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    padding-right: 50px;
+    white-space: nowrap;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000000 0%,
+      #000000 calc(100% - 50px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      #000000 0%,
+      #000000 calc(100% - 50px),
+      transparent
+    );
+    .breadcrumb {
+      display: flex;
+      margin-left: 20px;
+      .inner-item {
+        display: flex;
+        align-items: center;
+        > span {
+          margin-left: 6px;
+        }
+      }
+      .breadcrumb-enter-active {
+        transition: all 0.3s;
+      }
+      .breadcrumb-enter-from,
+      .breadcrumb-leave-active {
+        opacity: 0;
+        transform: translateX(10px);
+      }
+    }
+  }
+  &-right {
+    margin-right: 50px;
+    display: flex;
+    align-items: center;
+    > span {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    .iconfont {
+      margin-right: 20px;
+      cursor: pointer;
+    }
+    .icon-zhongyingwen {
+      font-size: 19px;
+    }
+    .icon-lingdang {
+      font-size: 19px;
+    }
+    .icon-sousuo {
+      font-size: 24px;
+    }
+    .icon-full-screen {
+      font-size: 17px;
+    }
+    .icon-cancel-full-screen {
+      font-size: 17px;
+    }
+    .icon-jingzi {
+      font-size: 23px;
+    }
+    .avatar {
+      cursor: pointer;
+    }
+  }
+}

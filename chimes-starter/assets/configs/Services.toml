@@ -1,0 +1,15 @@
+lockfile = "storex.pid"
+shared_file = "storex.share"
+codepage = "gbk"
+interval = 5
+
+[[process]]
+group = "StoreX"
+name = "store-server"
+current_dir = "E:\\GitSpace\\gitee\\chimes-store\\chimes-store-server"
+start_command = "store-server.exe"
+stop_command  = "taskkill /PID ${pid} /F /T"
+health_url = "http://localhost:17800/api/auth/info"
+json_cheker = "$.status"
+fail_count = 3
+fail_start = true

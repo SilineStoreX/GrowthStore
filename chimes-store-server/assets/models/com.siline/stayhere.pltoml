@@ -1,0 +1,27 @@
+[[services]]
+name = "pls"
+lang = "rhai"
+rest_api = false
+fileupload = false
+schedule_on = true
+cron_express = "*/10 * * * * * "
+script = '''
+print("Hello,world");
+'''
+return_type = "Nothing"
+perm_roles = []
+bypass_permission = true
+
+[[services]]
+name = "upload"
+lang = "rhai"
+rest_api = true
+fileupload = true
+file_field = "file"
+schedule_on = false
+script = '''
+print("Args: " + args)
+'''
+return_type = "List"
+perm_roles = []
+bypass_permission = false

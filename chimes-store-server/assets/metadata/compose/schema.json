@@ -1,0 +1,13 @@
+[
+  {
+    "title": "左侧",
+    "span": 24,
+    "children": [
+      { "field": "name", "title": "名称", "span": 24, "itemRender": { "name": "VxeInput", "props": { "placeholder": "请输入访问名称" } } },
+      { "field": "lang", "title": "语言", "span": 24, "itemRender": { "name": "VxeInput", "props": { "placeholder": "请输入开发使用的脚本语言" } } },
+      { "field": "rest_api", "title": "发布成REST API", "span": 24, "itemRender": { "name": "VxeSwitch", "props": { "placeholder": "是否发布成REST API" } } },
+      { "field": "uri", "title": "URI", "span": 24, "itemRender": { "name": "VxeInput", "props": { "placeholder": "REST API的访问URI" } } },
+      { "field": "script", "title": "脚本", "span": 24, "itemRender": { "name": "VxeTextarea", "props": { "placeholder": "请输入实现的脚本", "rows": 8 } } }
+    ]
+  }
+]

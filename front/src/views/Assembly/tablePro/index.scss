@@ -1,0 +1,11 @@
+.table {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  .el-table {
+    flex: 1;
+  }
+  .el-pagination{
+    margin-top: 20px;
+  }
+}

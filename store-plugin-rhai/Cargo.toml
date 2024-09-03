@@ -1,0 +1,30 @@
+[package]
+name = "store-plugin-rhai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[lib]
+# crate-type = ["dylib"]
+crate-type = ["rlib"]
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+jsonpath-rust.workspace = true
+futures-lite.workspace = true
+tokio.workspace = true
+rbatis.workspace = true
+reqwest.workspace = true
+async-std.workspace = true
+rhai = { version = "1.18", features = ["internals", "serde", "sync", "metadata"] }
+chimes-store-core = { workspace = true }
+chimes-store-macro = "*"

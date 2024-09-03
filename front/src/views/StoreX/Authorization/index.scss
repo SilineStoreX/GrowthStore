@@ -1,0 +1,25 @@
+.home {
+  height: 100%;
+}
+
+.remark {
+  font-size: var(--el-form-label-font-size);
+  color: var(--el-text-color-regular);
+  .line {
+    margin-bottom: 10px;
+  }
+}
+
+.tips {
+  color: var(--el-text-color-regular);
+  padding: 10px 10px 20px 0px;
+  font-size: smaller;
+}
+
+.remark table {
+  border: 1px;
+  border-collapse: collapse;
+  width: 100%;  
+}
+
+.remark table tr th, table tr td { border:1px solid #0094ff; }

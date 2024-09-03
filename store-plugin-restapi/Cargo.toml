@@ -1,0 +1,34 @@
+[package]
+name = "store-plugin-restapi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+# crate-type = ["dylib"]
+crate-type = ["rlib"]
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+jsonpath-rust = "0.6"
+reqwest.workspace = true
+tokio-cron-scheduler = "*"
+uuid = "*"
+tera.workspace = true
+encoding_rs = "0.8.34"
+chimes-store-core = { workspace = true, features=["plugin"]}
+chimes-store-macro = "*"
+rbatis.workspace = true
+salvo.workspace = true
+
+

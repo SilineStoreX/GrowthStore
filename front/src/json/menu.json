@@ -1,0 +1,113 @@
+[
+  {
+    "path": "/home",
+    "name": "home",
+    "component": "/Home/index",
+    "meta": {
+      "icon": "HomeFilled",
+      "title": "首页",
+      "isFull": false,
+      "isAffix": true,
+      "isKeepAlive": true
+    }
+  },
+  {
+    "path": "/storex",
+    "name": "storex",
+    "redirect": "/storex/namespaces",
+    "component": "/StoreX/Namespaces/index",
+    "meta": {
+      "icon": "Platform",
+      "title": "StoreX",
+      "isFull": true,
+      "isAffix": false,
+      "isKeepAlive": true
+    },
+    "children": [
+      {
+        "path": "/storex/namespaces",
+        "name": "namespaces",
+        "component": "/StoreX/Namespaces/index",
+        "meta": {
+          "icon": "Menu",
+          "title": "开发配置",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/config",
+        "name": "config",
+        "component": "/StoreX/Config/index",
+        "meta": {
+          "icon": "SetUp",
+          "title": "Config",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/redis",
+        "name": "redis",
+        "component": "/StoreX/Redis/index",
+        "meta": {
+          "icon": "SetUp",
+          "title": "Redis管理",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/elasticsearch",
+        "name": "elasticsearch",
+        "component": "/StoreX/Elasticsearch/index",
+        "meta": {
+          "icon": "SetUp",
+          "title": "ElasticSearch管理",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/authorization",
+        "name": "authorization",
+        "component": "/StoreX/Authorization/index",
+        "meta": {
+          "icon": "UserFilled",
+          "title": "用户与认证配置",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/login",
+        "name": "storexlogin",
+        "component": "/StoreX/Login/index",
+        "meta": {
+          "icon": "UserFilled",
+          "title": "登录/认证测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/invoker",
+        "name": "invoker",
+        "component": "/StoreX/Invoker/index",
+        "meta": {
+          "icon": "UserFilled",
+          "title": "API接口调用测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      }
+    ]
+  }
+]

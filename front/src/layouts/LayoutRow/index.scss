@@ -1,0 +1,18 @@
+.el-header {
+  background-color: #fff;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+.el-aside {
+  height: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  background-color: #333;
+  .el-menu {
+    border: none;
+  }
+}
+.column-inner {
+  height: 0;
+}

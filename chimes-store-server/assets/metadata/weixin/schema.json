@@ -1,0 +1,10 @@
+[
+  {
+    "title": "左侧",
+    "span": 24,
+    "children": [
+      { "field": "app_id", "title": "App Id", "span": 24, "itemRender": { "name": "VxeInput", "props": { "placeholder": "请输入微信小程序的AppId" } } },
+      { "field": "app_secret", "title": "App Secret", "span": 24, "itemRender": { "name": "VxeInput", "props": { "placeholder": "请输入对应的AppSecret" } } }
+    ]
+  }
+]

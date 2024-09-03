@@ -1,0 +1,46 @@
+[package]
+name = "chimes-store-dbs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow.workspace = true
+url = "2.5.0"
+clap = { version = "4.3", features = ["derive"] }
+derivative = "2.2.0"
+futures-lite.workspace = true
+async-task = "4.7"
+itertools = "0.12"
+log.workspace = true
+regex = "1.8"
+lazy_static.workspace = true
+base64 = "0.21.0"
+rand = "0.8.5"
+sha2 = "0.10.8"
+sha1 = "0.10"
+md5 = "0.7.0"
+simple_logger = { version = "4.2", features = ["stderr"] }
+toml = "0.8.6"
+substring.workspace = true
+chrono.workspace = true
+base16ct = "0.2.0"
+async-std.workspace = true
+indexmap = { version = "*" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+rbs.workspace = true
+rbatis.workspace = true
+chimes-dbs-factory.workspace = true
+chimes-store-core.workspace = true
+salvo.workspace = true
