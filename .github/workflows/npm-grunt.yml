@@ -25,5 +25,5 @@ jobs:
     - name: Build
       run: |
         cd front
-        npm install
-        npm run build:pro
+        yarn install
+        yarn run build:pro
