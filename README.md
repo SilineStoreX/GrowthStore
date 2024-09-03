@@ -30,3 +30,79 @@ GrowthStore是一个基于Rust体系的成长型的企业级后台服务的开�
 ./store-server & #在后台执行
 nohup ./store-server &  #重定向输入输出，且在后台执行，一般来说，相让其在后台运行，我们应该使用该方法
 ```
+
+# GrowthStore 源代码安装
+如果你选择从源代码进行安装，则需要阅读本章节。
+
+### 开发环境的准备
+为了能够编译GrowthStore，需要进行一下开发环境的准备。
+#### Windows 下的准备
+在Windows下，主要是需要准备一套可以用于链接的C/C++运行环境。通常，我们会选择下载微软的Visual Studio 2022 (至少需要2019版)。可以从下面的地址下载Visual Studio，且，在安装时选择Visual C/C++的开发环境；
+
+#### Linux 下的准备
+在Linux下，主要是需要准备一套可以用于链接的C/C++运行环境。通常，我们可以安装gcc/g++。
+``` bash
+# ubuntu
+sudo apt install gcc
+# redhat
+sudo yum install gcc
+```
+
+#### Rust 下载与安装
+可以进入Rust官网，按照官网( https://www.rust-lang.org/learn/get-started )指示来进行安装。
+安装完成后，可以在终端执行如下命令来验证：
+``` bash
+cargo -v
+rustc -v
+```
+
+#### NodeJS 下载与安装
+可以进入NodeJS官网，按照官网( https://nodejs.org/en/download/package-manager )指示来进行安装。
+这里，我们需要选择 18.20.4 及以上版本。
+然后，安装npm，yarn等工具。
+
+#### GrowthStore的编译
+从github仓库或gitee仓库中clone出一份最新的代码。然后，进入到clone后的项目目录，执行如下：
+``` bash
+# 如果要构建debug版，目标生成在target/debug/目录下
+cargo b
+
+# 如果要构建release版，目标生成在target/release/目录下
+cargo b -r
+```
+初次编译，会需要很长的时间。请耐心等待，同时，在执行下载的过程中，会由于网络传输等原因中断构建，这个时候，你只需要重复执行上述命令即可。
+
+如果你长时间没有进行对Store X进行构建了，这个时候需要对Store X的依赖包进行更新，再来执行构建，可以执行如下命令。
+``` bash
+cargo update
+cargo b
+
+```
+
+#### GrowthStore前端的构建
+进行项目目录的front子目录，执行：
+``` bash
+yarn install 
+yarn run build:pro
+```
+打包成功后，生成的前端文件放在 <项目目录>/front/dist下。
+
+#### GrowthStore安装
+```
+<安装目录>
+├─ assets
+│  ├─ configs
+│  ├─ certs
+│  ├─ metadata
+|  ├─ models
+|  ├─ scripts
+|  └─ www
+├─ logs
+└─ store-server
+```
+其中 assets/configs下主要用于存放Authorization.toml和Config.toml这两个全局配置文件。assets/certs下用于存放SSL证书（如果需要启用TLS的话）。assets/models用于存放运行时的配置项，是非常重要的目录。assets/metadata则是用于存放一些中间生成的元数据的信息，系统自动维护；assets/scripts下主要用于存放一些脚本文件。assets/www 目录用于存放前端文件。logs目录用于存放日志文件。
+<br/>完成前端的编译后，即可将<项目目录>/front/dist下的文件，复制到<安装目录>/assets/www/下；
+<br/>完成Rust构建后，即可将<项目目录>/target/release/store-server，复制到<安装目录>/下；
+<br/>接下，在<安装目录>/下运行store-server，运行成功后，打开浏览器，在地址栏中输入 http://localhost:17800/ ，来验证一下是否安装成功，安装成功的话，这个时候会显示Store X的管理员登录界面；
+
+
