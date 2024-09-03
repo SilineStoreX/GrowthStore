@@ -1,3 +1,0 @@
-# Chimes Store Server
-
-
