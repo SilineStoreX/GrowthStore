@@ -1,5 +1,4 @@
 import { Login } from "@/http/interface/index";
-import qs from "qs";
 import http from "@/http";
 import menuList from "@/json/menu.json";
 import createAxios from "@/http/axios";

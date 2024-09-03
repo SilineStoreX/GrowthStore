@@ -1,5 +1,4 @@
 import { userInfo } from "@/http/interface/index";
-import qs from "qs";
 import http from "@/http";
 import createAxios from "@/http/axios";
 
