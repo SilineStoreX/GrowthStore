@@ -3,7 +3,7 @@
     <el-dialog
       v-model="props.visible"
       :title="props.title"
-      width="800"
+      width="760"
       align-center
       :close-on-click-modal="false"
       :close-on-press-escape="false"
@@ -11,35 +11,42 @@
       style="padding-left: 60px; padding-right: 60px; padding-top: 30px; padding-bottom: 40px;"
       @close="onDialogClosed"
     >
-      <el-form ref="contactFormRef" :model="hook" :rules="rules" :inline="false" label-position="top">
+      <el-form ref="contactFormRef" :model="hook" :rules="rules" :inline="true" label-position="left" label-width="120px">
             <span class="tips">注意：注册联系人信息不是注册登录用户，其目的是为了方便我们联系您，并推送Store X的最新更新。</span>
             <el-form-item label="您的姓名" prop="fullname">
-                <el-input v-model="hook.fullname" placeholder="请输入您的姓名"/>
+                <el-input v-model="hook.fullname" placeholder="请输入您的姓名" style="width: 500px"/>
             </el-form-item>
             <el-form-item label="您的手机号" prop="contact_phone">
-                <el-input v-model="hook.contact_phone" placeholder="请输入可以联系到您的手机号码或电话号码"/>
+                <el-input v-model="hook.contact_phone" placeholder="请输入可以联系到您的手机号码或电话号码"  style="width: 500px"/>
             </el-form-item>
             <el-form-item label="您的邮箱" prop="contact_email">
-                <el-input v-model="hook.contact_email" placeholder="请输入可以联系到您的邮箱"/>
+                <el-input v-model="hook.contact_email" placeholder="请输入可以联系到您的邮箱"  style="width: 500px"/>
             </el-form-item>
             <el-form-item label="单位名称" prop="company_name">
-                <el-input v-model="hook.company_name" placeholder="请输入您所在单位名称" />
+                <el-input v-model="hook.company_name" placeholder="请输入您所在单位名称"  style="width: 500px" />
             </el-form-item>
             <el-form-item label="所属行业" prop="industry">
-                <el-cascader v-model="hook.industry" :options="industryOptions" placeholder="请选择所属行业" style="width: 100%;"/>
+                <el-cascader v-model="hook.industry" :options="industryOptions" placeholder="请选择所属行业"  style="width: 500px"/>
+            </el-form-item>
+            <el-form-item label="所在地区" prop="area">
+                <el-cascader v-model="hook.area" :options="areaOptions"  style="width: 500px" placeholder="请选择所在地区"/>
             </el-form-item>
             <el-form-item label="单位规模" prop="company_size">
-                <el-select v-model="hook.company_size" placeholder="请选择公司规模">
+                <el-select v-model="hook.company_size" placeholder="请选择公司规模"  style="width: 500px">
                     <el-option v-for="it in companySize" :value="it">{{ it }}</el-option>
                 </el-select>
             </el-form-item>
             <el-form-item label="您的职位" prop="position">
-                <el-select v-model="hook.position" placeholder="请选择您的职位">
+                <el-select v-model="hook.position" placeholder="请选择您的职位"  style="width: 500px">
                     <el-option v-for="it in positions" :value="it">{{ it }}</el-option>
                 </el-select>
-            </el-form-item>                                                                    
-            <el-form-item label="所在地区" prop="area">
-                <el-cascader v-model="hook.area" :options="areaOptions" style="width: 100%;" placeholder="请选择所在地区"/>
+            </el-form-item>
+            <el-form-item label="用途或目的" prop="usage">
+                <el-checkbox-group v-model="hook.usage">
+                    <el-checkbox v-for="opt in usageOptions" :key="opt" :label="opt" :value="opt">
+                    {{ opt }}
+                    </el-checkbox>
+                </el-checkbox-group>
             </el-form-item>
             <el-form-item>
                 <span><el-checkbox v-model="hook.acceptance" /> 我已阅读并接受<a href="#" @click="onShowLicenseDialog">《个人信息保护条款》</a>，同意相关个人信息传输。StoreX有权在法律允许的范围内对活动进行解释</span>
@@ -83,6 +90,11 @@
   const positions = ref<Array<any>>([
     "首席执行官/总裁", "总经理", "首席信息官", "首席技术官", "首席数据官", "首席运营官", "首席营销官", "首席财务官", "首席数据官",
     "高级副总裁/副总裁", "部门负责人", "总监/高级总监", "经理/高级经理", "工程师", "教师/讲师", "教授/副教授", "学生", "员工", "其他"
+  ])
+
+
+  const usageOptions = ref<Array<any>>([
+    "平台软件选型评估", "企业内部数字化转型", "业务系统构建", "新技术/软件学习预研", "平台架构优化", "低代码/API服务构建", "其他"
   ])
 
   const industryOptions = ref<Array<any>>([
