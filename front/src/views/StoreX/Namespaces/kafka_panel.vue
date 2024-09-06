@@ -260,8 +260,8 @@ function fetchMetadata(schema: string) {
 
 function fetchConfig(schema: string, ns: string, name: string) {
   config_get(schema, ns, name).then(res => {
-    rest_conf.value = res.data
-    config_data.value = res.data.services
+    rest_conf.value = res.data || {}
+    config_data.value = res.data && res.data.services ? res.data.services : []
   }).catch(ex => {
     console.log(ex)
   })
@@ -269,8 +269,8 @@ function fetchConfig(schema: string, ns: string, name: string) {
 
 function saveConfig(schema: string, ns: string, name: string) {
   config_save(schema, ns, name, config_data.value).then(res => {
-    rest_conf.value = res.data
-    config_data.value = res.data.services
+    rest_conf.value = res.data || {}
+    config_data.value = res.data && res.data.services ? res.data.services : []
   }).catch(ex => {
     console.log(ex)
   })
