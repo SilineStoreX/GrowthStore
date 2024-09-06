@@ -1453,7 +1453,7 @@ impl DbCrud<Value> for DbStoreObject {
         sql.push_str(
             format!(
                 " limit {} offset {} ",
-                pagereq.offset_limit(),
+                pagereq.page_size(),
                 pagereq.offset()
             )
             .as_str(),
