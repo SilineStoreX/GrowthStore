@@ -5,7 +5,7 @@
     <license :visible="showAggreeDialog" title="服务条款" src="/SERVICE-AGGREEMENT" :hook="currentHook" @update:visible="handleDialogVisibleChange"></license>
     <div class="login-left">
       <div class="affix">
-        <span class="app_title">Store <a class="app_cap">X</a><a class="app_desc">基于Rust开发的高效率后台服务开发/运行框架</a></span>
+        <span class="app_title">GrowthStore<a class="app_desc">基于Rust开发的高效率后台服务开发/运行框架</a></span>
       </div>
       <div class="form">
         <span>管理员登录</span>
