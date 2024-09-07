@@ -1,7 +1,7 @@
 <template>
   <el-container class="layout column">
     <el-header>
-      <span>Store X</span>
+      <span>GrowthStore</span>
       <Header />
     </el-header>
     <el-container ref="computedContainer" class="column-inner">
@@ -22,10 +22,8 @@
         </el-form>
         <template #footer>
           <div class="dialog-footer">
-            <el-button @click="onDialogClosed">Cancel</el-button>
-            <el-button type="primary" @click="onConfirm">
-              Confirm
-            </el-button>
+            <el-button @click="onDialogClosed">取消</el-button>
+            <el-button type="primary" @click="onConfirm">确认</el-button>
           </div>
         </template>
       </el-dialog>      
