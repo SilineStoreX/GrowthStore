@@ -15,7 +15,7 @@ use crate::{
         auth::JwtUserClaims, HookInvoker, MethodHook, PluginConfig, QueryObject, StoreObject,
         StoreServiceConfig,
     },
-    utils::{build_path, build_path_ns, copy_to_slice, get_multiple_rbatis},
+    utils::{build_path, build_path_ns, copy_to_slice, get_multiple_rbatis, global_data::{rsa_decrypt_with_private_key, rsa_encrypt_with_public_key}},
 };
 
 use super::{
@@ -556,6 +556,23 @@ impl MxStoreService {
             .collect_vec()
     }
 
+    pub fn rsa_encrypt_text(&self, text: &str) -> String {
+        if let Some(public_key) = self.0.rsa_public_key.clone() {
+            rsa_encrypt_with_public_key(text, &public_key).unwrap_or(text.to_owned())
+        } else {
+            text.to_owned()
+        }
+    }
+
+    pub fn rsa_decrypt_text(&self, text: &str) -> String {
+        if let Some(priv_key) = self.0.rsa_private_key.clone() {
+            rsa_decrypt_with_private_key(text, &priv_key).unwrap_or(text.to_owned())
+        } else {
+            text.to_owned()
+        }
+    }
+    
+        
     pub fn aes_encode_text(&self, text: &str) -> String {
         if self.0.aes_solt.is_none() && self.0.aes_key.is_none() {
             text.to_owned()

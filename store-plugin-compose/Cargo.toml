@@ -25,7 +25,6 @@ uuid = "*"
 jsonpath-rust.workspace = true
 encoding_rs = "0.8.34"
 chimes-store-core = { workspace = true, features=["plugin"]}
-chimes-store-macro = "*"
 rbatis.workspace = true
 salvo.workspace = true
 

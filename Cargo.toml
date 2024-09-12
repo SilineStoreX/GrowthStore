@@ -5,7 +5,7 @@
 resolver = "2"
 
 members = [
-    "chimes-store-macro",
+    "chimes-store-utils",
     "chimes-dbs-factory",
     "chimes-store-core",
     "chimes-store-dbs",
@@ -22,18 +22,17 @@ members = [
 [workspace.package]
 authors = ["Long Zou <longzou@hotmail.com>"]
 edition = "2021"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 categories = ["store"]
 description = "An BaaS store engine."
 keywords = ["Chimes", "Store", "SQL", "Server"]
 repository = "https://gitee.com/longzou/chimes-store"
-rust-version = "1.75"
-
+rust-version = "1.80"
 
 [patch.crates-io]
-chimes-store-macro = { path = "chimes-store-macro" }
+chimes-store-utils = { path = "chimes-store-utils" }
 chimes-dbs-factory = { path = "chimes-dbs-factory" }
 chimes-store-core = { path = "chimes-store-core" }
 chimes-store-dbs = { path = "chimes-store-dbs" }
@@ -46,6 +45,7 @@ store-plugin-mqtt = { path = "store-plugin-mqtt" }
 
 [workspace.dependencies]
 chimes-dbs-factory = "*"
+chimes-store-utils = "*"
 chimes-store-core = "*"
 lazy_static = "1.4.0"
 log = "0.4"

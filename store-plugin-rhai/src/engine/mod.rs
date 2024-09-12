@@ -20,6 +20,7 @@ use serde_json::{Number, Value};
 
 mod reqwest;
 pub mod resolver;
+pub mod common;
 
 #[derive(Clone)]
 pub struct EvalEngine {
@@ -50,6 +51,11 @@ impl EvalEngine {
         engin.set_max_variables(1024);
         engin.set_strict_variables(true);
         engin.register_fn("required", require_create);
+        engin.register_fn("hmac_sha1", common::hmac_sha1);
+        engin.register_fn("hmac_sha2", common::hmac_sha2);
+        engin.register_fn("md5string", common::text_md5);
+        engin.register_fn("base64encode", common::text_base64_encode);
+        engin.register_fn("base64decode", common::text_base64_decode);        
         engin.register_fn("http_request", RhaiHttpClient::sync_http_request);
         engin.register_fn("http_get", |url: &str, data: Value, opt: Value| {
             RhaiHttpClient::sync_http_request(url, Method::GET, data, Some(opt))
@@ -135,6 +141,10 @@ impl EvalEngine {
         engin
             .register_type_with_name::<RhaiStoreObject>("StoreObject")
             .register_fn("new_store_object", RhaiStoreObject::new)
+            .register_fn("aes_encrypt", RhaiStoreObject::aes_encrypt)
+            .register_fn("aes_decrypt", RhaiStoreObject::aes_decrypt)
+            .register_fn("rsa_encrypt", RhaiStoreObject::rsa_encrypt)
+            .register_fn("rsa_decrypt", RhaiStoreObject::rsa_decrypt)            
             .register_fn("select", RhaiStoreObject::select)
             .register_fn(
                 "select",

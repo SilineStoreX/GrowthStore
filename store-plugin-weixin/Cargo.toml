@@ -23,7 +23,6 @@ serde_json.workspace = true
 rbatis.workspace = true
 reqwest.workspace = true
 chimes-store-core = { workspace = true, features=["plugin"]}
-chimes-store-macro = "*"
 salvo.workspace = true
 
 

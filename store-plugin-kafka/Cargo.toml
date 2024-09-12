@@ -23,8 +23,8 @@ serde_json.workspace = true
 kafka = "0.10"
 jsonpath-rust.workspace = true
 rbatis.workspace = true
+chimes-store-utils.workspace = true 
 chimes-store-core = { workspace = true, features=["plugin"]}
-chimes-store-macro = "*"
 salvo.workspace = true
 
 

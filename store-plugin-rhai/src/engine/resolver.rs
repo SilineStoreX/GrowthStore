@@ -1,5 +1,6 @@
 use chimes_store_core::config::{ConditionItem, IPaging, OrdianlItem, QueryCondition};
 use chimes_store_core::pin_blockon_async;
+use chimes_store_core::service::sdk::InvokeUri;
 use chimes_store_core::service::{invoker::InvocationContext, starter::MxStoreService};
 use rbatis::{IPage, IPageRequest, Page};
 use rhai::{
@@ -85,6 +86,83 @@ impl RhaiStoreObject {
         }
     }
 
+
+    pub fn aes_encrypt(col: &mut Self, text: &str) -> Result<String, Box<EvalAltResult>> {
+        let call_uri = format!("{}#find_one", col.uri);
+        if let Ok(invoke_uri) = InvokeUri::parse(&call_uri) {
+            if let Some(mxs) = MxStoreService::get(&invoke_uri.namespace) {
+                Ok(mxs.aes_encode_text(text))
+            } else {
+                Err(Box::new(EvalAltResult::ErrorRuntime(
+                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Position::new(1, 1),
+                )))
+            }
+        } else {
+            Err(Box::new(EvalAltResult::ErrorRuntime(
+                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Position::new(1, 1),
+            )))
+        }
+    }
+
+    pub fn aes_decrypt(col: &mut Self, text: &str) -> Result<String, Box<EvalAltResult>> {
+        let call_uri = format!("{}#find_one", col.uri);
+        if let Ok(invoke_uri) = InvokeUri::parse(&call_uri) {
+            if let Some(mxs) = MxStoreService::get(&invoke_uri.namespace) {
+                Ok(mxs.aes_decode_text(text))
+            } else {
+                Err(Box::new(EvalAltResult::ErrorRuntime(
+                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Position::new(1, 1),
+                )))
+            }
+        } else {
+            Err(Box::new(EvalAltResult::ErrorRuntime(
+                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Position::new(1, 1),
+            )))
+        }
+    }
+
+    pub fn rsa_decrypt(col: &mut Self, text: &str) -> Result<String, Box<EvalAltResult>> {
+        let call_uri = format!("{}#find_one", col.uri);
+        if let Ok(invoke_uri) = InvokeUri::parse(&call_uri) {
+            if let Some(mxs) = MxStoreService::get(&invoke_uri.namespace) {
+                Ok(mxs.rsa_decrypt_text(text))
+            } else {
+                Err(Box::new(EvalAltResult::ErrorRuntime(
+                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Position::new(1, 1),
+                )))
+            }
+        } else {
+            Err(Box::new(EvalAltResult::ErrorRuntime(
+                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Position::new(1, 1),
+            )))
+        }
+    }
+
+    pub fn rsa_encrypt(col: &mut Self, text: &str) -> Result<String, Box<EvalAltResult>> {
+        let call_uri = format!("{}#find_one", col.uri);
+        if let Ok(invoke_uri) = InvokeUri::parse(&call_uri) {
+            if let Some(mxs) = MxStoreService::get(&invoke_uri.namespace) {
+                Ok(mxs.rsa_encrypt_text(text))
+            } else {
+                Err(Box::new(EvalAltResult::ErrorRuntime(
+                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Position::new(1, 1),
+                )))
+            }
+        } else {
+            Err(Box::new(EvalAltResult::ErrorRuntime(
+                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Position::new(1, 1),
+            )))
+        }
+    }
+        
     pub(crate) fn invoke(
         col: &mut Self,
         name: &str,

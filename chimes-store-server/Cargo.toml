@@ -1,15 +1,14 @@
 [package]
-authors = ["Long Zou <longzou@hotmail.com>"]
-categories = ["store"]
+name = "store-server"
+authors.workspace = true
+categories.workspace = true
 default-run = "store-server"
 description = "An BaaS store engine."
-edition = "2021"
-keywords = ["Chimes", "Store", "SQL", "Server"]
-license = "MIT OR Apache-2.0"
-name = "store-server"
-repository = "https://github.com/cgisky1980/ai00_rwkv_server"
-rust-version = "1.75"
-version = "0.1.0"
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
 build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

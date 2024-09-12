@@ -27,4 +27,4 @@ reqwest.workspace = true
 async-std.workspace = true
 rhai = { version = "1.18", features = ["internals", "serde", "sync", "metadata"] }
 chimes-store-core = { workspace = true }
-chimes-store-macro = "*"
+

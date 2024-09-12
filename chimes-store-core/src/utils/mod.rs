@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Once};
 use std::time::SystemTime;
 
+pub mod algorithm;
 pub mod crypto;
 pub mod executor;
 pub mod global_data;
