@@ -160,6 +160,12 @@ pub fn build_path(
 ) -> Result<PathBuf, anyhow::Error> {
     let path = path.as_ref();
     let name = name.as_ref();
+    if let Some(parent) = path.parent() {
+        if let Err(err) = create_dir_all(parent) {
+            log::debug!("Could not create dir for {}. err {err}", parent.to_string_lossy());
+        }
+    }
+        
     let permitted = path.canonicalize()?;
     let s_path = match name.is_absolute() || name.starts_with(path) {
         true => name.to_path_buf(),

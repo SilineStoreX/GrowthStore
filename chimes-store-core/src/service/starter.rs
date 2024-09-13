@@ -707,7 +707,13 @@ pub fn save_config<T>(conf: &T, path: impl AsRef<Path>) -> anyhow::Result<()>
 where
     T: serde::ser::Serialize + ?Sized,
 {
-    log::debug!("Save Config: {}", path.as_ref().to_string_lossy());
+    let path_ = path.as_ref();
+    log::debug!("Save Config: {}", path_.to_string_lossy());
+    if let Some(path_prt) = path_.parent() {
+        if let Err(err) = create_dir_all(path_prt) {
+            log::debug!("could not create dir for {}, error {err}.", path_.to_string_lossy());
+        }
+    }
     let mut file = File::create(path)?;
     let content = toml::to_string_pretty(conf)?;
     file.write_all(content.as_bytes())?;
