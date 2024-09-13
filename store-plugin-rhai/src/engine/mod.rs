@@ -297,6 +297,8 @@ impl EvalEngine {
             )
             .register_fn("unwrap", ValueGetterSetter::unwrap_option)
             .register_fn("unwrap", ValueGetterSetter::unwrap_value)
+            .register_fn("canonicalized_query", ValueGetterSetter::canonicalized_query)
+            .register_fn("canonicalized_query", ValueGetterSetter::canonicalized_query_asc)            
             .register_fn("to_rhai_object", ValueGetterSetter::to_rhai_object)                        
             .register_fn("to_rhai_object", ValueGetterSetter::to_rhai_object_option)
             .register_fn("to_array", ValueGetterSetter::to_array)

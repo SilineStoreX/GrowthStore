@@ -652,6 +652,30 @@ impl ValueGetterSetter {
         }
     }
 
+    pub fn canonicalized_query_asc(arg: &mut Value) -> Value {
+        Self::canonicalized_query(arg, false)
+    }
+
+    pub fn canonicalized_query(arg: &mut Value, desc: bool) -> Value {
+        if let Value::Object(val) = arg {
+            let mut sorted = val.keys().map(|f| f.to_owned()).collect::<Vec<String>>();
+            if desc {
+                sorted.sort_by(|a, b| b.cmp(a));
+            } else {
+                sorted.sort_by(|a, b| a.cmp(b));
+            }
+            let mut text = vec![];
+            for key in sorted {
+                let val_str = val.get(&key).map(|f| f.as_str().unwrap_or_default()).unwrap_or_default();
+                text.push(format!("{key}={val_str}"));
+            }
+            let ret = text.join("&");
+            Value::String(ret)
+        } else {
+            Value::Null
+        }
+    }    
+
     pub fn create_json_from_map(obj: rhai::Map) -> Value {
         match serde_json::to_value(obj) {
             Ok(t) => t,
