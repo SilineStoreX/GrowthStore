@@ -2,7 +2,7 @@ use anyhow::Result;
 use chimes_store_core::utils::{build_path, num_of_cpus, GlobalConfig, GlobalSecurityConfig};
 use clap::Parser;
 use flexi_logger::{FileSpec, LogSpecification, Logger, WriteMode};
-use salvo::http::request::set_secure_max_size;
+use salvo::http::request::set_global_secure_max_size;
 use std::{
     fs::{self, File},
     io::{BufReader, Read},
@@ -183,7 +183,7 @@ fn main() {
         config.web.pool_size as usize
     };
 
-    set_secure_max_size(10 * 1024 * 1024);
+    set_global_secure_max_size(10 * 1024 * 1024);
 
     GlobalConfig::update(&GlobalSecurityConfig {
         console_code_page: Some(config.web.code_page.clone()),

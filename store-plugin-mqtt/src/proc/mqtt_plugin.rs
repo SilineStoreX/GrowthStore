@@ -79,7 +79,7 @@ impl MqttSubscribeInfo {
         let mut ins_op = Operation::new();
         ins_op = ins_op.request_body(
             RequestBody::new()
-                .add_content("application/json", RefOr::T(Schema::Object(Object::new()))),
+                .add_content("application/json", RefOr::Type(Schema::Object(Object::new()))),
         );
         ins_op = ins_op.summary(self.description.clone().unwrap_or_default());
 
@@ -98,11 +98,11 @@ impl MqttSubscribeInfo {
         resp = resp.add_content(
             "application/json",
             Content::new(to_api_result_schema(
-                RefOr::T(Schema::Object(Object::new())),
+                RefOr::Type(Schema::Object(Object::new())),
                 array,
             )),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
         ins_op
     }
 }

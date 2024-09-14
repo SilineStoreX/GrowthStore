@@ -108,7 +108,7 @@ fn to_api_result_page_schema(t: RefOr<Schema>) -> schema::Schema {
         Object::new().schema_type(schema::BasicType::Integer),
     );
     apiresult = apiresult.property("records", t.to_array());
-    to_api_result_schema(RefOr::T(schema::Schema::Object(apiresult)), false)
+    to_api_result_schema(RefOr::Type(schema::Schema::Object(apiresult)), false)
 }
 
 fn to_upload_file_schema() -> schema::Schema {
@@ -182,12 +182,12 @@ impl ComposeServiceInfo {
         if self.fileupload {
             ins_op = ins_op.request_body(
                 RequestBody::new()
-                    .add_content("application/json", RefOr::T(to_upload_file_schema())),
+                    .add_content("application/json", RefOr::Type(to_upload_file_schema())),
             );
         } else {
             ins_op = ins_op.request_body(
                 RequestBody::new()
-                    .add_content("application/json", RefOr::T(Schema::Object(Object::new()))),
+                    .add_content("application/json", RefOr::Type(Schema::Object(Object::new()))),
             );
         }
         ins_op = ins_op.summary(self.desc.clone().unwrap_or_default());
@@ -218,11 +218,11 @@ impl ComposeServiceInfo {
 
         resp = resp.add_content(
             "application/json",
-            Content::new(to_api_result_page_schema(RefOr::T(schema::Schema::Object(
+            Content::new(to_api_result_page_schema(RefOr::Type(schema::Schema::Object(
                 Object::new(),
             )))),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
         ins_op
     }
 }

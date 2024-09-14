@@ -63,7 +63,7 @@ fn to_api_result_page_schema(t: RefOr<Schema>) -> schema::Schema {
         Object::new().schema_type(schema::BasicType::Integer),
     );
     apiresult = apiresult.property("records", t.to_array());
-    to_api_result_schema(RefOr::T(schema::Schema::Object(apiresult)), false)
+    to_api_result_schema(RefOr::Type(schema::Schema::Object(apiresult)), false)
 }
 
 fn to_add_query_condition(t: Schema) -> schema::Schema {
@@ -348,13 +348,13 @@ impl ToSchemaObjects for StoreObject {
         let sch = schemas
             .get(&format!("object://{}/{}", ns, self.name.clone()))
             .unwrap();
-        let sch_ref = RefOr::T(sch.clone());
+        let sch_ref = RefOr::Type(sch.clone());
 
         let schpk = schemas.get(&format!("object://{}/{}PK", ns, self.name.clone()));
         let schpk_ref = if let Some(sch_val) = schpk {
-            RefOr::T(sch_val.clone())
+            RefOr::Type(sch_val.clone())
         } else {
-            RefOr::T(sch.clone())
+            RefOr::Type(sch.clone())
         };
 
         // insert
@@ -372,7 +372,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/insert", ns, self.name.clone()),
@@ -394,7 +394,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/update", ns, self.name.clone()),
@@ -420,7 +420,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/delete", ns, self.name.clone()),
@@ -433,7 +433,7 @@ impl ToSchemaObjects for StoreObject {
         ins_op = ins_op.request_body(
             RequestBody::new()
                 .required(salvo::oapi::Required::True)
-                .add_content("application/json", RefOr::T(upsert_req.clone())),
+                .add_content("application/json", RefOr::Type(upsert_req.clone())),
         );
         ins_op = ins_op.summary(format!("对象{}的更新或新增操作", self.name.clone()));
         ins_op = ins_op.description(format!("对表{}执行数据库的update或insert操作。作为该对象的主键如果没有提供，则执行insert操作，否则，会根据主键执行查询，如果主键查询有对应的记录，则执行update，没有则执行insert操作。更新操作时，如果内容没有被修改，则不会对该字段进行更新。同时，如果传入的对象中，有包含_cond的QueryCondition对象，则会根据_cond所表示的查询条件来执行查询，进而判断是否执行相应的操作。", self.object_name.clone()));
@@ -443,7 +443,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/upsert", ns, self.name.clone()),
@@ -462,7 +462,7 @@ impl ToSchemaObjects for StoreObject {
         savebatch_op = savebatch_op.request_body(
             RequestBody::new()
                 .required(salvo::oapi::Required::True)
-                .add_content("application/json", RefOr::T(savebatch_req.clone())),
+                .add_content("application/json", RefOr::Type(savebatch_req.clone())),
         );
         savebatch_op = savebatch_op.summary(format!("对象{}的批量更新或新增操作", self.name.clone()));
         savebatch_op = savebatch_op.description(format!("对表{}执行数据库的upsert操作，接口通过POST接收对象的JSON结构，且，按照upsert的机制，数组中的元素中，可以附带有_cond的属性，用于确定对象的唯一性。作为该对象的主键如果没有提供，则执行insert操作，否则，会根据主键执行查询，如果主键查询有对应的记录，则执行update，没有则执行insert操作。更新操作时，如果内容没有被修改，则不会对该字段进行更新。同时，如果传入的对象中，有包含_cond的QueryCondition对象，则会根据_cond所表示的查询条件来执行查询，进而判断是否执行相应的操作。", self.object_name.clone()));
@@ -472,7 +472,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), true)),
         );
-        savebatch_op = savebatch_op.add_response("200", RefOr::T(resp));
+        savebatch_op = savebatch_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/save_batch", ns, self.name.clone()),
@@ -485,7 +485,7 @@ impl ToSchemaObjects for StoreObject {
         ins_op = ins_op.request_body(
             RequestBody::new()
                 .required(salvo::oapi::Required::True)
-                .add_content("application/json", RefOr::T(upsert_req.clone())),
+                .add_content("application/json", RefOr::Type(upsert_req.clone())),
         );
         ins_op = ins_op.summary(format!("对象{}的批量操作", self.name.clone()));
         ins_op = ins_op.description(format!("对表{}执行数据库的delete操作。删除操作的条件由Request Body传入的QueryCondition组装而成。", self.object_name.clone()));
@@ -495,7 +495,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/delete_by", ns, self.name.clone()),
@@ -508,7 +508,7 @@ impl ToSchemaObjects for StoreObject {
         ins_op = ins_op.request_body(
             RequestBody::new()
                 .required(salvo::oapi::Required::True)
-                .add_content("application/json", RefOr::T(upsert_req.clone())),
+                .add_content("application/json", RefOr::Type(upsert_req.clone())),
         );
         ins_op = ins_op.summary(format!("对象{}的按条件批量更新操作", self.name.clone()));
         ins_op = ins_op.description(format!("对表{}执行数据库的update操作。传入的对象中基础的该对象的要更新的数据，_cond为更新时的批量条件。", self.object_name.clone()));
@@ -518,7 +518,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/update_by", ns, self.name.clone()),
@@ -538,7 +538,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/select/{{id}}", ns, self.name.clone()),
@@ -552,7 +552,7 @@ impl ToSchemaObjects for StoreObject {
                 .required(salvo::oapi::Required::True)
                 .add_content(
                     "application/json",
-                    RefOr::T(to_add_query_condition(schema::Schema::Array(
+                    RefOr::Type(to_add_query_condition(schema::Schema::Array(
                         Object::new().to_array(),
                     ))),
                 ),
@@ -568,7 +568,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/find_one", ns, self.name.clone()),
@@ -582,7 +582,7 @@ impl ToSchemaObjects for StoreObject {
                 .required(salvo::oapi::Required::True)
                 .add_content(
                     "application/json",
-                    RefOr::T(to_add_query_condition(schema::Schema::Array(
+                    RefOr::Type(to_add_query_condition(schema::Schema::Array(
                         Object::new().to_array(),
                     ))),
                 ),
@@ -598,7 +598,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_schema(sch_ref.clone(), false)),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/query", ns, self.name.clone()),
@@ -612,7 +612,7 @@ impl ToSchemaObjects for StoreObject {
                 .required(salvo::oapi::Required::True)
                 .add_content(
                     "application/json",
-                    RefOr::T(to_add_query_condition(schema::Schema::Array(
+                    RefOr::Type(to_add_query_condition(schema::Schema::Array(
                         Object::new().to_array(),
                     ))),
                 ),
@@ -625,7 +625,7 @@ impl ToSchemaObjects for StoreObject {
             "application/json",
             Content::new(to_api_result_page_schema(sch_ref.clone())),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/object/{}/{}/paged_query", ns, self.name.clone()),
@@ -729,7 +729,7 @@ impl ToSchemaObjects for QueryObject {
                 .required(salvo::oapi::Required::True)
                 .add_content(
                     "application/json",
-                    RefOr::T(to_add_query_condition(sch.clone())),
+                    RefOr::Type(to_add_query_condition(sch.clone())),
                 ),
         );
         ins_op = ins_op.summary(format!("自定义查询{}的列表查询", self.name.clone()));
@@ -739,11 +739,11 @@ impl ToSchemaObjects for QueryObject {
         resp = resp.add_content(
             "application/json",
             Content::new(to_api_result_schema(
-                RefOr::T(schema::Schema::Object(Object::new())),
+                RefOr::Type(schema::Schema::Object(Object::new())),
                 false,
             )),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/query/{}/{}/search", ns, self.name.clone()),
@@ -757,7 +757,7 @@ impl ToSchemaObjects for QueryObject {
                 .required(salvo::oapi::Required::True)
                 .add_content(
                     "application/json",
-                    RefOr::T(to_add_query_condition(sch.clone())),
+                    RefOr::Type(to_add_query_condition(sch.clone())),
                 ),
         );
         ins_op = ins_op.summary(format!("自定义查询{}的唯一记录查询", self.name.clone()));
@@ -766,11 +766,11 @@ impl ToSchemaObjects for QueryObject {
         let mut resp = Response::new("返回查询到的对象分页列表");
         resp = resp.add_content(
             "application/json",
-            Content::new(to_api_result_page_schema(RefOr::T(schema::Schema::Object(
+            Content::new(to_api_result_page_schema(RefOr::Type(schema::Schema::Object(
                 Object::new(),
             )))),
         );
-        ins_op = ins_op.add_response("200", RefOr::T(resp));
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
 
         hash.insert(
             format!("/api/query/{}/{}/paged_search", ns, self.name.clone()),
