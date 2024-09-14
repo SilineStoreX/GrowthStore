@@ -4,6 +4,7 @@ use chrono::{DateTime, Local};
 use rbatis::RBatis;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs::create_dir_all;
 use std::mem::MaybeUninit;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Once};
