@@ -1,4 +1,4 @@
-use chimes_store_core::utils::algorithm::{sha1_256_hash, sha2_256_hash, md5_hash};
+use chimes_store_core::utils::{algorithm::{sha1_256_hash, sha2_256_hash, md5_hash}, crypto::{hmac_sha1, hmac_sha256, hmac_sha512}};
 use rhai::Blob;
 
 /**
