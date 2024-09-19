@@ -2,6 +2,7 @@ use crypto::{
     aes::{self, KeySize},
     blockmodes::PkcsPadding,
     buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer},
+    ac::Mac,
     symmetriccipher::SymmetricCipherError,
 };
 
