@@ -1,9 +1,10 @@
 use chimes_store_core::utils::algorithm::{sha1_256_hash, sha2_256_hash, md5_hash};
+use rhai::Blob;
 
 /**
  * function to impl hmac_sha1
  */
-pub fn hmac_sha1(data: &str) -> rhai::Dynamic {
+pub fn sha1_text(data: &str) -> rhai::Dynamic {
     let ret = sha1_256_hash(&data.as_bytes());
     rhai::Dynamic::from(ret)
 }
@@ -19,7 +20,7 @@ pub fn text_md5(data: &str) -> rhai::Dynamic {
 /**
  * function to impl hmac_sha1
  */
-pub fn hmac_sha2(data: &str) -> rhai::Dynamic {
+pub fn sha2_text(data: &str) -> rhai::Dynamic {
     let ret = sha2_256_hash(&data.as_bytes());
     rhai::Dynamic::from(ret)
 }
@@ -42,4 +43,20 @@ pub fn text_base64_decode(uri: &str) -> rhai::Dynamic {
     } else {
         rhai::Dynamic::from(String::new())
     }
+}
+
+
+pub fn hmac_sha1_rhai(key: &str, data: &str) -> rhai::Dynamic {
+    let codec = hmac_sha1(&key, &data);
+    rhai::Dynamic::from_blob(codec)
+}
+
+pub fn hmac_sha256_rhai(key: &str, data: &str) -> rhai::Dynamic {
+    let codec = hmac_sha256(&key, &data);
+    rhai::Dynamic::from_blob(codec)
+}
+
+pub fn hmac_sha512_rhai(key: &str, data: &str) -> rhai::Dynamic {
+    let codec = hmac_sha512(&key, &data);
+    rhai::Dynamic::from_blob(codec)
 }

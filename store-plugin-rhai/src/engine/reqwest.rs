@@ -34,13 +34,21 @@ impl RhaiHttpClient {
                                 builder = builder.user_agent(val.as_str().unwrap());
                             }
                         }
+                        "head_title_case" => {
+                            if val.as_bool().unwrap_or_default() {
+                                builder = builder.http1_title_case_headers();
+                            }
+                        }                        
                         "header" => {
                             // setup the default header
                             if let Some(headers) = val.as_object() {
                                 let mut hm = HeaderMap::new();
                                 for (hk, hval) in headers {
                                     if let Ok(hdname) = HeaderName::from_str(hk.as_str()) {
-                                        let header_val = hval.to_string();
+                                        let header_val = match hval {
+                                            Value::String(text) => text.to_owned(),
+                                            _ => hval.to_string()
+                                        };
                                         if let Ok(hdv) = HeaderValue::from_str(&header_val) {
                                             hm.append(hdname, hdv);
                                         }

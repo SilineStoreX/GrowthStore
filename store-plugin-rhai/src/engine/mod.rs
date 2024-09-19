@@ -51,8 +51,11 @@ impl EvalEngine {
         engin.set_max_variables(1024);
         engin.set_strict_variables(true);
         engin.register_fn("required", require_create);
-        engin.register_fn("hmac_sha1", common::hmac_sha1);
-        engin.register_fn("hmac_sha2", common::hmac_sha2);
+        engin.register_fn("sha1_text", common::sha1_text);
+        engin.register_fn("sha2_text", common::sha2_text);
+        engin.register_fn("hmac_sha1", common::hmac_sha1_rhai);
+        engin.register_fn("hmac_sha256", common::hmac_sha256_rhai);
+        engin.register_fn("hmac_sha512", common::hmac_sha512_rhai);        
         engin.register_fn("md5string", common::text_md5);
         engin.register_fn("base64encode", common::text_base64_encode);
         engin.register_fn("base64decode", common::text_base64_decode);        
@@ -241,6 +244,7 @@ impl EvalEngine {
         engin
             .register_type_with_name::<Value>("JSON")
             .register_fn("new_json_object", ValueGetterSetter::create_json_object)
+            .register_fn("new_json_null", ValueGetterSetter::create_json_null)
             .register_fn("new_json_array", ValueGetterSetter::create_json_array)
             .register_fn("new_json_string", ValueGetterSetter::create_json_string)
             .register_fn("new_json_bool", ValueGetterSetter::create_json_bool)

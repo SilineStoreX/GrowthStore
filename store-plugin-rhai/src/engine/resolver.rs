@@ -633,6 +633,10 @@ impl ValueGetterSetter {
         Value::Object(Map::new())
     }
 
+    pub fn create_json_null() -> Value {
+        Value::Null
+    }
+
     pub fn create_json_string(val: &str) -> Value {
         Value::String(val.to_string())
     }
