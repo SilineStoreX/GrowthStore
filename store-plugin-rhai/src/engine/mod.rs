@@ -58,7 +58,9 @@ impl EvalEngine {
         engin.register_fn("hmac_sha512", common::hmac_sha512_rhai);        
         engin.register_fn("md5string", common::text_md5);
         engin.register_fn("base64encode", common::text_base64_encode);
-        engin.register_fn("base64decode", common::text_base64_decode);        
+        engin.register_fn("base64decode", common::text_base64_decode);
+        engin.register_fn("base64encode", common::blob_base64_encode);
+        engin.register_fn("base64decode", common::blob_base64_decode);
         engin.register_fn("http_request", RhaiHttpClient::sync_http_request);
         engin.register_fn("http_get", |url: &str, data: Value, opt: Value| {
             RhaiHttpClient::sync_http_request(url, Method::GET, data, Some(opt))
@@ -426,12 +428,27 @@ pub(crate) fn eval_script_return_one(
                     .collect::<Vec<Value>>();
                 Ok(Some(ret[0].clone()))
             } else {
-                let ret = t.clone().try_cast::<Option<Value>>();
-                if let Some(rt) = ret {
-                    Ok(rt)
-                } else {
-                    let ret = t.try_cast::<Value>();
-                    Ok(ret)
+                match t.clone().try_cast::<Option<Value>>() {
+                    Some(rt) => {
+                        Ok(rt)
+                    },
+                    None => {
+                        match t.clone().try_cast::<Vec<Value>>() {
+                            Some(mt) => {
+                                if mt.is_empty() {
+                                    Ok(None)
+                                } else {
+                                    Ok(Some(mt[0].clone()))
+                                }
+                            },
+                            None => {
+                                match t.try_cast::<Value>() {
+                                    Some(st) => Ok(Some(st)),
+                                    None => Ok(None)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -465,11 +482,16 @@ pub(crate) fn eval_script_return_vec(
                     .collect::<Vec<Value>>();
                 Ok(ret)
             } else {
-                match t.clone().try_cast::<Value>() {
-                    Some(ret) => Ok(vec![ret]),
-                    None => match t.try_cast::<Option<Value>>() {
+                match t.clone().try_cast::<Vec<Value>>() {
+                    Some(ret) => Ok(ret),
+                    None => match t.clone().try_cast::<Option<Value>>() {
                         Some(ret) => Ok(ret.map(|f| vec![f]).unwrap_or(vec![])),
-                        None => Ok(vec![]),
+                        None => {
+                            match t.try_cast::<Value>() {
+                                Some(ret) => Ok(vec![ret]),
+                                None => Ok(vec![])
+                            }
+                        },
                     },
                 }
             }

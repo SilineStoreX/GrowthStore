@@ -45,6 +45,25 @@ pub fn text_base64_decode(uri: &str) -> rhai::Dynamic {
     }
 }
 
+/**
+ * function to impl base64_encode
+ */
+pub fn blob_base64_encode(data: Blob) -> rhai::Dynamic {
+    let ret = chimes_store_core::utils::algorithm::base64_encode(&data.to_vec());
+    rhai::Dynamic::from(ret)
+}
+
+/**
+ * function to impl base64_decode
+ */
+pub fn blob_base64_decode(data: Blob) -> rhai::Dynamic {
+    let decode_data = chimes_store_core::utils::algorithm::base64_decode(&data.to_vec());
+    if let Ok(ret) = String::from_utf8(decode_data) {
+        rhai::Dynamic::from(ret)
+    } else {
+        rhai::Dynamic::from(String::new())
+    }
+}
 
 pub fn hmac_sha1_rhai(key: &str, data: &str) -> rhai::Dynamic {
     let codec = hmac_sha1(&key, &data);
