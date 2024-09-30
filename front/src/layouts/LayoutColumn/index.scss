@@ -26,6 +26,12 @@
   :deep(.iconfont) {
     color: #fff;
   }
+  .app_title {
+    width: 236px;
+    height: 54px;
+    font-size: 38pt;
+    background-image: url("@/assets/images/logo-gstore-inner.png");
+  }
 }
 .column-inner {
   height: 0;

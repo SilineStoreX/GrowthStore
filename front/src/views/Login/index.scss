@@ -1,4 +1,6 @@
 .login-container {
+  background-image: url("@/assets/images/home-bg.jpg");
+  background-size: cover;  
   height: 100vh;
   display: flex;
   .login-left {
@@ -11,13 +13,11 @@
     position: relative;
     .affix {
       position: absolute;
-      padding: 0 20px;
+      padding: 0 0px;
       top: 20px;
-      width: 80%;
+      width: 92%;
       height: 80px;
       border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-      background-color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -27,7 +27,10 @@
         color: var(--axin-color-text);
       }
       .app_title {
+        width: 236px;
+        height: 54px;
         font-size: 38pt;
+        background-image: url("@/assets/images/logo-gstore.png");
       }
       .app_cap {
         font-size: 38pt;
@@ -38,38 +41,48 @@
         font-weight: normal;
       }
     }
-    .form {
-      width: 360px;
-      > span {
-        display: block;
-        margin-bottom: 40px;
-        font-size: 26px;
-        font-weight: bold;
-        color: var(--axin-color-text);
-      }
-      :deep(.el-form-item__content) {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-      }
-      :deep(.el-form-item__content button) {
-        width: 46%;
-      }
-      :deep(.el-form-item) {
-        margin-bottom: 20px;
-      }
-      :deep(.el-input) {
-        --el-input-border-radius: 8px;
-        height: 48px;
-      }
-      :deep(.el-button) {
-        height: 48px;
-        width: 100%;
-        border-radius: 8px;
-        font-size: 15px;
-        font-weight: bold;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    .form-box {
+      width: 460px;
+      height: 560px;
+      background-color: rgba(255, 255, 255, 0.500);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      .form {
+        width: 360px;
+        > span {
+          display: block;
+          margin-bottom: 40px;
+          font-size: 26px;
+          font-weight: bold;
+          color: var(--axin-color-text);
+        }
+        :deep(.el-form-item__content) {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+        }
+        :deep(.el-form-item__content button) {
+          width: 46%;
+        }
+        :deep(.el-form-item) {
+          margin-bottom: 20px;
+        }
+        :deep(.el-input) {
+          --el-input-border-radius: 8px;
+          height: 48px;
+        }
+        :deep(.el-button) {
+          height: 48px;
+          width: 100%;
+          border-radius: 8px;
+          font-size: 15px;
+          font-weight: bold;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
       }
     }
     .bottaffix a {
@@ -85,7 +98,7 @@
     .inner {
       width: 100%;
       height: 100%;
-      background-image: url("@/assets/images/login-bg.jpg");
+      background-image: url("@/assets/images/home-bg.jpg");
       background-size: cover;
       border-radius: 14px;
       overflow: hidden;

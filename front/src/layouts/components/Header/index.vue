@@ -2,7 +2,7 @@
   <div class="header">
     <el-dialog
         v-model="showChangePasswordDialog"
-        :title="'修改' + userInfo.username + '的密码'"
+        :title="'修改' + userInfo?.username + '的密码'"
         width="500"
         align-center
         :close-on-click-modal="false"
@@ -70,14 +70,14 @@
         ]"
         @click="toggle"
       ></i>
-      <span>{{ userInfo.username }}</span>
+      <span>{{ userInfo?.username }}</span>
       <el-dropdown trigger="click">
         <el-avatar
           class="avatar"
           icon="UserFilled"
           fit="cover"
           :size="40"
-          :src="userInfo.avatar"
+          :src="userInfo?.avatar"
         />
         <template #dropdown>
           <el-dropdown-menu>

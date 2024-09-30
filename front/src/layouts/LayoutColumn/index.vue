@@ -1,7 +1,7 @@
 <template>
   <el-container class="layout column">
     <el-header>
-      <span>GrowthStore</span>
+      <span class="app_title"></span>
       <Header />
     </el-header>
     <el-container ref="computedContainer" class="column-inner">

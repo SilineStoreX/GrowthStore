@@ -5,48 +5,50 @@
     <license :visible="showAggreeDialog" title="服务条款" src="/SERVICE-AGGREEMENT" :hook="currentHook" @update:visible="handleDialogVisibleChange"></license>
     <div class="login-left">
       <div class="affix">
-        <span class="app_title">GrowthStore<a class="app_desc">基于Rust开发的高效率后台服务开发/运行框架</a></span>
+        <span class="app_title">
+          
+        </span>
       </div>
-      <div class="form">
-        <span>管理员登录</span>
-        <el-form ref="loginFormRef" :rules="rules" :model="loginForm">
-          <el-form-item prop="username">
-            <el-input v-model.trim="loginForm.username" placeholder="帐号" />
-          </el-form-item>
-          <el-form-item prop="password">
-            <el-input
-              type="password"
-              show-password
-              v-model.trim="loginForm.password"
-              placeholder="密码"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-switch v-model="isRemember" active-text="记住我" />
-          </el-form-item>
-          <el-form-item class="buttons">
-            <el-button
-              type="primary"
-              @click="onLogin(loginFormRef)"
-              :loading="loading"
-              >登录</el-button
-            >
-            <el-button
-              type="danger"
-              @click="onSignup"
-              >注册联系人</el-button
-            >
-          </el-form-item>
-        </el-form>
-      </div>
-      <div class="bottaffix">
-        <el-checkbox v-model="aggreed"/><span class="aggr"> 我同意<a href="#" class="aggreement" @click="onShowServiceAggr">服务条款</a>&<a href="#" class="app_license" @click="onShowLicense">许可协议(Apache)</a></span>
-      </div>      
+      <div class="form-box">
+        <div class="form">
+          <span>管理员登录</span>
+          <el-form ref="loginFormRef" :rules="rules" :model="loginForm">
+            <el-form-item prop="username">
+              <el-input v-model.trim="loginForm.username" placeholder="帐号" />
+            </el-form-item>
+            <el-form-item prop="password">
+              <el-input
+                type="password"
+                show-password
+                v-model.trim="loginForm.password"
+                placeholder="密码"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-switch v-model="isRemember" active-text="记住我" />
+            </el-form-item>
+            <el-form-item class="buttons">
+              <el-button
+                type="primary"
+                @click="onLogin(loginFormRef)"
+                :loading="loading"
+                >登录</el-button
+              >
+              <el-button
+                type="danger"
+                @click="onSignup"
+                >注册联系人</el-button
+              >
+            </el-form-item>
+          </el-form>
+        </div>
+        <div class="bottaffix">
+          <el-checkbox v-model="aggreed"/><span class="aggr"> 我同意<a href="#" class="aggreement" @click="onShowServiceAggr">服务条款</a>&<a href="#" class="app_license" @click="onShowLicense">许可协议(Apache)</a></span>
+        </div>  
+      </div>    
     </div>
     <div class="login-right">
-      <div class="inner">
-        <span class="animated rubberBand"></span>
-      </div>
+      
     </div>
   </div>
 </template>
