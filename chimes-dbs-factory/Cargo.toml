@@ -20,10 +20,13 @@ substring.workspace = true
 rbs.workspace = true
 fastdate.workspace = true
 bigdecimal = { version = "0.4", features = ["serde"] }
-rbdc-sqlite = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
-rbdc-mysql = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
-rbdc-pg = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
-rbdc-mssql = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
-rbdc-tdengine = { version = "4.5", default-features = false, features = ["ws", "ws-tls-native-tls"] }
+rbdc-sqlite = { version = "4.5" }
+rbdc-mysql = { version = "4.5" }
+rbdc-pg = { version = "4.5" }
+rbdc-mssql = { version = "4.5" }
+rbdc-tdengine = { version = "4.5" }
+
+#rbdc-mssql = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
+#rbdc-tdengine = { version = "4.5", default-features = false, features = ["ws", "ws-tls-native-tls"] }
 rbatis.workspace = true
-rbdc = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
+rbdc = { version = "4.5" }
