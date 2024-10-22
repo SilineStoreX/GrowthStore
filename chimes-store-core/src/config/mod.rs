@@ -187,7 +187,7 @@ impl HookInvoker for MethodHook {
                         log::info!("error in invoker page {err}");
                     }
                 });
-                Ok(Page::new(0, 0))
+                Ok(Page::new_total(0, 0, 0))
             } else {
                 MxStoreService::invoke_return_page(script_, ctx, args).await
             }
@@ -200,7 +200,7 @@ impl HookInvoker for MethodHook {
                             log::info!("error eval script {err}");
                         }
                     });
-                    Ok(Page::new(0, 0))
+                    Ok(Page::new_total(0, 0, 0))
                 } else {
                     eval_func(&script_, ctx, &args)
                 }

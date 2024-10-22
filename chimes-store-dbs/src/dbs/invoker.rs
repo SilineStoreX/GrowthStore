@@ -1509,7 +1509,7 @@ impl Invocation for DbQueryServiceInvocation {
                             Ok(ret)
                         }
                     } else {
-                        Ok(Page::new(0, 10))
+                        Ok(Page::new_total(0, 10, 0))
                     }
                 })
             }

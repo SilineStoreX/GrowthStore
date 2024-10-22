@@ -2,9 +2,10 @@ use chimes_store_core::config::{ConditionItem, IPaging, OrdianlItem, QueryCondit
 use chimes_store_core::pin_blockon_async;
 use chimes_store_core::service::sdk::InvokeUri;
 use chimes_store_core::service::{invoker::InvocationContext, starter::MxStoreService};
-use rbatis::{IPage, IPageRequest, Page};
+use rbatis::{IPageRequest, Page};
 use rhai::{
-    Array, CustomType, Dynamic, Engine, EvalAltResult, ImmutableString, Module, ModuleResolver, NativeCallContext, Position, TypeBuilder
+    Array, CustomType, Dynamic, Engine, EvalAltResult, ImmutableString, Module, ModuleResolver,
+    NativeCallContext, Position, TypeBuilder,
 };
 use serde_json::{json, Map, Number, Value};
 use std::any::Any;
@@ -86,7 +87,6 @@ impl RhaiStoreObject {
         }
     }
 
-
     pub fn aes_encrypt(col: &mut Self, text: &str) -> Result<String, Box<EvalAltResult>> {
         let call_uri = format!("{}#find_one", col.uri);
         if let Ok(invoke_uri) = InvokeUri::parse(&call_uri) {
@@ -94,13 +94,19 @@ impl RhaiStoreObject {
                 Ok(mxs.aes_encode_text(text))
             } else {
                 Err(Box::new(EvalAltResult::ErrorRuntime(
-                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Dynamic::from(format!(
+                        "namespace: {} was not be found.",
+                        &invoke_uri.namespace
+                    )),
                     Position::new(1, 1),
                 )))
             }
         } else {
             Err(Box::new(EvalAltResult::ErrorRuntime(
-                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Dynamic::from(format!(
+                    "special {} could not be parsed as InvokeURI.",
+                    &call_uri
+                )),
                 Position::new(1, 1),
             )))
         }
@@ -113,13 +119,19 @@ impl RhaiStoreObject {
                 Ok(mxs.aes_decode_text(text))
             } else {
                 Err(Box::new(EvalAltResult::ErrorRuntime(
-                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Dynamic::from(format!(
+                        "namespace: {} was not be found.",
+                        &invoke_uri.namespace
+                    )),
                     Position::new(1, 1),
                 )))
             }
         } else {
             Err(Box::new(EvalAltResult::ErrorRuntime(
-                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Dynamic::from(format!(
+                    "special {} could not be parsed as InvokeURI.",
+                    &call_uri
+                )),
                 Position::new(1, 1),
             )))
         }
@@ -132,13 +144,19 @@ impl RhaiStoreObject {
                 Ok(mxs.rsa_decrypt_text(text))
             } else {
                 Err(Box::new(EvalAltResult::ErrorRuntime(
-                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Dynamic::from(format!(
+                        "namespace: {} was not be found.",
+                        &invoke_uri.namespace
+                    )),
                     Position::new(1, 1),
                 )))
             }
         } else {
             Err(Box::new(EvalAltResult::ErrorRuntime(
-                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Dynamic::from(format!(
+                    "special {} could not be parsed as InvokeURI.",
+                    &call_uri
+                )),
                 Position::new(1, 1),
             )))
         }
@@ -151,18 +169,24 @@ impl RhaiStoreObject {
                 Ok(mxs.rsa_encrypt_text(text))
             } else {
                 Err(Box::new(EvalAltResult::ErrorRuntime(
-                    Dynamic::from(format!("namespace: {} was not be found.", &invoke_uri.namespace)),
+                    Dynamic::from(format!(
+                        "namespace: {} was not be found.",
+                        &invoke_uri.namespace
+                    )),
                     Position::new(1, 1),
                 )))
             }
         } else {
             Err(Box::new(EvalAltResult::ErrorRuntime(
-                Dynamic::from(format!("special {} could not be parsed as InvokeURI.", &call_uri)),
+                Dynamic::from(format!(
+                    "special {} could not be parsed as InvokeURI.",
+                    &call_uri
+                )),
                 Position::new(1, 1),
             )))
         }
     }
-        
+
     pub(crate) fn invoke(
         col: &mut Self,
         name: &str,
@@ -172,13 +196,14 @@ impl RhaiStoreObject {
         let call_uri = format!("{}#{}", col.uri, name);
         let call_uri2 = call_uri.clone();
         pin_blockon_async!(async move {
-            let ret = match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
-                Ok(t) => Ok(t),
-                Err(err) => Err(Box::new(EvalAltResult::ErrorRuntime(
-                    Dynamic::from(err.to_string()),
-                    Position::new(1, 1),
-                ))),
-            };
+            let ret =
+                match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
+                    Ok(t) => Ok(t),
+                    Err(err) => Err(Box::new(EvalAltResult::ErrorRuntime(
+                        Dynamic::from(err.to_string()),
+                        Position::new(1, 1),
+                    ))),
+                };
             Box::new(ret) as Box<dyn Any + Send + Sync>
         })
         .unwrap_or(Err(Box::new(EvalAltResult::ErrorRuntime(
@@ -218,25 +243,27 @@ impl RhaiStoreObject {
     ) -> Result<Option<Value>, Box<EvalAltResult>> {
         let call_uri = format!("{}#select", col.uri);
         let call_uri2 = call_uri.clone();
-        
+
         pin_blockon_async!(async move {
             log::info!("invoker select return one {call_uri}");
-            let ret = match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
-                Ok(t) => {
-                    log::info!("OK: {:?}", t);
-                    Ok(t)
-                }
-                Err(err) => {
-                    log::info!("Err: {:?}", err);
-                    Err(Box::new(EvalAltResult::ErrorRuntime(
-                        Dynamic::from(err.to_string()),
-                        Position::new(1, 1),
-                    )))
-                }
-            };
+            let ret =
+                match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
+                    Ok(t) => {
+                        log::info!("OK: {:?}", t);
+                        Ok(t)
+                    }
+                    Err(err) => {
+                        log::info!("Err: {:?}", err);
+                        Err(Box::new(EvalAltResult::ErrorRuntime(
+                            Dynamic::from(err.to_string()),
+                            Position::new(1, 1),
+                        )))
+                    }
+                };
 
             Box::new(ret) as Box<dyn Any + Send + Sync>
-        }).unwrap_or(Err(Box::new(EvalAltResult::ErrorRuntime(
+        })
+        .unwrap_or(Err(Box::new(EvalAltResult::ErrorRuntime(
             Dynamic::from(call_uri2),
             Position::new(1, 1),
         ))))
@@ -250,19 +277,20 @@ impl RhaiStoreObject {
         let call_uri = format!("{}#find_one", col.uri);
         let call_uri2 = call_uri.clone();
         pin_blockon_async!(async move {
-            let ret = match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
-                Ok(t) => {
-                    log::info!("OK: {:?}", t);
-                    Ok(t)
-                }
-                Err(err) => {
-                    log::info!("Err: {:?}", err);
-                    Err(Box::new(EvalAltResult::ErrorRuntime(
-                        Dynamic::from(err.to_string()),
-                        Position::new(1, 1),
-                    )))
-                }
-            };
+            let ret =
+                match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec![args]).await {
+                    Ok(t) => {
+                        log::info!("OK: {:?}", t);
+                        Ok(t)
+                    }
+                    Err(err) => {
+                        log::info!("Err: {:?}", err);
+                        Err(Box::new(EvalAltResult::ErrorRuntime(
+                            Dynamic::from(err.to_string()),
+                            Position::new(1, 1),
+                        )))
+                    }
+                };
             Box::new(ret) as Box<dyn Any + Send + Sync>
         })
         .unwrap_or(Err(Box::new(EvalAltResult::ErrorRuntime(
@@ -425,13 +453,13 @@ impl RhaiStorePlugin {
             .register_fn("invoke_return_page", RhaiStorePlugin::invoke_return_page);
 
         MxStoreService::get_namespaces().into_iter().for_each(|ns| {
-            log::info!("register {ns}");
+            // log::info!("register {ns}");
             if let Some(nss) = MxStoreService::get(&ns) {
                 nss.get_plugins().into_iter().for_each(|proto| {
                     let ns_protocol = format!("{}://{ns}/{}", proto.protocol, proto.name);
                     if let Some(pls) = MxStoreService::get_plugin_service(&ns_protocol) {
                         pls.get_metadata().into_iter().for_each(|m| {
-                            log::info!("register method {} for {ns_protocol}", m.name);
+                            // log::info!("register method {} for {ns_protocol}", m.name);
                             if m.return_page {
                                 if m.params_vec {
                                     engine.register_fn(
@@ -526,7 +554,8 @@ impl RhaiStorePlugin {
         let call_uri2 = call_uri.clone();
         pin_blockon_async!(async move {
             let vec_args = args.into_iter().map(|d| d.cast::<Value>()).collect();
-            let ret = match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec_args).await {
+            let ret = match MxStoreService::invoke_return_one(call_uri.clone(), ctx, vec_args).await
+            {
                 Ok(t) => {
                     log::info!("OK: {:?}", t);
                     Ok(t)
@@ -557,7 +586,8 @@ impl RhaiStorePlugin {
         let call_uri2 = call_uri.clone();
         pin_blockon_async!(async move {
             let vec_args = args.into_iter().map(|d| d.cast::<Value>()).collect();
-            let ret = match MxStoreService::invoke_return_vec(call_uri.clone(), ctx, vec_args).await {
+            let ret = match MxStoreService::invoke_return_vec(call_uri.clone(), ctx, vec_args).await
+            {
                 Ok(t) => {
                     log::info!("OK: {:?}", t);
                     Ok(t)
@@ -588,19 +618,20 @@ impl RhaiStorePlugin {
         let call_uri2 = call_uri.clone();
         pin_blockon_async!(async move {
             let vec_args = args.into_iter().map(|d| d.cast::<Value>()).collect();
-            let ret = match MxStoreService::invoke_return_page(call_uri.clone(), ctx, vec_args).await {
-                Ok(t) => {
-                    log::info!("OK: {:?}", t);
-                    Ok(t)
-                }
-                Err(err) => {
-                    log::info!("Err: {:?}", err);
-                    Err(Box::new(EvalAltResult::ErrorRuntime(
-                        Dynamic::from(err.to_string()),
-                        Position::new(1, 1),
-                    )))
-                }
-            };
+            let ret =
+                match MxStoreService::invoke_return_page(call_uri.clone(), ctx, vec_args).await {
+                    Ok(t) => {
+                        log::info!("OK: {:?}", t);
+                        Ok(t)
+                    }
+                    Err(err) => {
+                        log::info!("Err: {:?}", err);
+                        Err(Box::new(EvalAltResult::ErrorRuntime(
+                            Dynamic::from(err.to_string()),
+                            Position::new(1, 1),
+                        )))
+                    }
+                };
             Box::new(ret) as Box<dyn Any + Send + Sync>
         })
         .unwrap_or(Err(Box::new(EvalAltResult::ErrorRuntime(
@@ -633,16 +664,16 @@ impl ValueGetterSetter {
         Value::Object(Map::new())
     }
 
-    pub fn create_json_null() -> Value {
-        Value::Null
-    }
-
     pub fn create_json_string(val: &str) -> Value {
         Value::String(val.to_string())
     }
 
     pub fn create_json_bool(val: bool) -> Value {
         Value::Bool(val)
+    }
+
+    pub fn create_json_null() -> Value {
+        Value::Null
     }
 
     pub fn create_json_array() -> Value {
@@ -653,6 +684,15 @@ impl ValueGetterSetter {
         match val {
             Value::Array(tsc) => tsc.to_owned(),
             _ => vec![val.to_owned()],
+        }
+    }
+
+    pub fn to_array_option(val: &mut Option<Value>) -> Vec<Value> {
+        match val {
+            Some(tval) => {
+                Self::to_array(tval)
+            },
+            None => vec![]
         }
     }
 
@@ -670,7 +710,10 @@ impl ValueGetterSetter {
             }
             let mut text = vec![];
             for key in sorted {
-                let val_str = val.get(&key).map(|f| f.as_str().unwrap_or_default()).unwrap_or_default();
+                let val_str = val
+                    .get(&key)
+                    .map(|f| f.as_str().unwrap_or_default())
+                    .unwrap_or_default();
                 text.push(format!("{key}={val_str}"));
             }
             let ret = text.join("&");
@@ -678,7 +721,7 @@ impl ValueGetterSetter {
         } else {
             Value::Null
         }
-    }    
+    }
 
     pub fn create_json_from_map(obj: rhai::Map) -> Value {
         match serde_json::to_value(obj) {
@@ -709,11 +752,11 @@ impl ValueGetterSetter {
         page_no: i64,
         page_size: i64,
     ) -> Page<Value> {
-        Page::<Value>::new(page_no as u64, page_size as u64).set_records(records)
+        Page::<Value>::new_total(page_no as u64, page_size as u64, 0).set_records(records)
     }
 
     pub fn create_paged_json_empty() -> Page<Value> {
-        Page::<Value>::new(0, 0)
+        Page::<Value>::new_total(0, 0, 0)
     }
 
     pub fn create_paged_json_array(
@@ -731,7 +774,7 @@ impl ValueGetterSetter {
         page_no: i64,
         page_size: i64,
     ) -> Page<Value> {
-        Page::<Value>::new(page_no as u64, page_size as u64)
+        Page::<Value>::new_total(page_no as u64, page_size as u64, 0)
             .set_records(records.into_iter().map(|f| f.cast::<Value>()).collect())
     }
 
@@ -743,6 +786,26 @@ impl ValueGetterSetter {
                 rhai::Map::new()
             }
         }
+    }
+
+    pub fn to_rhai_array_value(mp: &mut Value) -> rhai::Array {
+        vec![rhai::Dynamic::from_map(Self::to_rhai_object(mp))]
+    }
+
+    pub fn to_rhai_array_option(mp: &mut Option<Value>) -> rhai::Array {
+        match mp {
+            None => vec![],
+            Some(t) => {
+                vec![rhai::Dynamic::from_map(Self::to_rhai_object(t))]
+            }
+        }
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn to_rhai_array_vec(mp: &mut Vec<Value>) -> rhai::Array {
+        mp.iter_mut()
+            .map(|f| rhai::Dynamic::from_map(Self::to_rhai_object(f)))
+            .collect()
     }
 
     pub fn to_rhai_object_option(mp: &mut Option<Value>) -> rhai::Map {
@@ -790,6 +853,40 @@ impl ValueGetterSetter {
     #[allow(clippy::ptr_arg)]
     pub fn is_list_vec(_mp: &mut Vec<Value>) -> bool {
         true
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn get_len_vec(mp: &mut Vec<Value>) -> usize {
+        mp.len()
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn get_len_option(mp: &mut Option<Value>) -> usize {
+        if mp.is_none() {
+            0usize
+        } else {
+            1usize
+        }
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn get_len_value(_mp: &mut Value) -> usize {
+        1usize
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn is_empty_vec(mp: &mut Vec<Value>) -> bool {
+        mp.is_empty()
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn is_empty_option(mp: &mut Option<Value>) -> bool {
+        mp.as_ref().map(|f| f.is_null()).unwrap_or_default()
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn is_empty_value(mp: &mut Value) -> bool {
+        mp.is_null()
     }
 
     #[allow(clippy::ptr_arg)]
@@ -846,7 +943,8 @@ impl ValueGetterSetter {
     }
 
     pub fn get_records(mp: &mut Page<Value>) -> Vec<Value> {
-        mp.get_records().clone()
+        mp.records.clone()
+        // mp.get_records().clone()
     }
 
     pub fn get(mp: &mut Value, name: &str) -> Value {
@@ -875,16 +973,26 @@ impl ValueGetterSetter {
     pub fn to_debug_option(mp: &mut Option<Value>) -> ImmutableString {
         match mp {
             None => "None".into(),
-            Some(val) => serde_json::to_string(val)
-                .unwrap_or("None".to_string())
-                .into(),
+            Some(val) => {
+                if val.is_string() {
+                    val.as_str().unwrap_or_default().into()
+                } else {
+                    serde_json::to_string(val)
+                        .unwrap_or("None".to_string())
+                        .into()
+                }
+            }
         }
     }
 
     pub fn to_debug(mp: &mut Value) -> ImmutableString {
-        serde_json::to_string(mp)
-            .unwrap_or("None".to_string())
-            .into()
+        if mp.is_string() {
+            mp.as_str().unwrap_or_default().into()
+        } else {
+            serde_json::to_string(mp)
+                .unwrap_or("None".to_string())
+                .into()
+        }
     }
 
     pub fn to_debug_vec(mp: &mut Vec<Value>) -> ImmutableString {
@@ -902,7 +1010,7 @@ impl ValueGetterSetter {
     pub fn unwrap_option(mp: &mut Option<Value>) -> Value {
         match mp {
             Some(m) => m.to_owned(),
-            None => Value::Null
+            None => Value::Null,
         }
     }
 

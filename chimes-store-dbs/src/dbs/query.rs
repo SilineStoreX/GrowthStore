@@ -7,7 +7,7 @@ use chimes_store_core::config::{
     Column, QueryCondition, QueryObject, StoreServiceConfig,
 };
 use itertools::Itertools;
-use rbatis::{executor::Executor, IPage, IPageRequest, Page};
+use rbatis::{executor::Executor, IPageRequest, Page};
 use serde_json::Value;
 
 use crate::dbs::decode_vec_custom_fields;

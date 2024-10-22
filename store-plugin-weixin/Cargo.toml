@@ -24,8 +24,3 @@ rbatis.workspace = true
 reqwest.workspace = true
 chimes-store-core = { workspace = true, features=["plugin"]}
 salvo.workspace = true
-
-
-[profile.dev]
-opt-level = 3
-panic = 'abort'

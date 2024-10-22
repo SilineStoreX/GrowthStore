@@ -13,7 +13,7 @@ use chimes_store_core::utils::global_data::copy_value_replaced;
 use itertools::Itertools;
 use rbatis::executor::Executor;
 use rbatis::rbdc::Uuid;
-use rbatis::{executor::RBatisTxExecutor, IPage, IPageRequest, Page};
+use rbatis::{executor::RBatisTxExecutor, IPageRequest, Page};
 use serde_json::json;
 use serde_json::Value;
 

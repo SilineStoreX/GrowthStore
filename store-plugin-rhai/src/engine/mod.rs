@@ -1,5 +1,6 @@
 use ::reqwest::Method;
 use anyhow::anyhow;
+use date::RhaiDateTime;
 use rbatis::Page;
 use reqwest::RhaiHttpClient;
 use resolver::{
@@ -18,9 +19,10 @@ use std::{
 use chimes_store_core::service::invoker::InvocationContext;
 use serde_json::{Number, Value};
 
+mod common;
+mod date;
 mod reqwest;
 pub mod resolver;
-pub mod common;
 
 #[derive(Clone)]
 pub struct EvalEngine {
@@ -55,12 +57,15 @@ impl EvalEngine {
         engin.register_fn("sha2_text", common::sha2_text);
         engin.register_fn("hmac_sha1", common::hmac_sha1_rhai);
         engin.register_fn("hmac_sha256", common::hmac_sha256_rhai);
-        engin.register_fn("hmac_sha512", common::hmac_sha512_rhai);        
+        engin.register_fn("hmac_sha512", common::hmac_sha512_rhai);
         engin.register_fn("md5string", common::text_md5);
         engin.register_fn("base64encode", common::text_base64_encode);
         engin.register_fn("base64decode", common::text_base64_decode);
         engin.register_fn("base64encode", common::blob_base64_encode);
         engin.register_fn("base64decode", common::blob_base64_decode);
+        engin.register_fn("snowflake_id", common::rhai_snowflake_id);
+        engin.register_fn("snowflake_id", common::rhai_snowflake_id_custom);
+        engin.register_fn("uuid", common::rhai_uuid);
         engin.register_fn("http_request", RhaiHttpClient::sync_http_request);
         engin.register_fn("http_get", |url: &str, data: Value, opt: Value| {
             RhaiHttpClient::sync_http_request(url, Method::GET, data, Some(opt))
@@ -137,10 +142,19 @@ impl EvalEngine {
             .register_fn("set", InvocationContextGetterSetter::set_vec)
             .register_fn("set", InvocationContextGetterSetter::set_paged)
             .register_fn("set_return", InvocationContextGetterSetter::set_return)
-            .register_fn("set_return", InvocationContextGetterSetter::set_return_option)
-            .register_fn("set_return", InvocationContextGetterSetter::set_return_value)
+            .register_fn(
+                "set_return",
+                InvocationContextGetterSetter::set_return_option,
+            )
+            .register_fn(
+                "set_return",
+                InvocationContextGetterSetter::set_return_value,
+            )
             .register_fn("set_return", InvocationContextGetterSetter::set_return_vec)
-            .register_fn("set_return", InvocationContextGetterSetter::set_return_paged)
+            .register_fn(
+                "set_return",
+                InvocationContextGetterSetter::set_return_paged,
+            )
             .register_fn("get_return", InvocationContextGetterSetter::get_return);
 
         engin
@@ -149,7 +163,7 @@ impl EvalEngine {
             .register_fn("aes_encrypt", RhaiStoreObject::aes_encrypt)
             .register_fn("aes_decrypt", RhaiStoreObject::aes_decrypt)
             .register_fn("rsa_encrypt", RhaiStoreObject::rsa_encrypt)
-            .register_fn("rsa_decrypt", RhaiStoreObject::rsa_decrypt)            
+            .register_fn("rsa_decrypt", RhaiStoreObject::rsa_decrypt)
             .register_fn("select", RhaiStoreObject::select)
             .register_fn(
                 "select",
@@ -198,7 +212,7 @@ impl EvalEngine {
                  arg: Vec<Value>| {
                     RhaiStoreObject::invoke_args(caller, "save_batch", ctx, arg)
                 },
-            )            
+            )
             .register_fn(
                 "update_by",
                 |caller: &mut RhaiStoreObject,
@@ -240,6 +254,30 @@ impl EvalEngine {
             .register_fn("new_query", RhaiStoreQuery::new)
             .register_fn("search", RhaiStoreQuery::search)
             .register_fn("paged_search", RhaiStoreQuery::paged_search);
+
+        engin
+            .register_type_with_name::<RhaiDateTime>("DateTime")
+            .register_fn("now", RhaiDateTime::now)
+            .register_fn("now_utc", RhaiDateTime::now_utc)
+            .register_fn("datetime", RhaiDateTime::now)
+            .register_fn("datetime_utc", RhaiDateTime::now_utc)
+            .register_fn("to_string", RhaiDateTime::to_string)
+            .register_fn("to_global", RhaiDateTime::to_global)
+            .register_fn("to_locale", RhaiDateTime::to_locale)
+            .register_fn("to_locale", RhaiDateTime::to_locale_fmt)
+            .register_fn("to_rfc2822", RhaiDateTime::to_rfc2822)
+            .register_fn("format", RhaiDateTime::format)
+            .register_fn("parse", RhaiDateTime::parse)
+            .register_fn("parse", RhaiDateTime::parse_default)
+            .register_fn("year", RhaiDateTime::year)
+            .register_fn("month", RhaiDateTime::month)
+            .register_fn("day", RhaiDateTime::day)
+            .register_fn("hour", RhaiDateTime::hour)
+            .register_fn("minute", RhaiDateTime::minute)
+            .register_fn("second", RhaiDateTime::second)
+            .register_fn("timestamp_second", RhaiDateTime::timestamp_second)
+            .register_fn("timestamp_micro", RhaiDateTime::timestamp_micro)
+            .register_fn("timestamp_millis", RhaiDateTime::timestamp_millis);
 
         RhaiStorePlugin::register(&mut engin);
 
@@ -303,11 +341,21 @@ impl EvalEngine {
             )
             .register_fn("unwrap", ValueGetterSetter::unwrap_option)
             .register_fn("unwrap", ValueGetterSetter::unwrap_value)
-            .register_fn("canonicalized_query", ValueGetterSetter::canonicalized_query)
-            .register_fn("canonicalized_query", ValueGetterSetter::canonicalized_query_asc)            
-            .register_fn("to_rhai_object", ValueGetterSetter::to_rhai_object)                        
+            .register_fn(
+                "canonicalized_query",
+                ValueGetterSetter::canonicalized_query,
+            )
+            .register_fn(
+                "canonicalized_query",
+                ValueGetterSetter::canonicalized_query_asc,
+            )
+            .register_fn("to_rhai_object", ValueGetterSetter::to_rhai_object)
             .register_fn("to_rhai_object", ValueGetterSetter::to_rhai_object_option)
+            .register_fn("to_rhai_array", ValueGetterSetter::to_rhai_array_value)
+            .register_fn("to_rhai_array", ValueGetterSetter::to_rhai_array_vec)
+            .register_fn("to_rhai_array", ValueGetterSetter::to_rhai_array_option)
             .register_fn("to_array", ValueGetterSetter::to_array)
+            .register_fn("to_array", ValueGetterSetter::to_array_option)
             .register_indexer_get::<Value, &str, false, Value, false>(ValueGetterSetter::get)
             .register_indexer_get::<Option<Value>, &str, false, Value, false>(
                 ValueGetterSetter::get_option_value,
@@ -336,6 +384,12 @@ impl EvalEngine {
             .register_fn("is_list", ValueGetterSetter::is_list_option)
             .register_fn("is_list", ValueGetterSetter::is_list_page)
             .register_fn("is_list", ValueGetterSetter::is_list_vec)
+            .register_fn("is_empty", ValueGetterSetter::is_empty_vec)
+            .register_fn("is_empty", ValueGetterSetter::is_empty_option)
+            .register_fn("is_empty", ValueGetterSetter::is_empty_value)
+            .register_fn("len", ValueGetterSetter::get_len_vec)
+            .register_fn("len", ValueGetterSetter::get_len_option)
+            .register_fn("len", ValueGetterSetter::get_len_value)
             .register_fn("push", ValueGetterSetter::push)
             .register_fn("select", ValueGetterSetter::select)
             .register_fn("select", ValueGetterSetter::select_option)
@@ -414,7 +468,7 @@ pub(crate) fn eval_script_return_one(
     let mut scope = rhai::Scope::new();
     scope.push_dynamic("args", args.into());
     scope.push("ctx", ctx);
-    log::debug!("eval rhai script: {}", script);
+    // log::debug!("eval rhai script: {}", script);
     match EvalEngine::get_mut()
         .engine
         .eval_with_scope::<rhai::Dynamic>(&mut scope, &script)
@@ -429,26 +483,20 @@ pub(crate) fn eval_script_return_one(
                 Ok(Some(ret[0].clone()))
             } else {
                 match t.clone().try_cast::<Option<Value>>() {
-                    Some(rt) => {
-                        Ok(rt)
-                    },
-                    None => {
-                        match t.clone().try_cast::<Vec<Value>>() {
-                            Some(mt) => {
-                                if mt.is_empty() {
-                                    Ok(None)
-                                } else {
-                                    Ok(Some(mt[0].clone()))
-                                }
-                            },
-                            None => {
-                                match t.try_cast::<Value>() {
-                                    Some(st) => Ok(Some(st)),
-                                    None => Ok(None)
-                                }
+                    Some(rt) => Ok(rt),
+                    None => match t.clone().try_cast::<Vec<Value>>() {
+                        Some(mt) => {
+                            if mt.is_empty() {
+                                Ok(None)
+                            } else {
+                                Ok(Some(mt[0].clone()))
                             }
                         }
-                    }
+                        None => match t.try_cast::<Value>() {
+                            Some(st) => Ok(Some(st)),
+                            None => Ok(None),
+                        },
+                    },
                 }
             }
         }
@@ -468,7 +516,7 @@ pub(crate) fn eval_script_return_vec(
     let mut scope = rhai::Scope::new();
     scope.push_dynamic("args", args.into());
     scope.push("ctx", ctx);
-    log::debug!("eval rhai script: {}", script);
+
     match EvalEngine::get_mut()
         .engine
         .eval_with_scope::<rhai::Dynamic>(&mut scope, &script)
@@ -486,11 +534,9 @@ pub(crate) fn eval_script_return_vec(
                     Some(ret) => Ok(ret),
                     None => match t.clone().try_cast::<Option<Value>>() {
                         Some(ret) => Ok(ret.map(|f| vec![f]).unwrap_or(vec![])),
-                        None => {
-                            match t.try_cast::<Value>() {
-                                Some(ret) => Ok(vec![ret]),
-                                None => Ok(vec![])
-                            }
+                        None => match t.try_cast::<Value>() {
+                            Some(ret) => Ok(vec![ret]),
+                            None => Ok(vec![]),
                         },
                     },
                 }

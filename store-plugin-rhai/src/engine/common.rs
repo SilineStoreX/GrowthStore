@@ -1,4 +1,10 @@
-use chimes_store_core::utils::{algorithm::{sha1_256_hash, sha2_256_hash, md5_hash}, crypto::{hmac_sha1, hmac_sha256, hmac_sha512}};
+use std::str::FromStr;
+
+use chimes_store_core::utils::{
+    algorithm::{md5_hash, sha1_256_hash, sha2_256_hash, snowflake_id, snowflake_id_custom},
+    crypto::{hmac_sha1, hmac_sha256, hmac_sha512},
+};
+use rbatis::rbdc::Uuid;
 use rhai::Blob;
 
 /**
@@ -78,4 +84,25 @@ pub fn hmac_sha256_rhai(key: &str, data: &str) -> rhai::Dynamic {
 pub fn hmac_sha512_rhai(key: &str, data: &str) -> rhai::Dynamic {
     let codec = hmac_sha512(key, data);
     rhai::Dynamic::from_blob(codec)
+}
+
+pub fn rhai_snowflake_id() -> rhai::Dynamic {
+    let id = snowflake_id();
+    rhai::Dynamic::from_int(id)
+}
+
+pub fn rhai_snowflake_id_custom(machine_id: i32, node_id: i32, mode: i32) -> rhai::Dynamic {
+    let id = snowflake_id_custom(machine_id, node_id, mode);
+    rhai::Dynamic::from_int(id)
+}
+
+pub fn rhai_uuid() -> rhai::Dynamic {
+    let uuid = Uuid::new().to_ascii_lowercase();
+    match rhai::Dynamic::from_str(&uuid) {
+        Ok(t) => t,
+        Err(_err) => {
+            log::debug!("unhand to generate Dynamic from {uuid}");
+            rhai::Dynamic::default()
+        }
+    }
 }

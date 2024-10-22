@@ -38,7 +38,7 @@ impl RhaiHttpClient {
                             if val.as_bool().unwrap_or_default() {
                                 builder = builder.http1_title_case_headers();
                             }
-                        }                        
+                        }
                         "header" => {
                             // setup the default header
                             if let Some(headers) = val.as_object() {
@@ -47,7 +47,7 @@ impl RhaiHttpClient {
                                     if let Ok(hdname) = HeaderName::from_str(hk.as_str()) {
                                         let header_val = match hval {
                                             Value::String(text) => text.to_owned(),
-                                            _ => hval.to_string()
+                                            _ => hval.to_string(),
                                         };
                                         if let Ok(hdv) = HeaderValue::from_str(&header_val) {
                                             hm.append(hdname, hdv);
@@ -67,12 +67,13 @@ impl RhaiHttpClient {
                             builder = builder.timeout(Duration::from_millis(
                                 val.as_i64().unwrap_or(10000) as u64,
                             ));
-                        },
+                        }
                         "accept_invalid_certs" => {
                             let accept = val.as_bool().unwrap_or_default();
-                            builder = builder.danger_accept_invalid_certs(accept)
-                                             .danger_accept_invalid_hostnames(accept);
-                        },
+                            builder = builder
+                                .danger_accept_invalid_certs(accept)
+                                .danger_accept_invalid_hostnames(accept);
+                        }
                         _ => {}
                     }
                 }
@@ -96,13 +97,12 @@ impl RhaiHttpClient {
             builder = builder.query(&data);
         }
 
-        builder
-            .send()
-            .await
-            .unwrap()
-            .json::<Option<Value>>()
-            .await
-            .map_err(|err| anyhow!(err))
+        let resp = builder.send().await?;
+        let text = resp.text().await?;
+        match serde_json::from_str::<Value>(&text) {
+            Ok(val) => Ok(Some(val)),
+            Err(_) => Ok(Some(Value::String(text))),
+        }
     }
 
     pub fn sync_http_request(

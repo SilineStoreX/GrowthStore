@@ -110,7 +110,7 @@ impl Invocation for RedisInvocation {
                     Err(err) => Err(anyhow!(err)),
                 }
             } else {
-                Ok(rbatis::Page::new(0, 0))
+                Ok(rbatis::Page::new_total(0, 0, 0))
             }
         })
     }

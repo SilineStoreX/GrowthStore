@@ -24,7 +24,6 @@ futures-lite.workspace = true
 tokio.workspace = true
 rbatis.workspace = true
 reqwest.workspace = true
-async-std.workspace = true
+fastdate.workspace = true
 rhai = { version = "1.18", features = ["internals", "serde", "sync", "metadata"] }
 chimes-store-core = { workspace = true }
-

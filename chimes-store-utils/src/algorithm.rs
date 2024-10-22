@@ -58,3 +58,12 @@ pub fn ase_decrypt_to_text<T: AsRef<[u8]>>(data: &str, key: &[u8; 32], iv: &[u8;
         Err(_) => String::new(),
     }
 }
+
+
+pub fn snowflake_id() -> i64 {
+    rbatis::snowflake::new_snowflake_id()
+}
+
+pub fn snowflake_id_custom(machine_id: i32, node_id: i32, mode: i32) -> i64 {
+    rbatis::snowflake::Snowflake::new(machine_id, node_id, mode).generate()
+}
