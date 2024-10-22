@@ -12,7 +12,7 @@
       @close="onDialogClosed"
     >
       <el-form ref="contactFormRef" :model="hook" :rules="rules" :inline="true" label-position="left" label-width="120px">
-            <span class="tips">注意：注册联系人信息不是注册登录用户，其目的是为了方便我们联系您，并推送Store X的最新更新。</span>
+            <span class="tips">注意：注册联系人信息不是注册登录用户，其目的是为了方便我们联系您，并推送GrowthStore的最新更新。</span>
             <el-form-item label="您的姓名" prop="fullname">
                 <el-input v-model="hook.fullname" placeholder="请输入您的姓名" style="width: 500px"/>
             </el-form-item>
@@ -49,7 +49,7 @@
                 </el-checkbox-group>
             </el-form-item>
             <el-form-item>
-                <span><el-checkbox v-model="hook.acceptance" /> 我已阅读并接受<a href="#" @click="onShowLicenseDialog">《个人信息保护条款》</a>，同意相关个人信息传输。StoreX有权在法律允许的范围内对活动进行解释</span>
+                <span><el-checkbox v-model="hook.acceptance" /> 我已阅读并接受<a href="#" @click="onShowLicenseDialog">《个人信息保护条款》</a>，同意相关个人信息传输。GrowthStore有权在法律允许的范围内对活动进行解释</span>
             </el-form-item>
       </el-form>
       <template #footer>
@@ -581,7 +581,7 @@
         }
         let jwtoken = await exchangeJwtToken()
         if (jwtoken) {
-            let data = await call_api_options(REMOTE_CONTACT_SERVER + '/api/object/com.siline.storex/ContactRegister/upsert', 'POST', contact, { anotherToken: jwtoken});
+            let data = await call_api_options(REMOTE_CONTACT_SERVER + '/api/object/com.siline.GrowthStorex/ContactRegister/upsert', 'POST', contact, { anotherToken: jwtoken});
             if (data.status === 0 || data.status === 200) {
                 ElMessage.success('保存成功！')
                 formEl.resetFields()

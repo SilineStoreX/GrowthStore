@@ -44,13 +44,14 @@ tokio.workspace = true
 rbs.workspace = true
 rbatis.workspace = true
 chimes-store-core.workspace = true
-chimes-store-dbs = "*"
-store-plugin-compose = "*"
-store-plugin-restapi = "*"
-store-plugin-weixin = "*"
-store-plugin-rhai = "*"
-store-plugin-kafka = "*"
-store-plugin-mqtt = "*"
+chimes-store-utils.workspace = true
+chimes-store-dbs.workspace = true
+store-plugin-compose.workspace = true
+store-plugin-restapi.workspace = true
+store-plugin-weixin.workspace = true
+store-plugin-rhai.workspace = true
+store-plugin-kafka.workspace = true
+store-plugin-mqtt.workspace = true
 salvo.workspace = true
 
 [target.'cfg(windows)'.dependencies]

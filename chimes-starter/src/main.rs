@@ -229,10 +229,8 @@ fn do_command(config: &Config, cmd: &str, group: &str, name: &str) {
 
         if let Err(err) = sender.send((cmd, tx)) {
             log::error!("Send command error {err:?}");
-        } else {
-            if let Ok(states) = rx.recv() {
-                log::info!("{:?}", states);
-            }
+        } else if let Ok(states) = rx.recv() {
+            log::info!("{:?}", states);
         }
     }
 }

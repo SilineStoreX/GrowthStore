@@ -64,11 +64,11 @@ export default {
     },
     setOptions({ data, title } = {}) {
       console.log(data)
-      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%m:%S'))
-      const loaddata = data.map(t => (t.counter.task_2_count - (t.prev_counter ? t.prev_counter.task_2_count : 0)) / (t.diff_time / 1000))
-      const errloaddata = data.map(t => (t.counter.task_3_count - (t.prev_counter ? t.prev_counter.task_3_count : 0)) / (t.diff_time / 1000))
-      const postdata = data.map(t => (t.counter.task_4_count - (t.prev_counter ? t.prev_counter.task_4_count : 0)) / (t.diff_time / 1000))
-      const errpostdata = data.map(t => (t.counter.task_5_count - (t.prev_counter ? t.prev_counter.task_5_count : 0)) / (t.diff_time / 1000))
+      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%M:%S'))
+      const loaddata = data.map(t => (t.counter.task_2_count - (t.prev_counter ? t.prev_counter.task_2_count : 0)) / (t.diff_time))
+      const errloaddata = data.map(t => (t.counter.task_3_count - (t.prev_counter ? t.prev_counter.task_3_count : 0)) / (t.diff_time))
+      const postdata = data.map(t => (t.counter.task_4_count - (t.prev_counter ? t.prev_counter.task_4_count : 0)) / (t.diff_time))
+      const errpostdata = data.map(t => (t.counter.task_5_count - (t.prev_counter ? t.prev_counter.task_5_count : 0)) / (t.diff_time))
       this.chart.setOption({
         title: {
           text: this.$t('任务处理情况'),

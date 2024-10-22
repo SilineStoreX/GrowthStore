@@ -1,0 +1,326 @@
+filename = "tenda.toml"
+db_url = "mysql://chimes:ks123456@localhost:3306/rivermap"
+redis_url = "redis://@localhost:6379/2"
+relaxy_timezone = true
+subfolder_bydate = false
+subfolder_bytype = false
+download_direct = false
+upload_to_oss = false
+namespace = "com.siline.tenda"
+querys = []
+plugins = []
+
+[[objects]]
+name = "ChimesDictDetail"
+object_name = "chimes_dict_detail"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "detail_id"
+prop_name = "detail_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "detail_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "dict_id"
+prop_name = "dict_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "dict_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "label"
+prop_name = "label"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "label"
+relation_array = false
+
+[[objects.fields]]
+field_name = "value"
+prop_name = "value"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "value"
+relation_array = false
+
+[[objects.fields]]
+field_name = "dict_sort"
+prop_name = "dict_sort"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "dict_sort"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_by"
+prop_name = "create_by"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_by"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_by"
+prop_name = "update_by"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "update_by"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "ChimesDict"
+object_name = "chimes_dict"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "dict_id"
+prop_name = "dict_id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "dict_id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "name"
+prop_name = "name"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "name"
+relation_array = false
+
+[[objects.fields]]
+field_name = "description"
+prop_name = "description"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "description"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_by"
+prop_name = "create_by"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_by"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_by"
+prop_name = "update_by"
+col_length = 255
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "update_by"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_time"
+prop_name = "create_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_time"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_time"
+prop_name = "update_time"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "update_time"
+relation_array = false
+
+[[objects]]
+name = "ChimesHoliday"
+object_name = "chimes_holiday"
+object_type = "BASE TABLE"
+select_sql = ""
+validation = false
+parti_valid = false
+enable_cache = false
+data_permission = false
+
+[[objects.fields]]
+field_name = "id"
+prop_name = "id"
+col_type = "integer"
+field_type = "bigint"
+pkey = true
+base64 = false
+crypto_store = false
+detail_only = false
+title = "id"
+relation_array = false
+
+[[objects.fields]]
+field_name = "physical_year"
+prop_name = "physical_year"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "physical_year"
+relation_array = false
+
+[[objects.fields]]
+field_name = "holiday_date"
+prop_name = "holiday_date"
+col_type = "date"
+field_type = "date"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "holiday_date"
+relation_array = false
+
+[[objects.fields]]
+field_name = "date_type"
+prop_name = "date_type"
+col_type = "integer"
+field_type = "int"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "date_type"
+relation_array = false
+
+[[objects.fields]]
+field_name = "remark"
+prop_name = "remark"
+col_length = 400
+col_type = "string"
+field_type = "varchar"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "remark"
+relation_array = false
+
+[[objects.fields]]
+field_name = "create_date"
+prop_name = "create_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "create_date"
+relation_array = false
+
+[[objects.fields]]
+field_name = "update_date"
+prop_name = "update_date"
+col_type = "datetime"
+field_type = "datetime"
+pkey = false
+base64 = false
+crypto_store = false
+detail_only = false
+title = "update_date"
+relation_array = false

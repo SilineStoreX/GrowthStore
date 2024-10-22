@@ -402,7 +402,7 @@ impl AuthorizationService {
 
             match res {
                 Ok(tvs) => {
-                    let tvxs: Vec<AppSecretPair> =  tvs.iter().map(|t| serde_json::from_value::<AppSecretPair>(t.to_owned()).unwrap_or(AppSecretPair::default()))
+                    let tvxs: Vec<AppSecretPair> =  tvs.iter().map(|t| serde_json::from_value::<AppSecretPair>(t.to_owned()).unwrap_or_default())
                                                               .filter(|f| !f.app_id.is_empty() && !f.app_secret.is_empty())
                                                               .collect();
                     Ok(tvxs)
@@ -654,10 +654,11 @@ impl Handler for AuthUserRole {
                         depot.insert("_USER_ROLES", us.clone());
                         us
                     } else {
-                        let mut us = vec![];
-                        us.push("ROLE_COMMONUSER".to_owned());
-                        us.push("ROLE_API_CALLER".to_owned());
-                        us.push("ROLE_ANONYMOUS".to_owned());
+                        let us = vec![
+                            "ROLE_COMMONUSER".to_owned(),
+                            "ROLE_API_CALLER".to_owned(),
+                            "ROLE_ANONYMOUS".to_owned()
+                        ];
                         depot.insert("_USER_ROLES", us.clone());
                         us
                     }

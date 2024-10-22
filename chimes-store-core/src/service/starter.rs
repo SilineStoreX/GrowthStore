@@ -25,7 +25,12 @@ use super::{
     sdk::{InvokeUri, RxHookInvoker, RxPluginService},
 };
 
-pub type FnPluginInstall = fn(ns: &str, plc: &PluginConfig) -> Result<(), anyhow::Error>;
+
+pub type FnPluginInstall = fn(
+    ns: &str,
+    plc: &PluginConfig,
+) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send>>;
+
 
 #[repr(transparent)]
 pub struct MxStoreService(pub(crate) StoreServiceConfig);
@@ -328,7 +333,7 @@ impl MxStoreService {
         }
     }
 
-    pub fn update_service_add_plugin(ns: &str, sts: &[PluginConfig]) {
+    pub async fn update_service_add_plugin(ns: &str, sts: &[PluginConfig]) {
         if let Some(fs) = Self::get_store_service_map().get_mut(ns) {
             for st in sts.iter().cloned() {
                 // install the default Plugin config, we will generate a plugin config file directly
@@ -342,7 +347,7 @@ impl MxStoreService {
                 {
                     mst.config = build_config_path.to_string_lossy().to_string();
                     if let Some(installer_func) = Self::get_plugin_installer() {
-                        if let Err(err) = installer_func(ns, &mst) {
+                        if let Err(err) = installer_func(ns, &mst).await {
                             log::warn!(
                                 "Could not install  plugin {}, error is {:?}",
                                 mst.name,

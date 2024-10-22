@@ -178,6 +178,14 @@ pub trait Invocation {
 }
 
 pub trait RxPluginService: Send + Sync {
+    fn shutdown_plugin(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn add_service(&self, _services: Vec<Value>) -> Result<(), Error> {
+        Ok(())
+    }
+
     fn get_config(&self) -> Option<Value>;
     fn parse_config(&self, val: &Value) -> Result<(), Error>;
     fn save_config(&self, conf: &PluginConfig) -> Result<(), Error>;

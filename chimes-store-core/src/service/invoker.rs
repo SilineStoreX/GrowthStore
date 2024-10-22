@@ -7,7 +7,8 @@ use std::{
     any::{Any, TypeId}, collections::HashMap, mem::MaybeUninit, sync::{atomic::AtomicU64, Arc, Once}
 };
 
-use crate::{config::auth::JwtUserClaims, utils::executor::CHIMES_THREAD_POOL};
+use crate::pin_blockon_async;
+use crate::config::auth::JwtUserClaims;
 
 static INVOCATION_CTX_ID_REF: AtomicU64 = AtomicU64::new(1);
 
@@ -397,7 +398,7 @@ impl Drop for InvocationContext {
         log::info!("InvocationContext dropped.");
         let tx_ = self.tx.clone();
         let commit = self.success;
-        let _ = CHIMES_THREAD_POOL.execute_async(async move {
+        let _ = pin_blockon_async!(async move {
             if let Err(err) = context_finalize(tx_, commit).await {
                 log::info!("error on finallize {err}");
             }

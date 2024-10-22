@@ -1,5 +1,5 @@
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr}, path::PathBuf, str::FromStr
+    future::Future, net::{IpAddr, Ipv4Addr, SocketAddr}, path::PathBuf, pin::Pin, str::FromStr
 };
 
 use crate::{
@@ -8,10 +8,10 @@ use crate::{
     config::{self, ListenerOption, ManagerAccountConfig, ThreadState},
     manager::{management_route, ManagementRequest, ManagementState},
     plugin::{load_plugin, static_load_plugin, PluginRegistry},
-    utils::{AppConfig, PerformanceTaskCounter},
+    utils::AppConfig,
     Args,
 };
-use chimes_store_core::utils::{executor::CHIMES_THREAD_POOL, redis::init_global_redis, ApiResult};
+use chimes_store_core::utils::{redis::init_global_redis, ApiResult};
 use chimes_store_core::{
     config::{
         auth::{AuthorizationConfig, JwtUserClaims},
@@ -70,17 +70,24 @@ fn plugin_anonymous_router_install() -> Vec<Router> {
     all_routers
 }
 
-fn plugin_service_install(ns: &str, plc: &PluginConfig) -> Result<(), anyhow::Error> {
-    PluginRegistry::get_mut().install(&mut |pl| {
-        if let Ok(protocol) = pl.get_protocol_name() {
-            if protocol == plc.protocol {
-                if let Err(err) = pl.plugin_init(ns, plc) {
-                    log::info!("Plugin {protocol} was not init. {}", err);
+fn plugin_service_install(
+    ns: &str,
+    plc: &PluginConfig,
+) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send>> {
+    let namespace = ns.to_owned();
+    let plc_ = plc.to_owned();
+    Box::pin(async move {
+        for pl in PluginRegistry::get_mut().iter() {
+            if let Ok(protocol) = pl.get_protocol_name() {
+                if protocol == plc_.protocol {
+                    if let Err(err) = pl.plugin_init(&namespace, &plc_).await {
+                        log::info!("Plugin {protocol} was not init. {}", err);
+                    }
                 }
             }
         }
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 fn plugin_extension_init() {
@@ -217,35 +224,29 @@ pub async fn salvo_main(args: Args, config: config::Config) {
     log::info!("Prepared to load MxStoreService for all namespaces");
     MxStoreService::load_all(config.web.model_path.clone());
     // 为每一个Namespace启用插件
-    PluginRegistry::get().install(&mut |rl| {
-        let protocol_ = rl.get_protocol_name().unwrap_or_default();
+    for it in PluginRegistry::get_mut().iter() {
+        let protocol_ = it.get_protocol_name().unwrap_or_default();
         log::info!("start plugin {protocol_} ...");
-        MxStoreService::get_namespaces().into_iter().for_each(|ns| {
+        for ns in MxStoreService::get_namespaces().into_iter() {
             log::info!("init plugin {protocol_} for {}", ns);
             chimes_store_dbs::register_objects_and_querys(&ns);
             if let Some(nss) = MxStoreService::get(&ns) {
-                if let Ok(protocol) = rl.get_protocol_name() {
-                    let plcs = nss.get_plugin_config_by_protocol(&protocol);
-                    for mut plc in plcs {
-                        plc.config =
-                            build_path_ns(config.web.model_path.clone(), &ns, plc.config.clone())
-                                .unwrap_or(PathBuf::from(plc.config))
-                                .to_string_lossy()
-                                .to_string();
-                        if let Err(err) = rl.plugin_init(&ns, &plc) {
-                            log::info!("Plugin {protocol} was not init. {}", err);
-                        }
+                let plcs = nss.get_plugin_config_by_protocol(&protocol_);
+                for mut plc in plcs {
+                    plc.config =
+                        build_path_ns(config.web.model_path.clone(), &ns, plc.config.clone())
+                            .unwrap_or(PathBuf::from(plc.config))
+                            .to_string_lossy()
+                            .to_string();
+                    if let Err(err) = it.plugin_init(&ns, &plc).await {
+                        log::info!("Plugin {protocol_} was not init. {}", err);
                     }
-                } else {
-                    log::info!("The {ns} was got the plugin_init function.");
                 }
             }
-        });
-    });
+        }
+    }
 
     plugin_extension_init();
-
-    CHIMES_THREAD_POOL.setup_counter(Box::new(PerformanceTaskCounter()));
 
     let cors = Cors::new()
         .allow_origin(AllowOrigin::judge(|_, _, _| true))
@@ -300,6 +301,11 @@ pub async fn salvo_main(args: Args, config: config::Config) {
         .push(Router::with_path("/execute/option").put(api::common::common_invoke_option))
         .push(Router::with_path("/execute/list").put(api::common::common_invoke_vec))
         .push(Router::with_path("/execute/paged").put(api::common::common_invoke_page))
+        .push(Router::with_path("tools/jsonpath_test").post(api::tools::tool_jsonpath_test))
+        .push(Router::with_path("tools/tera_test").post(api::tools::tool_tera_test))
+        .push(Router::with_path("tools/rhai_test").post(api::tools::tool_rhai_test))
+        .push(Router::with_path("tools/common_test").post(api::tools::tool_common_test))
+        .push(Router::with_path("tools/plugin_test").post(api::tools::tool_plugin_test))        
         .push(Router::with_path("/file/<ns>/get/<file_id>").get(api::common::common_file_send))
         .append(&mut get_salvo_service_router())
         .append(&mut plugin_router_install());
@@ -391,6 +397,11 @@ pub async fn salvo_main(args: Args, config: config::Config) {
                 .hoop(affix_state::inject(ManagementState { sender }).insert("config", config.clone()))
                 .hoop(manager_auth_handler)
                 .push(Router::with_path("performance/get").get(api::performance::performance_get))
+                .push(Router::with_path("tools/jsonpath_test").post(api::tools::tool_jsonpath_test))
+                .push(Router::with_path("tools/tera_test").post(api::tools::tool_tera_test))
+                .push(Router::with_path("tools/rhai_test").post(api::tools::tool_rhai_test))
+                .push(Router::with_path("tools/common_test").post(api::tools::tool_common_test))
+                .push(Router::with_path("tools/plugin_test").post(api::tools::tool_plugin_test))                
                 .push(Router::with_path("userinfo").post(api::management::userinfo))
                 .push(Router::with_path("changepwd").post(api::management::change_pwd))
                 .push(Router::with_path("reload").post(api::management::reload))

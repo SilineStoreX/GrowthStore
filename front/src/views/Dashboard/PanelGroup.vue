@@ -7,38 +7,56 @@
         </div>
         <div class="card-panel-description">
           <div class="card-panel-text">
-            {{ this.$t('任务完成') }}
-          </div>
-          <span class="card-panel-num">{{ countData.counter.task_1_count }}</span>
-        </div>
-      </div>
-    </el-col>
-    <el-col :xs="12" :sm="12" :lg="4" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('member')">
-        <div class="card-panel-icon-wrapper icon-date">
-          <svg-icon icon-class="date" class-name="card-panel-icon" />
-        </div>
-        <div class="card-panel-description">
-          <div class="card-panel-text">
-            {{ this.$t('错误数量') }}
-          </div>
-          <span class="card-panel-num">{{ countData.counter.task_3_count }}</span>
-        </div>
-      </div>
-    </el-col>
-    <el-col :xs="12" :sm="12" :lg="4" class="card-panel-col">
-      <div class="card-panel" @click="handleSetLineChartData('member')">
-        <div class="card-panel-icon-wrapper icon-date">
-          <svg-icon icon-class="date" class-name="card-panel-icon" />
-        </div>
-        <div class="card-panel-description">
-          <div class="card-panel-text">
             {{ this.$t('任务提交') }}
           </div>
           <span class="card-panel-num">{{ countData.counter.task_2_count }}</span>
         </div>
       </div>
+    </el-col>    
+    <el-col :xs="12" :sm="12" :lg="4" class="card-panel-col">
+      <div class="card-panel" @click="handleSetLineChartData('member')">
+        <div class="card-panel-icon-wrapper icon-date">
+          <svg-icon icon-class="date" class-name="card-panel-icon" />
+        </div>
+        <div class="card-panel-description">
+          <div class="card-panel-text">
+            {{ this.$t('任务完成') }}
+          </div>
+          <el-tooltip
+            class="box-item"
+            effect="dark"
+            :content="'错误数量：' + countData.counter.task_3_count + ' / 正常完成数量：' + countData.counter.task_1_count"
+            placement="top-start"
+          >
+            <span class="card-panel-num">{{ countData.counter.task_1_count }}/<i class="red">{{ countData.counter.task_3_count }}</i></span>
+          </el-tooltip>
+        </div>
+      </div>
     </el-col>
+    <el-col :xs="12" :sm="12" :lg="4" class="card-panel-col">
+      <div class="card-panel" @click="handleSetLineChartData('member')">
+        <div class="card-panel-icon-wrapper icon-date">
+          <svg-icon icon-class="date" class-name="card-panel-icon" />
+        </div>
+        <div class="card-panel-description">
+          <div class="card-panel-text">
+            {{ this.$t('长期任务') }} 
+            <el-tooltip class="box-item" effect="dark" placement="top-start" content="活动的长期任务数（总数减已退出数）接近于工作线程数会引起系统性能下降。通常该值应该是恒定的。">
+              <el-icon><InfoFilled /></el-icon>
+            </el-tooltip>
+          </div>
+          <el-tooltip
+            class="box-item"
+            effect="dark"
+            :content="'长期任务总数：' + countData.counter.task_4_count + ' / 已退出：' + countData.counter.task_5_count"
+            placement="top-start"
+          >
+            <span class="card-panel-num">{{ countData.counter.task_4_count }}/<i class="red">{{ countData.counter.task_5_count }}</i></span>
+          </el-tooltip>
+        </div>
+      </div>
+    </el-col>
+
     <el-col :xs="12" :sm="12" :lg="4" class="card-panel-col">
       <div class="card-panel" @click="handleSetLineChartData('users')">
         <div class="card-panel-icon-wrapper icon-people">
@@ -74,7 +92,14 @@
           <div class="card-panel-text">
             {{ this.$t('线程数') }}
           </div>
-          <span class="card-panel-num">{{ countData.threads }}</span>
+          <el-tooltip
+            class="box-item"
+            effect="dark"
+            :content="'线程总数：' + countData.threads + ' / 工作线程数：' + countData.counter.task_9_count + ' / 任务池化线程数：' + countData.counter.task_10_count"
+            placement="top-start"
+          >
+            <span class="card-panel-num">{{ countData.threads }}/<i class="red">{{countData.counter.task_9_count}}</i></span>
+          </el-tooltip>
         </div>
       </div>
     </el-col>
@@ -117,6 +142,8 @@ export default {
     background: #fff;
     box-shadow: 4px 4px 40px rgba(0, 0, 0, .05);
     border-color: rgba(0, 0, 0, .05);
+    display: flex;
+    justify-content: flex-start;
 
     &:hover {
       .card-panel-icon-wrapper {
@@ -172,12 +199,16 @@ export default {
       color: #02791f
     }
 
+    .red {
+      color: crimson;
+    }
+
     .card-panel-icon-wrapper {
-      float: left;
       margin: 14px 0 0 14px;
       padding: 16px;
       transition: all 0.38s ease-out;
       border-radius: 6px;
+      height: 36px;
     }
 
     .card-panel-icon {
@@ -188,10 +219,12 @@ export default {
     }
 
     .card-panel-description {
-      float: right;
       font-weight: bold;
       margin: 26px;
-      margin-left: 0px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
 
       .card-panel-text {
         line-height: 18px;

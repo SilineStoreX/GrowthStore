@@ -18,7 +18,7 @@
     "component": "/StoreX/Namespaces/index",
     "meta": {
       "icon": "Platform",
-      "title": "GrowthStore",
+      "title": "StoreX",
       "isFull": true,
       "isAffix": false,
       "isKeepAlive": true
@@ -103,6 +103,54 @@
         "meta": {
           "icon": "UserFilled",
           "title": "API接口调用测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/tools/jsonpath",
+        "name": "jsonpath",
+        "component": "/Tools/jsonpath",
+        "meta": {
+          "icon": "Magnet",
+          "title": "JSONPath验证",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/tools/connection",
+        "name": "connection",
+        "component": "/Tools/connection",
+        "meta": {
+          "icon": "Setting",
+          "title": "连接测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/tools/rhai",
+        "name": "rhai",
+        "component": "/Tools/rhai",
+        "meta": {
+          "icon": "Coin",
+          "title": "Rhai脚本编译",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/tools/tera",
+        "name": "tera",
+        "component": "/Tools/tera",
+        "meta": {
+          "icon": "Notebook",
+          "title": "Tera模板测试",
           "isFull": false,
           "isAffix": false,
           "isKeepAlive": true

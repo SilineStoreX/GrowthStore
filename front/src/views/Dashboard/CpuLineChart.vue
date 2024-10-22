@@ -64,7 +64,7 @@ export default {
     },
     setOptions({ data, title } = {}) {
       console.log(data)
-      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%m:%S'))
+      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%M:%S'))
       const kerndata = data.map(t => t.kernel_cpu_usages / t.now_cpu_time * 100.0)
       const userdata = data.map(t => t.user_cpu_usages / t.now_cpu_time * 100.0)
       this.chart.setOption({

@@ -2,7 +2,7 @@
     <add-app-secret :visible="showVariableDialog" :hook="currentVariable" @update:visible="handleVariableDialogVisibleChange" @update:hook="handleUpdateVariable" />
     <div class="home">
       <div>登录与认证配置</div>
-      <div class="tips">登录与认证配置的配置的修改影响面比较广，对这些配置修改后，请重新启动Store X，以确保正确生效。</div>
+      <div class="tips">登录与认证配置的配置的修改影响面比较广，对这些配置修改后，请重新启动GrowthStore，以确保正确生效。</div>
       <el-form label-position="top" label-width="auto" >
           <el-form-item label="应用名称">
               <el-input v-model="authconf.app_name" />
@@ -23,10 +23,10 @@
               <el-switch v-model="authconf.validate_basic" />
           </el-form-item>
           <el-divider content-position="left">接口与查询配置</el-divider>
-          <el-form-item label="用户查询服务，采用StoreX的URI协议定义的方式调用用户查询服务，如object://com.xxxx.user/User">
+          <el-form-item label="用户查询服务，采用GrowthStore的URI协议定义的方式调用用户查询服务，如object://com.xxxx.user/User">
               <el-input v-model="authconf.user_search" />
           </el-form-item>
-          <el-form-item label="角色查询服务，采用StoreX的URI协议定义的方式调用用户查询服务，如query://com.xxxx.user/findRoles">
+          <el-form-item label="角色查询服务，采用GrowthStore的URI协议定义的方式调用用户查询服务，如query://com.xxxx.user/findRoles">
               <el-input v-model="authconf.role_search" />
           </el-form-item>
           <el-divider content-position="left">用户密码处理</el-divider>
@@ -50,11 +50,11 @@
               </el-col>
             </el-row>  
           </el-form-item>
-          <el-form-item v-if="authconf.credential_hash_method === 'rsa' || authconf.credential_hash_method === 'dsa'" label="Credential Public Key，RSA或DSA的Public Key">
-              <el-input v-model="authconf.credential_key" type="textarea" :rows="5" laceholder="Public Key密钥"/>
+          <el-form-item label="Credential Public Key，RSA或DSA的Public Key">
+              <el-input v-model="authconf.rsa_public_key" type="textarea" :rows="5" laceholder="Public Key密钥"/>
           </el-form-item>
-          <el-form-item v-if="authconf.credential_hash_method === 'rsa' || authconf.credential_hash_method === 'dsa'" label="Credential Private Key，RSA或DSA的Private Key">
-              <el-input v-model="authconf.credential_solt" type="textarea" :rows="5" laceholder="Private Key密钥"/>
+          <el-form-item label="Credential Private Key，RSA或DSA的Private Key">
+              <el-input v-model="authconf.rsa_private_key" type="textarea" :rows="5" laceholder="Private Key密钥"/>
           </el-form-item>
           <el-divider content-position="left">JWT 认证配置</el-divider>
           <el-form-item label="JWT Token加密盐">
@@ -105,9 +105,14 @@
           <el-form-item v-if="!authconf.appsecret_provider || authconf.appsecret_provider === ''" label="AppId和AppSecret管理">
               <el-table :data="authconf.app_secret_keys" :border="true">
                 <el-table-column prop="app_id" label="AppId" />
-                <el-table-column prop="app_secret" label="Secret" />
+                <el-table-column prop="app_secret" label="Secret"  width="360px" />
                 <el-table-column prop="username" label="关联用户名" />
                 <el-table-column prop="orgname" label="所属组织" />
+                <el-table-column prop="encryption" label="加密验证" width="160px">
+                  <template #default="scoped">
+                    <el-switch v-model="scoped.row.encryption" disabled />
+                  </template>
+                </el-table-column>
                 <el-table-column label="操作" width="120px">
                     <template #default="scoped">
                         <el-button type="primary" icon="Edit" circle @click="handleModifyVariable(scoped.row)" />
@@ -130,24 +135,28 @@
           </el-form-item>
           <el-divider content-position="left">数据权限（行级数据权限）</el-divider>
           <div class="remark">
-            <span>数据权限是指对当前登录用户对业务数据行级的访问控制。启用数据权限控制意味着，Store X将会对业务数据的查询注入对应的SQL子句。</span>
-            <span>在Store X中的数据权限模型，需要一张权限表（或查询）来进行处理。这个权限表（或查询）承载着对权限控制原语的准确翻译。使用该表与业务表进行关联（INNER JOIN）后，根据当前用户进行查询，即可获得该用户可以访问的业务数据。如下表所示：</span>
+            <span>数据权限是指对当前登录用户对业务数据行级的访问控制。启用数据权限控制意味着，GrowthStore将会对业务数据的查询注入对应的SQL子句。</span>
+            <span>在GrowthStore中的数据权限模型，需要一张权限表（或查询）来进行处理。这个权限表（或查询）承载着对权限控制原语的准确翻译。使用该表与业务表进行关联（INNER JOIN）后，根据当前用户进行查询，即可获得该用户可以访问的业务数据。如下表所示：</span>
             <code key="md">
               <table>
-                <tr>
-                  <th>id</th>
-                  <th>username</th>
-                  <th>dept_id</th>
-                  <th>unit_id</th>
-                  <th>user_id</th>
-                </tr>
-                <tr>
-                  <th>序号</th>
-                  <th>登录名，该字段为当前用户</th>
-                  <th>可以管理的部门</th>
-                  <th>可以管理的单位</th>
-                  <th>可以管理的用户</th>
-                </tr>
+                <thead>
+                  <tr>
+                    <th>id</th>
+                    <th>username</th>
+                    <th>dept_id</th>
+                    <th>unit_id</th>
+                    <th>user_id</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>序号</th>
+                    <th>登录名，该字段为当前用户</th>
+                    <th>可以管理的部门</th>
+                    <th>可以管理的单位</th>
+                    <th>可以管理的用户</th>
+                  </tr>
+                </tbody>
               </table> 
             </code>
             <span>通过该表，即可建立当前登录用户对业务数据的多种控制方式。</span>

@@ -230,7 +230,7 @@ pub async fn _user_auth_login(
                         Some(user) => {
                             let user_name= user.get(username_field).unwrap().clone();
                             let org = if authconf.enable_organization {
-                                user.get(&authconf.organization_field.clone().unwrap_or("organization".to_owned())).map(|f| {
+                                user.get(authconf.organization_field.clone().unwrap_or("organization".to_owned())).map(|f| {
                                     match f {
                                         Value::String(st) => st.clone(),
                                         _ => f.to_string()
@@ -265,7 +265,7 @@ pub async fn _user_auth_login(
                                 _ => "".to_string(),
                             };
                             let org = if authconf.enable_organization {
-                                us.get(&authconf.organization_field.clone().unwrap_or("organization".to_owned())).map(|f| {
+                                us.get(authconf.organization_field.clone().unwrap_or("organization".to_owned())).map(|f| {
                                     match f {
                                         Value::String(st) => st.clone(),
                                         _ => f.to_string()
@@ -578,14 +578,14 @@ pub async fn user_app_exchange(
     let authreq = match req.parse_queries::<AppKeyRequest>() {
         Ok(auth) => auth,
         Err(_) => {
-            let authreqbody = match req.parse_json::<AppKeyRequest>().await {
+            
+            match req.parse_json::<AppKeyRequest>().await {
                 Ok(authbody) => authbody,
                 Err(err) => {
                     log::info!("Parse request body failed. {}", err);
                     return Json(ApiResult::error(400, "error.parse.user.appkey.request"));
                 }
-            };
-            authreqbody
+            }
         }
     };
 

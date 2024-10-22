@@ -49,7 +49,10 @@
                         <span style="padding-left: 20px;">在处理Date/Time相关类型时，不将Timezone标识返回</span>
                     </el-form-item>
                     <el-form-item label="Redis连接">
-                        <el-input v-model="conf.redis_url" />
+                        <el-input v-model="conf.redis_url" style="width: calc(50%)" />
+                        <el-form-item label="最大连接数">
+                            <el-input v-model="conf.max_redis_pool" />
+                        </el-form-item>
                     </el-form-item>
                     <el-form-item label="AES加密密钥">
                         <el-input v-model="conf.aes_key" />

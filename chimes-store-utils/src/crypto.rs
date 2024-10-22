@@ -73,8 +73,8 @@ pub fn hmac_sha1(key: &str, data: &str) -> Vec<u8> {
     use crypto::hmac::Hmac;
     use crypto::sha1::Sha1;
     let sha = Sha1::new();
-    let mut hmac = Hmac::new(sha, &key.as_bytes());
-    hmac.input(&data.as_bytes());
+    let mut hmac = Hmac::new(sha, key.as_bytes());
+    hmac.input(data.as_bytes());
     let macres = hmac.result();
     macres.code().to_vec()
 }
@@ -83,8 +83,8 @@ pub fn hmac_sha256(key: &str, data: &str) -> Vec<u8> {
     use crypto::hmac::Hmac;
     use crypto::sha2::Sha256;
     let sha = Sha256::new();
-    let mut hmac = Hmac::new(sha, &key.as_bytes());
-    hmac.input(&data.as_bytes());
+    let mut hmac = Hmac::new(sha, key.as_bytes());
+    hmac.input(data.as_bytes());
     let macres = hmac.result();
     macres.code().to_vec()
 }
@@ -93,8 +93,8 @@ pub fn hmac_sha512(key: &str, data: &str) -> Vec<u8>  {
     use crypto::hmac::Hmac;
     use crypto::sha2::Sha512;
     let sha = Sha512::new();
-    let mut hmac = Hmac::new(sha, &key.as_bytes());
-    hmac.input(&data.as_bytes());
+    let mut hmac = Hmac::new(sha, key.as_bytes());
+    hmac.input(data.as_bytes());
     let macres = hmac.result();
     macres.code().to_vec()
 }

@@ -66,16 +66,16 @@ pub fn blob_base64_decode(data: Blob) -> rhai::Dynamic {
 }
 
 pub fn hmac_sha1_rhai(key: &str, data: &str) -> rhai::Dynamic {
-    let codec = hmac_sha1(&key, &data);
+    let codec = hmac_sha1(key, data);
     rhai::Dynamic::from_blob(codec)
 }
 
 pub fn hmac_sha256_rhai(key: &str, data: &str) -> rhai::Dynamic {
-    let codec = hmac_sha256(&key, &data);
+    let codec = hmac_sha256(key, data);
     rhai::Dynamic::from_blob(codec)
 }
 
 pub fn hmac_sha512_rhai(key: &str, data: &str) -> rhai::Dynamic {
-    let codec = hmac_sha512(&key, &data);
+    let codec = hmac_sha512(key, data);
     rhai::Dynamic::from_blob(codec)
 }

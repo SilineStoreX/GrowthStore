@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin};
+
 use chimes_store_core::{
     config::PluginConfig,
     service::{plugin::get_schema_registry, starter::MxStoreService},
@@ -52,7 +54,7 @@ pub fn plugin_anonymous_router_register() -> Vec<Router> {
 /**
  * 初始化插件
  */
-pub fn plugin_init(ns: &str, conf: &PluginConfig) {
+pub fn plugin_init(ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output = ()> + Send>> {
     match RestapiPluginService::new(ns, conf) {
         Ok(wplc) => {
             log::info!(
@@ -72,4 +74,5 @@ pub fn plugin_init(ns: &str, conf: &PluginConfig) {
             );
         }
     }
+    Box::pin(async {})
 }

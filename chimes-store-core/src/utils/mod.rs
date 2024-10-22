@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use chimes_dbs_factory::get_sql_driver;
 use chrono::{DateTime, Local};
 use rbatis::RBatis;
@@ -63,6 +63,17 @@ impl GlobalConfig {
 
     pub fn get_worker_threads() -> usize {
         Self::config().work_threads
+    }
+}
+
+pub fn create_rbatis(url: &str) -> Result<RBatis, anyhow::Error> {
+    let rb = RBatis::new();
+    match rb.init(get_sql_driver(url), url) {
+        Ok(_) => Ok(rb),
+        Err(err) => {
+            log::warn!("Error: {}", err);
+            Err(anyhow!(err))
+        }
     }
 }
 
@@ -145,6 +156,13 @@ pub fn get_local_timestamp() -> u64 {
     let date: DateTime<Local> = now.into();
     date.timestamp_millis() as u64
 }
+
+pub fn get_local_timestamp_micros() -> u64 {
+    let now = SystemTime::now();
+    let date: DateTime<Local> = now.into();
+    date.timestamp_micros() as u64
+}
+
 
 pub fn build_path_ns(
     path: impl AsRef<Path>,

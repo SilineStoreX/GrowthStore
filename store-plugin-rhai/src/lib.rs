@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin};
+
 use chimes_store_core::{
     config::PluginConfig,
     service::script::{ExtensionRegistry, LangExtensions},
@@ -24,11 +26,12 @@ pub fn get_plugin_name() -> &'static str {
 /**
  * 初始化插件
  */
-pub fn plugin_init(_ns: &str, conf: &PluginConfig) {
+pub fn plugin_init(_ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output = ()> + Send>> {
     log::info!(
         "Process the config of plugin and init the plugin for {}.",
         conf.name
     );
+    Box::pin(async move {})
 }
 
 /**

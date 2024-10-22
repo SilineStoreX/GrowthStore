@@ -64,14 +64,14 @@ export default {
     },
     setOptions({ data, title } = {}) {
       console.log(data)
-      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%m:%S'))
-      const recvdata = data.map(t => t.network_recv_total / (t.diff_time / 1000))
-      const senddata = data.map(t => t.network_send_total / (t.diff_time / 1000))
-      const readdata = data.map(t => t.disk_read_total / (t.diff_time / 1000))
-      const writedata = data.map(t => t.disk_write_total / (t.diff_time / 1000))
+      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%M:%S'))
+      const recvdata = data.map(t => (t.network_recv_total / 1024.0) / (t.diff_time))
+      const senddata = data.map(t => (t.network_send_total / 1024.0) / (t.diff_time))
+      const readdata = data.map(t => (t.disk_read_total / 1024.0) / (t.diff_time))
+      const writedata = data.map(t => (t.disk_write_total / 1024.0) / (t.diff_time))
       this.chart.setOption({
         title: {
-          text: this.$t('吞吐量'),
+          text: this.$t('吞吐量 (KB/s)'),
           x: 'center'
         },
         xAxis: {
@@ -89,7 +89,7 @@ export default {
           containLabel: true
         },
         tooltip: {
-          trigger: 'axis',
+          trigger: 'point',
           axisPointer: {
             type: 'cross'
           },

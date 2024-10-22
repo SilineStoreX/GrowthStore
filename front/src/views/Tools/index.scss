@@ -1,0 +1,68 @@
+.form-container {
+display: block;
+}
+.editor {
+display: block;
+}
+
+.monaco-editor-vue3 {
+border: 1px solid #ced4da;
+}
+
+.label_titel {
+float: left;
+font-size: 20pt;
+padding-bottom: 5px;
+width: 100%;
+display: flex;
+justify-content: space-between;
+}
+
+.split {
+display: flex;
+flex-direction: row;
+}
+
+.split .editor {
+width: calc(50% - 10px);
+padding: 10px;
+}
+
+.split .editor span {
+font-size: 20px;
+padding: 20px;
+line-height: 40px;
+}
+
+.table {
+width: 100%;
+}
+
+.table thead tr {
+padding: 5px;
+height: 40px;
+}
+
+.table thead tr th {
+border-bottom: 1px solid black;
+}
+
+.table tbody tr {
+padding: 5px;
+height: 35px;
+border-bottom: 1px solid #eee;
+}
+
+.table tbody tr td {
+padding-left: 10px;
+border-bottom: 1px solid #eee;
+}
+
+.fullline {
+display: block;
+}
+
+.label {
+line-height: 14px;
+padding-right: 10px;
+}

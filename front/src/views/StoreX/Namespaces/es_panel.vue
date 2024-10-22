@@ -21,7 +21,7 @@
                           <el-radio-button value="Tradition">传统方式</el-radio-button>
                           <el-radio-button value="NonSecurity">无安全控制</el-radio-button>
                           <el-radio-button value="Cloud">Elastic Cloud</el-radio-button>
-                        </el-radio-group>                        
+                        </el-radio-group>
                     </el-form-item>
                     <el-form-item label="连接地址">
                         <el-input v-model="rest_conf.connection" />
@@ -94,8 +94,8 @@
             </template>
             <template v-else>
                 <el-table :data="config_data">
-                    <el-table-column prop="name" label="方法名" width="120px" />
-                    <el-table-column prop="target_url" label="目标URI" width="180px" />
+                    <el-table-column prop="name" label="方法名" width="160px" />
+                    <el-table-column prop="index" label="索引" width="160px" />
                     <el-table-column prop="request_method" label="请求方法" witdh="70px"/>
                     <el-table-column prop="api_type" label="接口类型" witdh="80px"/>
                     <el-table-column prop="lang" label="脚本类型" witdh="100px"/>

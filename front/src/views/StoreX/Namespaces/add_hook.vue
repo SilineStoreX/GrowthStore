@@ -38,6 +38,10 @@
   import { lang_list, update } from "@/http/modules/management";
   import { useRoute } from "vue-router";
   import { mergeProps, onMounted, ref, watch } from "vue";
+  import * as monaco from 'monaco-editor';
+  // for use monaco editor:  https://blog.51cto.com/u_15697128/8643085
+
+
   const props = defineProps<{ visible: boolean, hook: any }>();
   const emit = defineEmits(['update:visible', 'update:hook', 'datasync'])
   const tables = ref<Array<any>>([])

@@ -666,7 +666,7 @@ impl ValueGetterSetter {
             if desc {
                 sorted.sort_by(|a, b| b.cmp(a));
             } else {
-                sorted.sort_by(|a, b| a.cmp(b));
+                sorted.sort();
             }
             let mut text = vec![];
             for key in sorted {

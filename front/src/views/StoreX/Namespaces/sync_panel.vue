@@ -21,7 +21,13 @@
                     <el-form-item label="最大写入线程数">
                         <el-input v-model="rest_conf.write_threads" />
                     </el-form-item>
-                    <el-form-item label="执行变量定义"  prop="variables">
+                    <el-form-item label="使用全局变量">
+                        <el-switch v-model="rest_conf.global_variable" />
+                        <el-form-item v-if="rest_conf.global_variable" label="变量管理URI">
+                          <el-input v-model="rest_conf.variable_opt_url" style="width: 500px"/>
+                        </el-form-item>
+                    </el-form-item>
+                    <el-form-item v-if="!rest_conf.global_variable" label="执行变量定义"  prop="variables">
                         <el-table :data="rest_conf.variables">
                             <el-table-column prop="var_name" label="变量名称" width="160px"/>
                             <el-table-column prop="var_type" label="类型"  width="120px"/>
@@ -67,7 +73,19 @@
                         <el-switch v-model="composeService.no_source" />
                     </el-form-item>
                     <el-form-item v-if="!composeService.no_source" label="CRON表达式" prop="cron_express">
-                        <el-input v-model="composeService.cron_express"></el-input>
+                        <el-input v-model="composeService.cron_express">
+                          <template #append>
+                            <el-button @click="onShowCronExpress">生成CRON表达式</el-button>
+                          </template>
+                        </el-input>
+                        <el-dialog v-model="showCron">
+                          <vue3-cron-plus
+                            @change="changeCron"
+                            @close="closeDialog"
+                            max-height="600px"
+                            i18n="cn">
+                          </vue3-cron-plus>
+                        </el-dialog>
                     </el-form-item>
                     <el-form-item v-if="!composeService.no_source" label="源数据请求URI" prop="source_uri">
                         <template #label>
@@ -91,18 +109,31 @@
                             <el-input v-model="composeService.page_size" style="width: 90px"></el-input>
                         </el-form-item>
                     </el-form-item>
-                    <el-form-item v-if="!composeService.no_source" label="转换脚本" prop="transform">
-                        <el-input v-model="composeService.transform" type="textarea" placeholder="将源数据请求URI获得的数据作为参数，转换为写入的URI可以接受的数据格式"></el-input>
-                    </el-form-item>
                     <el-form-item v-if="!composeService.no_source" label="变量更新时机">
                         <el-switch v-model="composeService.update_variable_epoch" />
                         启用后将在每次执行后更新变量，否则只在获取到最新数据后才进行更新。
+                    </el-form-item>
+                    <el-form-item label="脚本语言" prop="lang">
+                      <el-radio-group v-model="composeService.lang">
+                          <el-radio-button key="tera" value="tera">Tera模板</el-radio-button>
+                          <el-radio-button key="invoke_uri" value="invoke_uri">InvokeURI</el-radio-button>
+                          <el-radio-button v-for="item in  ScriptLangs" :key="item.lang" :value="item.lang">{{ item.description }}</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>                    
+                    <el-form-item label="转换脚本" prop="transform">
+                        <el-input v-model="composeService.transform" type="textarea" placeholder="将源数据请求URI获得的数据作为参数，转换为写入的URI可以接受的数据格式"></el-input>
+                    </el-form-item>
+                    <el-form-item label="额外参数" prop="params">
+                        <el-input v-model="composeService.params" type="textarea" placeholder="进行转换操作时的额外参数，以JSON格式表达"></el-input>
                     </el-form-item>
                     <el-form-item label="写入的URI" prop="target_uri">
                         <el-input v-model="composeService.target_uri"></el-input>
                     </el-form-item>
                     <el-form-item label="删除的URI" prop="remove_uri">
                         <el-input v-model="composeService.remove_uri"></el-input>
+                    </el-form-item>
+                    <el-form-item label="成功校验模式" prop="check_pattern">
+                        <el-input v-model="composeService.check_pattern" placeholder="请输入用于校验返回值是否成功的JSONPath"></el-input>
                     </el-form-item>
                 </el-form>
                 <div style="margin-top: 20px">
@@ -113,10 +144,9 @@
             <template v-else>
                 <el-table :data="config_data">
                     <el-table-column prop="task_id" label="名称" width="180px" />
-                    <el-table-column prop="task_desc" label="描述" :show-overflow-tooltip="true" width="180px" />
-                    <el-table-column prop="source_uri" label="源数据" witdh="60px"/>
+                    <el-table-column prop="task_desc" label="描述" :show-overflow-tooltip="true" width="280px" />
+                    <el-table-column prop="source_uri" label="源数据" witdh="230px" :show-overflow-tooltip="true"/>
                     <el-table-column prop="paged_request" label="分页请求" witdh="60px" />                    
-                    <el-table-column prop="target_uri" label="写入" :show-overflow-tooltip="true" width="180px"/>
                     <el-table-column label="操作" width="100px">
                         <template #default="scoped">
                             <el-button type="primary" icon="Edit" circle @click="onEditComposeService(scoped.row)" />
@@ -163,6 +193,8 @@
   import { FormInstance } from "element-plus";
   import AddHook from "./add_hook.vue"
   import AddVariable from "./add_variable.vue"
+  import { vue3CronPlus } from 'vue3-cron-plus'
+  import 'vue3-cron-plus/dist/index.css'
 
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -184,7 +216,23 @@
   const currentVariable = ref<any>()
   const auth_roles = ref<Array<any>>([])
   const activeNames = ref<Array<any>>([])
+  const showCron = ref<boolean>(false)
   
+  const onShowCronExpress = () => {
+    showCron.value = true
+  }
+
+  const closeDialog = () => {
+    showCron.value = false
+  }
+
+  const changeCron = (val: any) => {
+    if (typeof(val) === "string") {
+      let cs = composeService.value
+      cs.cron_express = val
+      composeService.value = cs
+    }
+  }
 
   watch(
     () => [props.data.protocol, props.data.name],
@@ -424,6 +472,9 @@
   <style lang="scss" scoped>
   .el-select .el-input {
     width: 130px;
+  }
+  :deep(.vue3-cron-plus-container) .language {
+    display: none;
   }
   @import "index.scss";
   </style>

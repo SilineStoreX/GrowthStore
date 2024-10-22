@@ -392,4 +392,12 @@ impl TaskCounter for PerformanceTaskCounter {
     fn increase_error(&self) {
         custom_performance_counter_increase(3);
     }
+
+    fn increase_longlive(&self) {
+        custom_performance_counter_increase(4);
+    }
+
+    fn increase_exitlive(&self) {
+        custom_performance_counter_increase(5);
+    }    
 }

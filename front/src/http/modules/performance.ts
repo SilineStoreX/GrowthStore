@@ -4,3 +4,7 @@ import http from "@/http";
 export const performance_get = () => {
   return http.get<any>("/management/performance/get");
 };
+
+export const performance_summary = () => {
+  return http.get<any>("/management/performance/summary");
+};

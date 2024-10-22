@@ -232,7 +232,7 @@ async fn insert_casc_1(
                             let dbx =
                                 Box::new(DbStoreObject(stm.to_owned(), stc.clone(), auth.clone()));
                             if col.relation_array {
-                                if let Some(tvl) = t.get(&col.field_name.clone()) {
+                                if let Some(tvl) = t.get(col.field_name.clone()) {
                                     let mut del_qs = QueryCondition::default();
                                     del_qs.and.push(ConditionItem {
                                         field: col.relation_field.clone().unwrap_or_default(),
@@ -269,7 +269,7 @@ async fn insert_casc_1(
                                 let mut mutval = val.clone();
                                 if let Value::Object(mp) = &mut mutval {
                                     // 备注：如果是1..N关联，则需要在表数据定义中产生一个该字段field_name与prop_name保持一致的Column，不然，会找不到？
-                                    if let Some(tvl) = t.get(&col.field_name.clone()) {
+                                    if let Some(tvl) = t.get(col.field_name.clone()) {
                                         mp.insert(
                                             col.relation_field.clone().unwrap_or_default(),
                                             tvl.clone(),
@@ -409,14 +409,12 @@ impl DbStoreObject {
                             } else {
                                 answers.push(rbs::to_value!(tv));
                             }
+                        } else if is_desensitize_with_crypto_store(&col.desensitize, col.crypto_store) {
+                            let text = tv.as_str().unwrap_or_default();
+                            let crypto_text = crypto_desenstize_process(text.to_owned(), &ns, &col.desensitize);
+                            answers.push(rbs::to_value!(crypto_text));
                         } else {
-                            if is_desensitize_with_crypto_store(&col.desensitize, col.crypto_store) {
-                                let text = tv.as_str().unwrap_or_default();
-                                let crypto_text = crypto_desenstize_process(text.to_owned(), &ns, &col.desensitize);
-                                answers.push(rbs::to_value!(crypto_text));
-                            } else {
-                                answers.push(rbs::to_value!(tv));
-                            }
+                            answers.push(rbs::to_value!(tv));
                         }
                     } else if let Some(generater) = col.generator.clone() {
                         answers.push(self.get_generated_value(&generater, jwt));
@@ -645,13 +643,13 @@ impl DbStoreObject {
             .iter()
             .filter(|f| f.col_type == Some("relation".to_string()))
         {
-            if let Some(pkval) = ro.get(&col.prop_name.clone().unwrap_or(col.field_name.clone())) {
+            if let Some(pkval) = ro.get(col.prop_name.clone().unwrap_or(col.field_name.clone())) {
                 if let Some(relation_object) = col.relation_object.clone() {
                     if let Some(relation) = self.1.get_object(&relation_object) {
                         let dbx = DbStoreObject(relation.clone(), self.1.clone(), self.2.clone());
                         if col.relation_array {
                             let valkey = if pkval.is_array() || pkval.is_object() {
-                                ro.get(&col.field_name.clone())
+                                ro.get(col.field_name.clone())
                                     .map(|f| f.to_owned())
                                     .unwrap_or(Value::Null)
                             } else {

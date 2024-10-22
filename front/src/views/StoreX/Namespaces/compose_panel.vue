@@ -59,7 +59,19 @@
                       </el-form-item>
                     </el-form-item>
                     <el-form-item v-if="composeService.schedule_on"  prop="cron_express" label="CRON表达式">
-                        <el-input v-model="composeService.cron_express" placeholder="定时器任务的CRON表达式" style="width: 240px"/>
+                        <el-input v-model="composeService.cron_express" placeholder="定时器任务的CRON表达式" style="width: 280px">
+                          <template #append>
+                            <el-button @click="onShowCronExpress">CRON表达式</el-button>
+                          </template>
+                        </el-input>
+                        <el-dialog v-model="showCron">
+                          <vue3-cron-plus
+                            @change="changeCron"
+                            @close="closeDialog"
+                            max-height="600px"
+                            i18n="cn">
+                          </vue3-cron-plus>
+                        </el-dialog>                        
                         <el-form-item v-if="composeService.schedule_on && composeService.lang !== 'shell'"  prop="schedule_simulate" label="模拟登录用户">
                           <el-input v-model="composeService.schedule_simulate" placeholder="模拟登录用户帐号" />
                         </el-form-item>
@@ -162,6 +174,8 @@
   import { mergeProps, onMounted, ref, watch } from "vue";
   import { FormInstance } from "element-plus";
   import AddHook from "./add_hook.vue"
+  import { vue3CronPlus } from 'vue3-cron-plus'
+  import 'vue3-cron-plus/dist/index.css'
 
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -179,6 +193,24 @@
   const showHookDialog = ref<boolean>(false)
   const currentHook = ref<any>()
   const auth_roles = ref<Array<any>>([])
+
+  const showCron = ref<boolean>(false)
+  
+  const onShowCronExpress = () => {
+    showCron.value = true
+  }
+
+  const closeDialog = () => {
+    showCron.value = false
+  }
+
+  const changeCron = (val: any) => {
+    if (typeof(val) === "string") {
+      let cs = composeService.value
+      cs.cron_express = val
+      composeService.value = cs
+    }
+  }
 
   watch(
     () => [props.data.protocol, props.data.name],
@@ -371,5 +403,9 @@
   
   <style lang="scss" scoped>
   @import "index.scss";
+
+  :deep(.vue3-cron-plus-container) .language {
+    display: none;
+  }
   </style>
   

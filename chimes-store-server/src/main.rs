@@ -1,8 +1,9 @@
 use anyhow::Result;
-use chimes_store_core::utils::{build_path, num_of_cpus, GlobalConfig, GlobalSecurityConfig};
+use chimes_store_core::{service::registry::SchemaRegistry, utils::{build_path, num_of_cpus, GlobalConfig, GlobalSecurityConfig}};
 use clap::Parser;
 use flexi_logger::{FileSpec, LogSpecification, Logger, WriteMode};
 use salvo::http::request::set_global_secure_max_size;
+use utils::PerformanceTaskCounter;
 use std::{
     fs::{self, File},
     io::{BufReader, Read},
@@ -193,12 +194,18 @@ fn main() {
         pool_size: ps,
     });
 
+
     tokio::runtime::Builder::new_multi_thread()
             .worker_threads(wt)
             .enable_all()
             .build()
             .unwrap()
             .block_on(async move {
+        chimes_store_core::init_async_task_pool(
+            Box::new(PerformanceTaskCounter()),
+            Box::new(PerformanceTaskCounter()),
+        );
+        SchemaRegistry::get_mut().start_performance_consumer();
         salvo_main::salvo_main(args, config).await
     })
 }

@@ -1,4 +1,4 @@
-use std::{mem::MaybeUninit, sync::Once};
+use std::{mem::MaybeUninit, pin::Pin, future::Future, slice::Iter, sync::Once};
 
 use anyhow::{anyhow, Result};
 use chimes_store_core::config::PluginConfig;
@@ -7,7 +7,12 @@ use salvo::Router;
 
 type FnGetProtocolName = unsafe extern "Rust" fn() -> &'static str;
 type FnPluginRouteRegister = unsafe extern "Rust" fn() -> Vec<Router>;
-type FnPluginInit = unsafe extern "Rust" fn(ns: &str, conf: &PluginConfig);
+// type FnPluginInit = unsafe extern "Rust" fn(ns: &str, conf: &PluginConfig);
+type FnPluginInit = unsafe extern "Rust" fn(
+    ns: &str,
+    conf: &PluginConfig,
+) -> Pin<Box<dyn Future<Output = ()> + Send>>;
+
 type FnExtensionInit = unsafe extern "Rust" fn();
 
 #[derive(Clone)]
@@ -35,10 +40,10 @@ impl PluginRountine {
         }
     }
 
-    pub fn plugin_init(&self, ns: &str, plc: &PluginConfig) -> Result<()> {
+    pub async fn plugin_init(&self, ns: &str, plc: &PluginConfig) -> Result<()> {
         if let Some(plugin_init_func) = self.fn_plugin_init {
             log::info!("call plugin_init for {ns}");
-            unsafe { plugin_init_func(ns, plc); }
+            unsafe { plugin_init_func(ns, plc).await; }
         }
         Ok(())
     }
@@ -88,6 +93,10 @@ impl PluginRegistry {
         self.registry.push(pl);
         self
     }    
+
+    pub fn iter(&'static mut self) -> Iter<PluginRountine> {
+        self.registry.iter()
+    }
 
     pub fn install<F>(&'static self, fun: &mut F)
     where

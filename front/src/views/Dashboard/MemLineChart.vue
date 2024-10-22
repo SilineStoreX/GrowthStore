@@ -64,11 +64,11 @@ export default {
     },
     setOptions({ data, title } = {}) {
       console.log(data)
-      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%m:%S'))
-      const kerndata = data.map(t => t.memory_used / 1024)
+      const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%M:%S'))
+      const kerndata = data.map(t => t.memory_used / 1024 / 1024)
       this.chart.setOption({
         title: {
-          text: this.$t('内存使用量'),
+          text: this.$t('内存使用量(MB)'),
           x: 'left'
         },
         xAxis: {

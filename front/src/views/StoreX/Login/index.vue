@@ -81,6 +81,12 @@
                                 placeholder="App Secret"
                             />
                         </el-form-item>
+                        <el-form-item prop="encryption" label="是否加密">
+                            <el-switch
+                                v-model.trim="loginForm.encryption"
+                                placeholder="是否加密"
+                            />
+                        </el-form-item>
                         <el-form-item>
                             <el-button
                                 type="primary"
@@ -88,7 +94,7 @@
                                 :loading="loading"
                                 >交换Token</el-button
                             >
-                        </el-form-item>
+                        </el-form-item>                        
                     </el-form>
                 </div>
             </el-collapse-item>
@@ -287,6 +293,7 @@
   import { get_javascript_axio_code_md, get_java_code_md, get_curl_code_md, get_javascript_packaged_code_md, get_rhai_code_md } from "@/utils/codetemplate";
   import { MdPreview, MdCatalog } from 'md-editor-v3';
   import 'md-editor-v3/lib/preview.css';
+  import { rsa_encrypt } from '@/utils/encryption';
 
   const authconf = ref<any>({})
   
@@ -432,8 +439,15 @@
       loading.value = true;
       try {
         console.log('call api')
-        call_api_docuemnt("/api/auth/exchange", { method: "POST" }, loginForm);
-        const data = await call_api("/api/auth/exchange", "POST", loginForm);
+        let lt = { ...loginForm }
+        
+        if (loginForm.encryption) {
+          lt.app_secret = rsa_encrypt(loginForm.app_secret + '##' + new Date().getTime());
+        }
+
+        console.log('T: ', lt);
+        call_api_docuemnt("/api/auth/exchange", { method: "POST" }, lt);
+        const data = await call_api("/api/auth/exchange", "POST", lt);
         console.log(data)
         jsonbody.value = data
         if (data.status !== 200) {

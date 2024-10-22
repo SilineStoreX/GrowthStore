@@ -145,7 +145,7 @@ const projects = ref<Tree[]>([])
 const user_login_menu_item = ref<any>({
   id: 'global:login',
   label: '登录与认证测试',
-  icon: 'Avatar',
+  icon: 'User',
   children: []
 })
 
@@ -156,6 +156,40 @@ const user_conf_menu_item = ref<any>({
   children: [user_login_menu_item.value]
 })
 
+const tool_jsonpath_menu_item = ref<any>({
+  id: 'global:jsonpath',
+  label: 'JSONPath测试',
+  icon: 'Magnet',
+  children: []
+})
+
+const tera_template_menu_item = ref<any>({
+  id: 'global:tera',
+  label: 'Tera模板',
+  icon: 'Notebook',
+  children: []
+})
+
+const connection_test_menu_item = ref<any>({
+  id: 'global:connection',
+  label: '连接和杂项测试',
+  icon: 'Setting',
+  children: []
+})
+
+const rhai_test_menu_item = ref<any>({
+  id: 'global:rhai',
+  label: 'Rhai脚本编译',
+  icon: 'Coin',
+  children: []
+})
+
+const user_tool_menu_item = ref<any>({
+  id: 'global:tools',
+  label: '常用测试工具',
+  icon: 'Tools',
+  children: [tool_jsonpath_menu_item.value, tera_template_menu_item.value, connection_test_menu_item.value, rhai_test_menu_item.value]
+})
 
 
 function onresizeLineStartMove() {
@@ -176,6 +210,16 @@ function nodeChanged(node: any) {
     router.push(`/storex/authorization?id=${node.id}`)
   } else if (node.id === 'global:login') {
     router.push(`/storex/login?id=${node.id}`)
+  } else if (node.id === 'global:jsonpath') {
+    router.push(`/storex/tools/jsonpath?id=${node.id}`)
+  } else if (node.id === 'global:tera') {
+    router.push(`/storex/tools/tera?id=${node.id}`)
+  } else if (node.id === 'global:connection') {
+    router.push(`/storex/tools/connection?id=${node.id}`)
+  } else if (node.id === 'global:rhai') {
+    router.push(`/storex/tools/rhai?id=${node.id}`)
+  } else if (node.id === 'global:tools') {
+    return
   } else if (node.id.indexOf(':') >= 0) {
     var suff = node.id.substring(node.id.indexOf(":") + 1)
     console.log(node.id, suff)
@@ -201,7 +245,7 @@ function nodeExpanded(node: any) {
 
 function fetchNamespacesTree() {
   fetchNamespaces().then(res => {
-    projects.value = [user_conf_menu_item.value, ...res.data]
+    projects.value = [user_conf_menu_item.value, user_tool_menu_item.value, ...res.data]
   }).catch(ex => {})
 }
 

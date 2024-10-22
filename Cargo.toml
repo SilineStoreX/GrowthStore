@@ -22,7 +22,7 @@ members = [
 [workspace.package]
 authors = ["Long Zou <longzou@hotmail.com>"]
 edition = "2021"
-version = "0.1.1"
+version = "0.1.2"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 categories = ["store"]
@@ -47,6 +47,14 @@ store-plugin-mqtt = { path = "store-plugin-mqtt" }
 chimes-dbs-factory = "*"
 chimes-store-utils = "*"
 chimes-store-core = "*"
+chimes-store-dbs = "*"
+store-plugin-weixin = "*"
+store-plugin-compose = "*"
+store-plugin-restapi = "*"
+store-plugin-rhai = "*"
+store-plugin-kafka = "*"
+store-plugin-mqtt = "*"
+
 lazy_static = "1.4.0"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }

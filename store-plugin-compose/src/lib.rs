@@ -60,7 +60,7 @@ pub fn plugin_anonymous_router_register() -> Vec<Router> {
 /**
  * 初始化插件
  */
-pub fn plugin_init(ns: &str, conf: &PluginConfig) {
+pub fn plugin_init(ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output = ()> + Send>> {
     match ComposePluginService::new(ns, conf) {
         Ok(wplc) => {
             log::info!(
@@ -94,6 +94,8 @@ pub fn plugin_init(ns: &str, conf: &PluginConfig) {
             );
         }
     }
+
+    Box::pin(async { })
 }
 
 struct CronSchedulerHolder {

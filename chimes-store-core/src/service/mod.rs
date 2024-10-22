@@ -8,3 +8,4 @@ pub mod sdk;
 pub mod starter;
 pub mod sched;
 pub mod queue;
+pub mod perfs;

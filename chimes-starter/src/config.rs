@@ -45,7 +45,7 @@ pub struct ProcessState {
 impl ProcessDeamon {
     pub fn should_start(&self) -> bool {
         let failures = self.failures.load(std::sync::atomic::Ordering::Acquire);
-        self.fail_start && !self.is_manualstop() && failures > self.fail_count.clone().unwrap_or(6) as u32
+        self.fail_start && !self.is_manualstop() && failures > self.fail_count.unwrap_or(6) as u32
     }
 
     pub fn is_manualstop(&self) -> bool {

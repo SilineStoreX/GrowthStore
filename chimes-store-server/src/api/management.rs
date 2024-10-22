@@ -518,7 +518,7 @@ pub async fn update(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
                 }
                 "plugin" => match req.parse_body::<Vec<PluginConfig>>().await {
                     Ok(sts) => {
-                        MxStoreService::update_service_add_plugin(&ns_, &sts);
+                        MxStoreService::update_service_add_plugin(&ns_, &sts).await;
                     }
                     Err(err) => {
                         log::info!("Could not parse to plugin-clonfig. {:?}", err);
@@ -674,7 +674,7 @@ pub async fn delete(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
                     }
                 }
                 "namespace" => {
-                    if let Ok(_) = req.parse_body::<Vec<String>>().await {
+                    if req.parse_body::<Vec<String>>().await.is_ok() {
                         MxStoreService::remove_namespace(&ns_);
                         // MxStoreService::update_service_delete_plugin(&ns_, &sts);
                     } else {

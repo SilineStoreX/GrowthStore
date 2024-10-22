@@ -21,6 +21,7 @@ import VxeUI from 'vxe-pc-ui'
 import 'vxe-pc-ui/lib/style.css'
 import "virtual:svg-icons-register"
 import SvgIcon from "@/components/SvgIcon/index.vue"
+import './userWorker'
 
 const app = createApp(App);
 // 注册element Icons组件
