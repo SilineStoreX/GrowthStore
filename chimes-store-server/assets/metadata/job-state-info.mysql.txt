@@ -1,0 +1,18 @@
+-- rivermap.job_state_info definition
+
+CREATE TABLE `job_state_info` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `uuid` varchar(128) DEFAULT NULL,
+  `description` varchar(400) DEFAULT NULL,
+  `invoke_uri` varchar(128) DEFAULT NULL,
+  `params` text,
+  `sched_type` int DEFAULT NULL,
+  `sched_express` varchar(40) DEFAULT NULL,
+  `states` varchar(40) DEFAULT NULL,
+  `execute_time` datetime(6) DEFAULT NULL,
+  `elapsed` int DEFAULT NULL,
+  `create_time` datetime(6) DEFAULT NULL,
+  `update_time` datetime(6) DEFAULT NULL,
+  `parent_uuid` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

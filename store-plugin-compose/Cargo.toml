@@ -20,14 +20,13 @@ anyhow.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tokio-cron-scheduler = "*"
-uuid = "*"
+tokio.workspace = true
+tokio-cron-scheduler.workspace = true
+uuid.workspace = true
 jsonpath-rust.workspace = true
-encoding_rs = "0.8.34"
+encoding_rs.workspace = true
+chimes-store-utils.workspace = true 
 chimes-store-core = { workspace = true, features=["plugin"]}
 rbatis.workspace = true
 salvo.workspace = true
-
-[profile.dev]
-opt-level = 3
-panic = 'abort'
+chrono.workspace = true

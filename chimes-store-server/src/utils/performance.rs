@@ -1,9 +1,14 @@
 use chimes_store_core::utils::executor::TaskCounter;
 use chimes_store_core::utils::get_local_timestamp;
+use chimes_store_core::utils::global_data::i64_from_str;
 use lazy_static::lazy_static;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::sync::{atomic::AtomicU64, Mutex};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, ToSchema)]
@@ -16,6 +21,7 @@ pub struct ChimesPerformanceInfo {
     pub now_cpu_time: f64,       // Current time
     pub memory_used: u64,        // memory usage MB
     pub memory_total: u64,       // memory usage MB
+    pub memory_virtual: u64,     // memory of virtual by MB
     pub disk_read_total: u64,    // disk io speed for read
     pub disk_write_total: u64,   // disk io speed for write
     pub network_recv_total: u64, // network io speed for recv
@@ -24,6 +30,7 @@ pub struct ChimesPerformanceInfo {
     pub handlers: u64,           // handlers
     pub success: bool,           // success or not
     pub counter: CustomCounterInfo,
+    pub connections: HashMap<String, rbs::value::Value>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, ToSchema)]
@@ -303,29 +310,103 @@ pub fn custom_performance_counter_reset(it: i32) {
     };
 }
 
+use sysinfo::System;
+
+use crate::utils::backwardreader::BackwardsReader;
+
 impl ChimesPerformanceInfo {
-    #[cfg(target_os = "windows")]
+    // #[cfg(target_os = "windows")]
     pub fn get_performance_info() -> Result<Self, anyhow::Error> {
+        #[cfg(target_os = "windows")]
         use super::windows_performance::WindowsPerformance;
 
+        #[cfg(not(target_os = "windows"))]
+        use super::linux_performance::LinuxPerformance;
+
+        static SYS_INSTANCE: OnceLock<Mutex<System>> = OnceLock::new();
+
+        let sys = SYS_INSTANCE.get_or_init(|| Mutex::new(System::new_all()));
+
+        sys.lock().unwrap().refresh_all();
+        // sys.refresh_all();
+
+        let mut dr = 0;
+        let mut dw = 0;
+        let mut kcpu = 0f64;
+        // let mut ucpu = 0f64;
+        let mut mem = 0;
+
+        #[cfg(target_os = "windows")]
+        let idle = 0f64;
+
+        #[cfg(not(target_os = "windows"))]
+        let now = 0f64;
+
+        let mut ttl = 0u64;
+        let mut vsize = 0u64;
+        let mut ucpu = 0f64;
+        let mut cores = 0u32;
+
+        if let Ok(sys_) = sys.lock() {
+            if let Ok(pid) = sysinfo::get_current_pid() {
+                if let Some(st) = sys_.process(pid) {
+                    kcpu = st.cpu_usage() as f64;
+                    dr = st.disk_usage().total_read_bytes;
+                    dw = st.disk_usage().total_written_bytes;                
+                    mem = st.memory();
+                }
+            }
+            
+            ttl = sys_.total_memory();
+            vsize = sys_.available_memory();
+            ucpu = sys_.global_cpu_usage() as f64;
+            cores = sys_.cpus().len() as u32;            
+        }
+        
+
+
+
+        let (inrc, wrc) = sysinfo::Networks::new_with_refreshed_list()
+                                    .iter()
+                                    .map(|s| {
+                                        (s.1.total_received(), s.1.total_transmitted())
+                                    })
+                                    .fold((0u64, 0u64), |(t1, t2), (a1, a2)| (t1 + a1, t2 + a2));
+
+        #[cfg(target_os = "windows")]
         let hc = WindowsPerformance::get_handle_count();
+
+        #[cfg(target_os = "windows")]
         let tc = WindowsPerformance::get_thread_count(WindowsPerformance::get_current_process_id());
-        let (kcpu, ucpu, now) = WindowsPerformance::get_process_times();
-        let (ttl, mem) = WindowsPerformance::get_memory_usages();
-        let (dr, dw) = WindowsPerformance::get_io_counter();
-        let cores = WindowsPerformance::get_cpu_cores();
-        let (inrc, wrc) = WindowsPerformance::get_network_io_counter();
+        
+        #[cfg(not(target_os = "windows"))]
+        let hc = LinuxPerformance::get_handle_count();
+
+        #[cfg(not(target_os = "windows"))]
+        let tc = LinuxPerformance::get_thread_count(LinuxPerformance::get_current_process_id());
+
+        #[cfg(target_os = "windows")]
+        let (_, _, now) = WindowsPerformance::get_process_times();
+
+        #[cfg(not(target_os = "windows"))]
+        let (_, _, idle) = LinuxPerformance::get_process_times();
+        // let (dr, dw) = WindowsPerformance::get_io_counter();
+        // let cores = WindowsPerformance::get_cpu_cores();
+        // let (inrc, wrc) = WindowsPerformance::get_network_io_counter();
         let now_time = get_local_timestamp();
+        // let mem = sys.used_memory();
+
 
         let newitem = Self {
             timestamp: now_time,
             kernel_cpu_usages: kcpu,
             user_cpu_usages: ucpu,
             cpu_cores: cores,
-            idle_cpu_usages: 0f64,
+            idle_cpu_usages: idle,
             now_cpu_time: now,
             memory_used: mem,
             memory_total: ttl,
+            memory_virtual: vsize,
             disk_read_total: dr,
             disk_write_total: dw,
             network_recv_total: inrc,
@@ -334,44 +415,12 @@ impl ChimesPerformanceInfo {
             handlers: hc as u64,
             success: true,
             counter: get_custom_performance_counter().to_counter(),
+            connections: HashMap::new(),
         };
 
         Ok(newitem)
     }
 
-    #[cfg(not(target_os = "windows"))]
-    pub fn get_performance_info() -> Result<Self, anyhow::Error> {
-        use super::linux_performance::LinuxPerformance;
-
-        let hc = LinuxPerformance::get_handle_count();
-        let tc = LinuxPerformance::get_thread_count(LinuxPerformance::get_current_process_id());
-        let (kcpu, ucpu, idle) = LinuxPerformance::get_process_times();
-        let (ttl, mem) = LinuxPerformance::get_memory_usages();
-        let (dr, dw) = LinuxPerformance::get_io_counter();
-        let cores = LinuxPerformance::get_cpu_cores();
-        let (inrc, wrc) = LinuxPerformance::get_network_io_counter();
-        let now_time = get_local_timestamp();
-
-        let newitem = Self {
-            timestamp: now_time,
-            kernel_cpu_usages: kcpu,
-            user_cpu_usages: ucpu,
-            idle_cpu_usages: idle,
-            cpu_cores: cores,
-            now_cpu_time: now_time as f64,
-            memory_used: mem as u64,
-            memory_total: ttl as u64,
-            disk_read_total: dr,
-            disk_write_total: dw,
-            network_recv_total: inrc,
-            network_send_total: wrc,
-            threads: tc as u64,
-            handlers: hc as u64,
-            success: true,
-            counter: get_custom_performance_counter().to_counter(),
-        };
-        Ok(newitem)
-    }
 }
 
 pub struct PerformanceTaskCounter();
@@ -398,6 +447,34 @@ impl TaskCounter for PerformanceTaskCounter {
     }
 
     fn increase_exitlive(&self) {
+        // log::info!("Exit a long live thread.");
+        // let bt = Backtrace::capture();
+        // log::info!("A long live thread exited: \n{:#?}", bt);
         custom_performance_counter_increase(5);
-    }    
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct LogViewRequest {
+    pub logfile: Option<String>,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "i64_from_str")]
+    pub reserves: Option<i64>,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "i64_from_str")]
+    pub interal: Option<i64>,
+}
+
+#[allow(dead_code)]
+pub fn read_last_lines(filename: impl Into<PathBuf>, num_lines: usize) -> std::io::Result<Vec<String>> {
+    let file = File::open(filename.into())?;
+    let mut reader = std::io::BufReader::new(file);
+    let mut lines: Vec<String> = Vec::with_capacity(num_lines);
+    let mut br = BackwardsReader::new(num_lines, &mut reader);
+
+    br.read_all_lines(&mut lines);
+    
+    Ok(lines)
 }

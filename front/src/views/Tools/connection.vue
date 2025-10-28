@@ -3,7 +3,6 @@
     <el-row style="line-height: 50px;">
       <el-col :colspan="24">
         <div class="label_titel">连接测试</div>
-
       </el-col>
     </el-row>
     <el-row>
@@ -34,11 +33,11 @@
                 </tr>
                 <tr>
                   <td>MSSQL Server</td>
-                  <td>取子对象/元素操作</td>
+                  <td>jdbc:sqlserver://[host:port];User=[username];Password={[password]};databaseName=[database-name];trustservercertificate=true</td>
                 </tr>
                 <tr>
                   <td>Oracle</td>
-                  <td>[暂不支持]递归向下取子对象/元素。JSONPath借鉴了E4X的语法。</td>
+                  <td>[暂不支持]目前Oracle的RBDC驱动还不稳定，暂时不支持它。</td>
                 </tr>
               </tbody>
             </table>
@@ -62,13 +61,60 @@
               </tbody>
             </table>
           </el-collapse-item>
+          <el-collapse-item title="Hmac SHA算法测试" name="hmac">
+            <div class="box" style="display: block; padding-bottom: 5px;">
+              <span class="label">Hmac-Hash算法</span>
+              <el-radio-group v-model="hmac.algorithm">
+                <el-radio-button value="sha1">SHA1</el-radio-button>
+                <el-radio-button value="sha256">SHA256</el-radio-button>
+                <el-radio-button value="sha512">SHA512</el-radio-button>
+                <el-radio-button value="sm3">SM3(国密)</el-radio-button>
+              </el-radio-group>
+              <span class="label">内容类型</span>
+              <el-radio-group v-model="hmac.value_type">
+                <el-radio-button value="text">文本</el-radio-button>
+                <el-radio-button value="json">JSON</el-radio-button>
+              </el-radio-group>
+            </div>
+            <el-input v-model="hmac.secret" placeholder="输入用于Hash的Secret"  type="textarea" :rows="2" style="font-size: 20px; line-height: 40px; height: 80px;">
+            </el-input>
+            <el-input v-if="hmac.value_type !== 'json'" v-model="hmac.text" placeholder="输入被测试的文本"  type="textarea" :rows="4" style="font-size: 16px; line-height: 16px; ">
+            </el-input>
+            <el-input v-else v-model="hmac.json_text" placeholder="输入被测试的JSON对象"  type="textarea" :rows="4" style="font-size: 16px; line-height: 16px; ">
+            </el-input>
+            <div class="result" style="padding: 5px">
+              <el-button type="primary" @click="doHmacShaTest" style="display: block;">测试</el-button>
+              <el-text v-if="hmac_result !== ''" type="success" style="display: block;">Hash结果：{{ hmac_result }}</el-text>
+            </div>
+          </el-collapse-item>
+          <el-collapse-item title="加解密算法测试" name="decrypt">
+            <div class="box" style="display: block; padding-bottom: 5px;">
+              <span class="label">加解密算法</span>
+              <el-radio-group v-model="decrypt.algorithm">
+                <el-radio-button value="rsa_encrypt">RSA加密</el-radio-button>
+                <el-radio-button value="rsa_decrypt">RSA解密</el-radio-button>
+                <el-radio-button value="aes_encrypt">AES加密</el-radio-button>
+                <el-radio-button value="aes_decrypt">AES解密</el-radio-button>
+              </el-radio-group>
+              <span class="label">命名空间</span>
+              <el-input v-model="decrypt.namespace" placeholder="密钥所存放的命名空间"  style="width: 300px"/>
+            </div>
+            <el-input v-if="decrypt.algorithm === 'rsa_encrypt' || decrypt.algorithm === 'aes_encrypt'" v-model="decrypt.process_text" placeholder="输入原始文本"  type="textarea" :rows="4" style="font-size: 20px; line-height: 40px; ">
+            </el-input>
+            <el-input v-else v-model="decrypt.process_text" placeholder="输入需要被解密的文本"  type="textarea" :rows="4" style="font-size: 16px; line-height: 16px; ">
+            </el-input>
+            <div class="result" style="padding: 5px">
+              <el-button type="primary" @click="doEncryptDecryptTest" style="display: block;">测试</el-button>
+              <el-text v-if="decrypt_result !== ''" type="success" style="display: block;">结果：{{ decrypt_result }}</el-text>
+            </div>
+          </el-collapse-item>
           <el-collapse-item title="正则表达式测试" name="3">
             <el-input v-model="script" placeholder="输入被测试的正则表达式"  style="font-size: 20px; line-height: 40px; height: 50px;">
               <template #append>
                 <el-button type="primary" @click="doCommonScriptTest('regex')">测试</el-button>
               </template>
             </el-input>
-            <el-input v-model="inputs" placeholder="输入需要被匹配的内容"  type="textarea" :rows="2" style="font-size: 20px; line-height: 40px; height: 80px; padding-top: 20px;"></el-input>
+            <el-input v-model="inputs" placeholder="输入需要被匹配的内容"  type="textarea" :rows="2" style="font-size: 20px; height: 80px; padding-top: 20px;"></el-input>
             <div class="result">
               <span class="fullline">测试结果：{{ result_match }}</span>
               <pre v-html="result"></pre>
@@ -261,11 +307,10 @@
 </template>
 
 <script lang="ts" setup name="form-pro">
-import * as monaco from 'monaco-editor';
 import {ref, onMounted, onUnmounted} from 'vue'
-import MonacoEditor from 'monaco-editor-vue3'
-import { common_test } from '@/http/modules/tools'
+import { common_test, hmacsha_test, encrypt_test } from '@/http/modules/tools'
 import { ElMessageBox } from 'element-plus';
+
 // 编辑器容器div
 
   // 编辑器内容
@@ -283,6 +328,10 @@ const inputs = ref("");
 const sourcejson = ref("");
 const result = ref("");
 const result_match = ref(false);
+const hmac = ref({algorithm: 'sha256', text: '', json_text: '', secret: '', value_type: 'text'})
+const decrypt = ref({algorithm: 'rsa', namespace: '', process_text: ''})
+const hmac_result = ref("")
+const decrypt_result = ref("")
 
 const handleChange = () => {
   script.value = ""
@@ -351,6 +400,59 @@ const doCommonScriptTest = (cmd: string) => {
   })
 }
 
+const doHmacShaTest = () => {
+  let ct = hmac.value;
+  let data = {
+    algorithm: ct.algorithm,
+    secret: ct.secret,
+    text: null,
+    value: null,
+  }
+
+  hmac_result.value = '';
+
+  if (ct.value_type === 'text') {
+    data.text = ct.text
+  } else {
+    try {
+      data.value = JSON.parse(ct.json_text)
+    } catch(ex) {
+      ElMessageBox.alert("请输入有效的JSON对象" + ex)
+      return;
+    }
+  }
+
+  hmacsha_test(data).then(res => {
+    if (res.status === 0 || res.status === 200) {
+      hmac_result.value = res.data
+      ElMessageBox.alert("测试成功，系统返回：" + res.data)
+    } else {
+      ElMessageBox.alert("测试失败，系统返回：" + res.message)
+    }
+  }).catch(ex => {
+    let rt  = JSON.stringify(ex, null, '\t')
+    ElMessageBox.alert("测试失败，执行时出现错误 ：" + rt)
+  })
+}
+
+
+const doEncryptDecryptTest = () => {
+  let ct = decrypt.value;
+  decrypt_result.value = '';
+  encrypt_test(ct).then(res => {
+    if (res.status === 0 || res.status === 200) {
+      decrypt_result.value = res.data
+      ElMessageBox.alert("测试成功，系统返回：" + res.data)
+    } else {
+      ElMessageBox.alert("测试失败，系统返回：" + res.message)
+    }
+  }).catch(ex => {
+    let rt  = JSON.stringify(ex, null, '\t')
+    ElMessageBox.alert("测试失败，执行时出现错误 ：" + rt)
+  })
+}
+encrypt_test
+
 onMounted(() => {
   
 });
@@ -359,6 +461,9 @@ onUnmounted(() => {
 
 })
 </script>
+<style lang="scss" scoped>
+@use "index.scss";
+</style>
 <style lang="scss" scoped>
 .label_titel {
   float: left;

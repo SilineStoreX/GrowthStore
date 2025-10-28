@@ -1,9 +1,13 @@
 use std::{
-    mem::MaybeUninit, net::{IpAddr, Ipv4Addr}, path::PathBuf, sync::{Mutex, Once}
+    net::{IpAddr, Ipv4Addr},
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
 };
 
+use chimes_store_core::utils::global_data::value_from_str;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -21,15 +25,28 @@ pub struct Config {
     pub app_keys: Vec<AppKey>,
     pub rsa_private_key: Option<String>,
     pub rsa_public_key: Option<String>,
+    pub aes_encrytion_key: Option<String>, // 用于加密
+    pub aes_encrytion_solt: Option<String>, // 用于加密
+    
     pub plugins: Vec<Plugin>,
     pub loggers: Vec<LevelMapper>,
+    pub performance_consumer: Option<String>, // 给定一个 InvokeURI用于将性能数据保存到队列
     pub log_level: Option<String>,
     pub log_file: Option<String>,
     pub log_writemode: Option<String>,
     pub log_rotation: Option<String>,
     pub log_keepfiles: Option<u64>,
     pub log_console: Option<bool>,
+    pub log_compress: Option<bool>,
+    pub log_perfs: Option<bool>,
     pub log_json: Option<bool>,
+    pub trace_level: Option<String>,      // Trace Level
+    pub enable_tracing: Option<bool>,     // 是否启用Tracing功能，如果该功能启用，则会将tracing事件向外进行报告
+    pub tracing_report: Option<String>,   // 如果设置该配置，则会将将这些事件以指定的方式向外报告，如Datadog，OpenTelemetry等
+
+    #[serde(default)]
+    #[serde(deserialize_with = "value_from_str")]
+    pub report_config: Option<Value>,     // 报告者的配置信息，以JSON格式表示
 }
 
 unsafe impl Send for Config {}
@@ -51,7 +68,7 @@ pub struct WebConfig {
     #[serde(skip_serializing)]
     pub config_path: PathBuf,
     /// Name of the model.
-    /// 
+    ///
     #[derivative(Default(value = "String::from(\"utf-8\")"))]
     pub code_page: String,
 
@@ -84,26 +101,20 @@ pub struct ManagerAccountConfig {
 }
 
 impl ManagerAccountConfig {
-    pub fn get_mut() -> &'static mut Mutex<ManagerAccountConfig> {
+    pub fn get_mut() -> &'static Mutex<ManagerAccountConfig> {
         // 使用MaybeUninit延迟初始化
-        static mut MA_CONF: MaybeUninit<Mutex<ManagerAccountConfig>> = MaybeUninit::uninit();
+        static MA_CONF: OnceLock<Mutex<ManagerAccountConfig>> = OnceLock::new();
         // Once带锁保证只进行一次初始化
-        static MA_ONCE: Once = Once::new();
-
-        MA_ONCE.call_once(|| unsafe {
-            MA_CONF.as_mut_ptr().write(Mutex::new(ManagerAccountConfig {
-                managers: vec![]
-            }));
-        });
-        unsafe { &mut *MA_CONF.as_mut_ptr() }
+        // static MA_ONCE: Once = Once::new();
+        MA_CONF.get_or_init(|| Mutex::new(ManagerAccountConfig { managers: vec![] }))
     }
 
     pub fn get_managers() -> Vec<ManagerAccount> {
-        Self::get_mut().get_mut().unwrap().managers.clone()
+        Self::get_mut().lock().unwrap().managers.clone()
     }
 
     pub fn update(managers: Vec<ManagerAccount>) {
-        Self::get_mut().get_mut().unwrap().managers = managers;
+        Self::get_mut().lock().unwrap().managers = managers;
     }
 }
 
@@ -141,7 +152,6 @@ pub struct ListenerOption {
     /// 如果该值为False，则只启用一个端口，同时提供管理员功能和普通的API功能
     #[derivative(Default(value = "Some(false)"))]
     pub using_management_port: Option<bool>,
-
 
     /// Binding Management port to serve /management/**.
     #[derivative(Default(value = "Some(17801u16)"))]

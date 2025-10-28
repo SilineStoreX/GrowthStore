@@ -1,19 +1,24 @@
 use super::{
     perfs::{InvokeCounter, PerformanceQueue, PerformanceSummary},
     plugin::PluginServiceInvocation,
+    queue::SyncTaskQueue,
     sdk::{Invocation, InvokeUri},
     starter::MxStoreService,
 };
 use crate::{
     service::{invoker::InvocationContext, perfs::PerformanceQueueHolder},
     utils::build_path,
+    SyncUnsafeCell,
 };
 use anyhow::anyhow;
 use rbatis::Page;
-use serde_json::Value;
-use std::fs::create_dir_all;
+use serde_json::{json, Value};
+use fastrace::trace;
 use std::sync::{Arc, Mutex};
-use std::{collections::HashMap, mem::MaybeUninit, path::PathBuf, str::FromStr, sync::Once};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use std::{fs::create_dir_all, sync::OnceLock};
+
+// trace::init_depth_var!();
 
 pub struct SchemaRegistry {
     map: HashMap<String, Box<dyn Invocation + Send + Sync>>,
@@ -23,17 +28,18 @@ pub struct SchemaRegistry {
 impl SchemaRegistry {
     pub fn get_mut() -> &'static mut SchemaRegistry {
         // 使用MaybeUninit延迟初始化
-        static mut SCHEMA_REGISTRY_CONF: MaybeUninit<SchemaRegistry> = MaybeUninit::uninit();
+        static SCHEMA_REGISTRY_CONF: OnceLock<SyncUnsafeCell<SchemaRegistry>> = OnceLock::new();
         // Once带锁保证只进行一次初始化
-        static SCHEMA_REGISTRY_ONCE: Once = Once::new();
-
-        SCHEMA_REGISTRY_ONCE.call_once(|| unsafe {
-            SCHEMA_REGISTRY_CONF.as_mut_ptr().write(SchemaRegistry {
-                map: HashMap::new(),
-                queue: PerformanceQueueHolder::new(),
+        unsafe {
+            let st = SCHEMA_REGISTRY_CONF.get_or_init(|| {
+                SyncUnsafeCell::new(SchemaRegistry {
+                    map: HashMap::new(),
+                    queue: PerformanceQueueHolder::new(),
+                })
             });
-        });
-        unsafe { &mut (*SCHEMA_REGISTRY_CONF.as_mut_ptr()) }
+
+            &mut *st.get()
+        }
     }
 
     pub fn get() -> &'static SchemaRegistry {
@@ -55,6 +61,20 @@ impl SchemaRegistry {
     pub fn send_invoke_count(ict: &mut InvokeCounter) {
         // add this into a queue
         Self::get_mut().queue.add_invoke_counter(ict.finalized());
+        
+        if let Some(mss) = MxStoreService::get(&ict.uri.namespace) {
+            if mss.0.api_audit {
+                if let Err(err) = SyncTaskQueue::get_mut().push_task(
+                    "queue-api-audit",
+                    &ict.ref_name,
+                    &ict.ref_detail,
+                    &json!(ict.to_audit_info()),
+                    1,
+                ) {
+                    log::info!("could not add to queue-api-audit with error {err}");
+                }
+            }
+        }
     }
 
     pub fn send_invoke_err(ict: &mut InvokeCounter, err: &anyhow::Error) {
@@ -62,6 +82,20 @@ impl SchemaRegistry {
         Self::get_mut()
             .queue
             .add_invoke_counter(ict.finalize_error(err));
+
+        if let Some(mss) = MxStoreService::get(&ict.uri.namespace) {
+            if mss.0.api_audit {
+                if let Err(err) = SyncTaskQueue::get_mut().push_task(
+                    "queue-api-audit",
+                    &ict.ref_name,
+                    &ict.ref_detail,
+                    &json!(ict.to_audit_info()),
+                    1,
+                ) {
+                    log::info!("could not add to queue-api-audit with error {err}");
+                }
+            }
+        }
     }
 
     pub fn register(
@@ -84,21 +118,44 @@ impl SchemaRegistry {
         self.register(uri, Box::new(PluginServiceInvocation(uri.to_owned())))
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn invoke_direct_query(
         &'static self,
-        ns: &str,
+        uri: &str,
         ctx: Arc<Mutex<InvocationContext>>,
         query: &str,
         args: &[Value],
     ) -> Result<Vec<Value>, anyhow::Error> {
-        if let Some(t) = self.map.get("query") {
-            t.invoke_direct_query(ns.to_owned(), ctx, query.to_owned(), args.to_vec())
+        let url = InvokeUri::parse(uri)?;
+        if let Some(t) = self.map.get(&url.schema) {
+            t.invoke_direct_query(&url, ctx, query.to_owned(), args.to_vec())
                 .await
         } else {
             Err(anyhow!("Direct Query only supports for custom query. Which namespace should define at least one custom query."))
         }
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
+    pub async fn invoke_direct_query_v2(
+        &'static self,
+        uri: &str,
+        ctx: Arc<Mutex<InvocationContext>>,
+        query: Value,
+        args: &[Value],
+    ) -> Result<Vec<Value>, anyhow::Error> {
+        let url = InvokeUri::parse(uri)?;
+        if let Some(t) = self.map.get(&url.schema) {
+            t.invoke_direct_query_v2(&url, ctx, query.to_owned(), args.to_vec())
+                .await
+        } else {
+            Err(anyhow!("Direct Query only supports for custom query. Which namespace should define at least one custom query."))
+        }
+    }
+
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn manage_invoke(
         &'static self,
         uri: &str,
@@ -133,14 +190,16 @@ impl SchemaRegistry {
                             // it is the plugin
                             match MxStoreService::get_plugin_service(&url.url_no_method()) {
                                 Some(pss) => {
-                                    let model_path = match args[1].clone().get("model_path") {
-                                        Some(mp) => mp.as_str().unwrap_or_default().to_string(),
-                                        None => {
-                                            return Err(anyhow!(
-                                                "No model_path provided by sencond params"
-                                            ));
-                                        }
-                                    };
+                                    let model_path =
+                                        match args.last().unwrap_or(&Value::Null).get("model_path")
+                                        {
+                                            Some(mp) => mp.as_str().unwrap_or_default().to_string(),
+                                            None => {
+                                                return Err(anyhow!(
+                                                    "No model_path provided by sencond params"
+                                                ));
+                                            }
+                                        };
 
                                     if let Some(plc) = nss.get_plugin_config(&url.object) {
                                         let mut cpt = plc.clone();
@@ -163,7 +222,9 @@ impl SchemaRegistry {
                                             }
                                         };
 
-                                        pss.add_service(vec![args[0].clone()])?;
+                                        if let Some((_, others)) = args.split_last() {
+                                            pss.add_service(others.to_vec())?;
+                                        }
 
                                         let ret = match pss.save_config(&cpt) {
                                             Ok(_) => {
@@ -266,7 +327,7 @@ impl SchemaRegistry {
                                             }
                                         }
                                         Err(err) => {
-                                            log::info!("Could not parse config and update the config for plugin {}, the error is {:?}.", col_method, err);
+                                            log::info!("Could not parse config and update the config for plugin {col_method}, the error is {err:?}.");
                                             None
                                         }
                                     }
@@ -284,6 +345,8 @@ impl SchemaRegistry {
         }
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn invoke_return_option(
         &'static self,
         uri: &str,
@@ -291,7 +354,7 @@ impl SchemaRegistry {
         args: &[Value],
     ) -> Result<Option<Value>, anyhow::Error> {
         let url = InvokeUri::parse(uri)?;
-        let mut ict = InvokeCounter::new(&url);
+        let mut ict = InvokeCounter::new(&url, ctx.clone(), args);
         // log::info!("Url: {} 00 {}", url.schema, url.url());
         match self.map.get(&url.schema) {
             Some(kt) => match kt.invoke_return_option(&url, ctx, args).await {
@@ -312,6 +375,8 @@ impl SchemaRegistry {
         }
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn direct_invoke_return_one(
         &'static self,
         uri: &str,
@@ -328,6 +393,8 @@ impl SchemaRegistry {
         }
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn invoke_return_vec(
         &'static self,
         uri: &str,
@@ -335,7 +402,7 @@ impl SchemaRegistry {
         args: &[Value],
     ) -> Result<Vec<Value>, anyhow::Error> {
         let url = InvokeUri::parse(uri)?;
-        let mut ict = InvokeCounter::new(&url);
+        let mut ict = InvokeCounter::new(&url, ctx.clone(), args);
         match self.map.get(&url.schema) {
             Some(kt) => match kt.invoke_return_vec(&url, ctx, args).await {
                 Ok(t) => {
@@ -355,6 +422,8 @@ impl SchemaRegistry {
         }
     }
 
+    #[logcall::logcall("debug")]
+    #[trace(enter_on_poll = true)]
     pub async fn invoke_return_page(
         &'static self,
         uri: &str,
@@ -362,7 +431,7 @@ impl SchemaRegistry {
         args: &[Value],
     ) -> Result<Page<Value>, anyhow::Error> {
         let url = InvokeUri::parse(uri)?;
-        let mut ict = InvokeCounter::new(&url);
+        let mut ict = InvokeCounter::new(&url, ctx.clone(), args);
         match self.map.get(&url.schema) {
             Some(kt) => match kt.invoke_return_page(&url, ctx, args).await {
                 Ok(t) => {

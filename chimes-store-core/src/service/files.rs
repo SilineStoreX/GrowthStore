@@ -35,6 +35,10 @@ pub struct UploadFileInfo {
 pub struct FileStoreManager(pub(crate) StoreServiceConfig);
 
 impl FileStoreManager {
+    pub fn new(ssc: StoreServiceConfig) -> Self {
+        Self(ssc)
+    }
+
     pub fn max_filesize(&self) -> usize {
         self.0.max_filesize.unwrap_or(20) as usize * 1024usize * 1024usize
     }
@@ -59,7 +63,7 @@ impl FileStoreManager {
     pub fn calc_filename(&self, org_filename: &str) -> String {
         let filename: PathBuf = org_filename.into();
         if let Some(ext) = filename.extension() {
-            let fileuuid = Uuid::new().to_lowercase().replace('-', "");
+            let fileuuid = Uuid::new().to_string().to_lowercase().replace('-', "");
             let filename_out = fileuuid + "." + &ext.to_string_lossy();
             filename_out
         } else {
@@ -113,7 +117,7 @@ impl FileStoreManager {
 
         let fullpath = self.get_store_path().join(subpath);
         if let Err(err) = std::fs::create_dir_all(fullpath.clone()) {
-            log::info!("Error to create subdirs: {}", err);
+            log::info!("Error to create subdirs: {err}");
         }
         fullpath.join(filename)
     }
@@ -129,9 +133,9 @@ impl FileStoreManager {
         let direct = self.0.download_direct;
         self.0.download_prefix.clone().map(|f| {
             if direct {
-                format!("{}{}", f, filename)
+                format!("{f}{filename}")
             } else {
-                format!("{}{}", f, file_id)
+                format!("{f}{file_id}")
             }
         })
     }

@@ -8,6 +8,7 @@ pub use auth::*;
 pub mod common;
 pub mod management;
 pub mod performance;
+pub mod proxy;
 pub mod tools;
 // pub mod crud;
 
@@ -40,7 +41,7 @@ lazy_static! {
             id: "_query".to_owned(),
             label: "查询服务".to_owned(),
             name: "Query".to_owned(),
-            icon: "Football".to_owned(),
+            icon: "Search".to_owned(),
             leaf: false
         },
         FunctionRegistry {
@@ -64,11 +65,24 @@ lazy_static! {
             icon: "Money".to_owned(),
             leaf: true
         },
+        FunctionRegistry {
+            id: "_fs".to_owned(),
+            label: "FileSystem".to_owned(),
+            name: "filesystem".to_owned(),
+            icon: "FolderOpened".to_owned(),
+            leaf: true
+        },
+        FunctionRegistry {
+            id: "_growthai".to_owned(),
+            label: "GrowthAI".to_owned(),
+            name: "growthai".to_owned(),
+            icon: "Avatar".to_owned(),
+            leaf: true
+        },
     ];
 }
 
 impl FunctionRegistry {
-    
     #[allow(dead_code)]
     pub fn get_all_functions() -> Vec<Self> {
         FUNCTION_REGISTRY_LIST.to_vec()
@@ -76,11 +90,34 @@ impl FunctionRegistry {
 
     #[allow(dead_code)]
     pub fn get_active_functions(ns: &str) -> Vec<Self> {
-        log::info!("active function for {ns}");
-        FUNCTION_REGISTRY_LIST.clone().into_iter().filter(|p| {
-            (p.id != "_es" && p.id != "_redis")
-            || (p.id == "_es" && MxStoreService::get(ns).map(|f| !f.get_plugin_config_by_protocol("elasticsearch").is_empty()).unwrap_or(false))
-            || (p.id == "_redis" && MxStoreService::get(ns).map(|f| f.get_config().redis_url.map(|url| !url.is_empty()).unwrap_or_default()).unwrap_or(false))
-        }).collect_vec()
+        // log::info!("active function for {ns}");
+        FUNCTION_REGISTRY_LIST
+            .iter()
+            .filter(|&p| {
+                (p.id != "_es" && p.id != "_redis" && p.id != "_fs" && p.id != "_growthai")
+                    || (p.id == "_fs"
+                        && MxStoreService::get(ns)
+                            .map(|f| !f.get_plugin_config_by_protocol("filesystem").is_empty())
+                            .unwrap_or(false))
+                    || (p.id == "_es"
+                        && MxStoreService::get(ns)
+                            .map(|f| !f.get_plugin_config_by_protocol("elasticsearch").is_empty())
+                            .unwrap_or(false))
+                    || (p.id == "_growthai"
+                        && MxStoreService::get(ns)
+                            .map(|f| !f.get_plugin_config_by_protocol("rag").is_empty())
+                            .unwrap_or(false))
+                    || (p.id == "_redis"
+                        && MxStoreService::get(ns)
+                            .map(|f| {
+                                f.get_config()
+                                    .redis_url
+                                    .map(|url| !url.is_empty())
+                                    .unwrap_or_default()
+                            })
+                            .unwrap_or(false))
+            })
+            .cloned()
+            .collect_vec()
     }
 }

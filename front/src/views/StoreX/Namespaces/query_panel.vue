@@ -6,8 +6,20 @@
                 <el-form-item label="引用名称">
                     <el-input v-model="data.name" />
                 </el-form-item>
+                <el-form-item label="描述">
+                    <el-input v-model="data.rest_desc"  type="textarea" :rows="3" />
+                </el-form-item>
                 <el-form-item label="支持分页查询">
                     <el-switch v-model="data.pagable" />
+                    <el-form-item label="返回单条记录">
+                      <el-switch v-model="data.onlyone" />
+                    </el-form-item>
+                    <el-form-item label="更新操作">
+                        <el-switch v-model="data.updatable" />
+                    </el-form-item>
+                    <el-form-item v-if="data.updatable" label="验证参数">
+                        <el-switch v-model="data.validate_params" />
+                    </el-form-item>                    
                 </el-form-item>
                 <el-form-item label="查询体">
                     <el-tabs v-model="activeName" type="border-card" style="width: 100%">
@@ -46,6 +58,15 @@
                     ${DATA_PERMISSION_SQL}的值大概为：INNER JOIN tbl_data_permit __p ON a.user_id = __p.user_id and __p.user_id = ?
                     其中a.user_id为授权字段，是自定义查询中某个表的一个字段，关联字段为关联到数据权限表的某个字段。
                   </div>
+                </el-form-item>
+                <el-form-item label="MCP工具" prop="mcp_tool">
+                    <template #label>
+                        MCP工具
+                        <el-tooltip class="box-item" effect="dark" placement="top-start" content="启用后，该查询的search或paged_search方法将公开为MCP的工具函数，以便让AI Agent进行调用。">
+                          <el-icon><InfoFilled /></el-icon>
+                        </el-tooltip>
+                    </template>
+                    <el-switch v-model="data.mcp_tool"></el-switch>
                 </el-form-item>
                 <el-form-item label="Hook"  prop="hooks">
                     <el-table :data="data.hooks">
@@ -116,7 +137,16 @@
                   </el-table-column>
                   <el-table-column label="类型" prop="col_type">
                       <template #default="scoped">
-                          <el-input v-model="scoped.row.col_type" />
+                          <el-select v-model="scoped.row.col_type">
+                            <el-option value="string" label="String">String</el-option>
+                            <el-option value="integer" label="整型长整型">整型长整型</el-option>
+                            <el-option value="double" label="浮点型">浮点型</el-option>
+                            <el-option value="decimal" label="Decimal">Decimal</el-option>
+                            <el-option value="bool" label="布尔型">布尔型</el-option>
+                            <el-option value="date" label="日期">日期</el-option>
+                            <el-option value="time" label="时间">时间</el-option>
+                            <el-option value="datetime" label="日期时间">日期时间</el-option>
+                        </el-select>
                       </template>
                   </el-table-column>
                   <el-table-column label="操作" width="60px">
@@ -185,7 +215,7 @@
                         <el-checkbox v-model="scoped.row.base64" :disabled="scoped.row.col_type !== 'binnary'"/>
                     </template>
                 </el-table-column>
-                <el-table-column label="脱敏" prop="desensitize">
+                <el-table-column label="脱敏/转换" prop="desensitize">
                     <template #default="scoped">
                         <el-select v-model="scoped.row.desensitize" :disabled="!(scoped.row.col_type === 'string' || scoped.row.col_type === 'String' || scoped.row.col_type === 'varchar' || scoped.row.col_type === 'str' || scoped.row.col_type === 'text')">
                             <el-option value="none" label="不作处理">不作处理</el-option>
@@ -194,9 +224,24 @@
                             <el-option value="base64"  label="Base64">Base64</el-option>
                             <el-option value="replace"  label="替换部分值">替换部分值</el-option>
                             <el-option value="null"  label="返回空">返回空</el-option>
+                            <el-option value="dict"  label="字典转换">字典转换</el-option>
+                            <el-option value="range"  label="区间值转换">区间值转换</el-option>
+                            <el-option value="subquery"  label="查询转换">查询转换</el-option>
+                            <el-option value="dateformat"  label="日期格式化">日期格式化</el-option>                            
                         </el-select>
                     </template>
                 </el-table-column>
+                <el-table-column label="参数" prop="conv_params"  width="160px">
+                    <template #header>
+                      参数
+                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="使用字典或查询进行转换时需要给定的参数">
+                        <el-icon><InfoFilled /></el-icon>
+                      </el-tooltip>
+                    </template>
+                    <template #default="scoped">
+                        <el-input v-model="scoped.row.conv_params" :disabled="!(scoped.row.desensitize === 'dict' || scoped.row.desensitize === 'range' || scoped.row.desensitize === 'subquery' || scoped.row.desensitize === 'dateformat')"/>
+                    </template>
+                </el-table-column>                
                   <el-table-column label="操作" width="60px">
                       <template #default="scoped">
                           <el-popconfirm title="确认要删除吗?" @confirm="onDelField(scoped.row)">
@@ -398,6 +443,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

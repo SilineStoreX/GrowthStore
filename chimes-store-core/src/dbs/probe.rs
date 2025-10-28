@@ -1,4 +1,6 @@
-use chimes_dbs_factory::{get_load_column_sql, get_load_one_tables_sql, get_load_table_pkey_sql, get_load_tables_sql};
+use chimes_dbs_factory::{
+    get_load_column_sql, get_load_one_tables_sql, get_load_table_pkey_sql, get_load_tables_sql,
+};
 use itertools::Itertools;
 use rbatis::RBatis;
 use serde::{Deserialize, Serialize};
@@ -19,15 +21,11 @@ unsafe impl Sync for TableInfo {}
 impl TableInfo {
     pub async fn load_tables(rb: &RBatis, table_schema: &str) -> anyhow::Result<Vec<TableInfo>> {
         // log::info!("TS: {}, TN: {}", table_schema.clone(), table_name.clone());
-        let rb_args = vec![rbs::to_value!(table_schema)];
+        let rb_args = vec![rbs::value!(table_schema)];
         let sql = get_load_tables_sql(rb);
-        match rb.query_decode::<Vec<TableInfo>>(
-            sql,
-            rb_args).await {
+        match rb.query_decode::<Vec<TableInfo>>(sql, rb_args).await {
             Ok(rt) => Ok(rt),
-            Err(err) => {
-                Err(anyhow::Error::new(err))
-            }
+            Err(err) => Err(anyhow::Error::new(err)),
         }
     }
 
@@ -37,21 +35,17 @@ impl TableInfo {
         table_name: &str,
     ) -> anyhow::Result<Option<TableInfo>> {
         // log::info!("TS: {}, TN: {}", table_schema.clone(), table_name.clone());
-        let rb_args = vec![rbs::to_value!(table_schema), rbs::to_value!(table_name)];
+        let rb_args = vec![rbs::value!(table_schema), rbs::value!(table_name)];
         let sql = get_load_one_tables_sql(rb);
-        match rb.query_decode::<Vec<TableInfo>>(
-            sql,
-            rb_args).await {
+        match rb.query_decode::<Vec<TableInfo>>(sql, rb_args).await {
             Ok(rt) => {
                 if rt.is_empty() {
                     Ok(None)
                 } else {
                     Ok(Some(rt[0].to_owned()))
                 }
-            },
-            Err(err) => {
-                Err(anyhow::Error::new(err))
             }
+            Err(err) => Err(anyhow::Error::new(err)),
         }
     }
 }
@@ -80,21 +74,21 @@ impl ColumnInfo {
     //        column_default, orginal_type, ordinal_position, character_maximum_length, is_nullable, numeric_precision, numeric_scale,
     //        FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = ? and table_name = ?")]
     pub async fn load_columns(rb: &RBatis, ts: &str, tn: &str) -> anyhow::Result<Vec<Self>> {
-        let rb_args = vec![rbs::to_value!(ts), rbs::to_value!(ts), rbs::to_value!(tn)];
+        let rb_args = vec![rbs::value!(ts), rbs::value!(ts), rbs::value!(tn)];
+
         // rb.update_by_wrapper(table, w, skips);
         let sql = get_load_column_sql(rb);
-        match rb.query_decode::<Vec<ColumnInfo>>(
-            sql,
-            rb_args).await {
-            Ok(rs) =>{
-                 Ok(rs.into_iter().map(|mut f| {
-                    f.data_type = Some(Self::convert_to_type(&f.orginal_type.clone().unwrap_or_default()));
+        match rb.query_decode::<Vec<ColumnInfo>>(sql, rb_args).await {
+            Ok(rs) => Ok(rs
+                .into_iter()
+                .map(|mut f| {
+                    f.data_type = Some(Self::convert_to_type(
+                        &f.orginal_type.clone().unwrap_or_default(),
+                    ));
                     f
-                }).collect_vec())
-            },
-            Err(err) => {
-                Err(anyhow::Error::new(err))
-            }
+                })
+                .collect_vec()),
+            Err(err) => Err(anyhow::Error::new(err)),
         }
     }
 
@@ -140,16 +134,12 @@ unsafe impl Sync for KeyColumnInfo {}
 
 impl KeyColumnInfo {
     pub async fn load_table_pkeys(rb: &RBatis, ts: &str, tn: &str) -> anyhow::Result<Vec<Self>> {
-        let rb_args = vec![rbs::to_value!(ts), rbs::to_value!(tn)];
+        let rb_args = vec![rbs::value!(ts), rbs::value!(tn)];
         // rb.update_by_wrapper(table, w, skips);
         let sql = get_load_table_pkey_sql(rb);
-        match rb.query_decode(
-            sql,
-            rb_args).await {
+        match rb.query_decode(sql, rb_args).await {
             Ok(rs) => Ok(rs),
-            Err(err) => {
-                Err(anyhow::Error::new(err))
-            }
+            Err(err) => Err(anyhow::Error::new(err)),
         }
     }
 }

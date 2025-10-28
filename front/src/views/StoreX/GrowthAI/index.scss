@@ -1,0 +1,130 @@
+.home {
+  height: calc(100vh - 160px);
+}
+
+.searchview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.percentbar {
+  padding: 0px 20px;
+  display: flex;
+}
+
+.percentbar span {
+  padding-right: 20px;
+  line-height: 32px;
+}
+
+.button_func {
+  padding: 0px;
+  display: flex;
+  justify-content: right;
+  width: 400px;
+}
+
+.filesystem {
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 10px;
+  padding-right: 10px;
+  line-height: 32px;
+}
+
+.filesystem .title {
+  padding-right: 10px;
+}
+
+.filesystem div {
+  line-height: 32px;
+}
+
+.pager-container {
+  padding: 10px;
+}
+
+.plus-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kbheader {
+  width: 100%;
+}
+
+.kbheader span {
+  display: block;
+  width: 100%;
+}
+
+.kbheader button {
+  float: right;
+  margin: 0px 5px;
+  padding: 0px;
+  height: 24px;
+}
+
+.kbcard {
+  --el-card-padding: 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.kbcard.selected {
+  background-color: #eee;
+}
+
+.kbcard .kb-container {
+  display: flex;
+  align-items: center;
+}
+
+.kbcard .kb-container span {
+  padding-left: 5px;
+}
+
+.kbcard .kb-action {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  text-align: right;
+}
+
+.kbcard .kb-action-right {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.kbcard .kb-action .summary {
+  line-height: 32px;
+  font-size: 12px;
+}
+
+.kbcard .kb-action .summary span {
+  padding-left: 4px;
+}
+
+.kbcard .kb-action button {
+  padding: 0px;
+}
+
+.page_header {
+  --el-header-height: 180px;
+}
+
+.intent_page_header {
+  --el-header-height: 150px;
+}
+
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

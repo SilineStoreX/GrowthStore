@@ -105,6 +105,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

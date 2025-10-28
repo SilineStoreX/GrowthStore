@@ -1,7 +1,8 @@
+schedule_state_uri = "object://com.siline/JobStateInfo"
 enable = true
 validate_token_only = false
 enable_captcha = false
-validate_url = ""
+validate_url = "compose://com.siline.chimes/usersign#SSOCheck"
 validate_basic = true
 user_search = "object://com.siline.chimes/ChimesUser#find_one"
 role_search = "query://com.siline.chimes/FindRoles#search"
@@ -14,9 +15,11 @@ role_name_field = "role_code"
 credential_hash_method = "rsa"
 credential_key = "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKF+1MyYMe/jdl0Of0FgRzUhHv5ehJ1nAuzyNN6N6Gpd55QUSX0VukRpMPa3IP9odPF+I9pAChVJJfZeY339t18CAwEAAQ=="
 credential_solt = "MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAoX7UzJgx7+N2XQ5/QWBHNSEe/l6EnWcC7PI03o3oal3nlBRJfRW6RGkw9rcg/2h08X4j2kAKFUkl9l5jff23XwIDAQABAkB+h1OMtNWzQMDU6e3UN+2yd6/D1iQK+tF0+dNoZ0CoTIntMvvhrzaYRXPc5CXjUmZ7BthNDpkiHGsSOp3OKthxAiEAzCdplSfyrLhyKSl+Y+M5HCd6WYSd1o99S7lO9Rt1A9cCIQDKghNnRoS3U60kVocBTpQtpp1kiYpCUQ4SS1nOtuN3uQIgPn3t/t9clGxdXaY67x6V071t4UsL+aqwouZVegfumL8CIQCp9IUIVdyoZ2eWabAgXqxpq73IVM5eXdxraiXTIRbCsQIgbP7KXXuloNG5/O8FeKTN+ThcZrkPqka98KiBTx+Jmgo="
+rsa_public_key = "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKF+1MyYMe/jdl0Of0FgRzUhHv5ehJ1nAuzyNN6N6Gpd55QUSX0VukRpMPa3IP9odPF+I9pAChVJJfZeY339t18CAwEAAQ=="
+rsa_private_key = "MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAoX7UzJgx7+N2XQ5/QWBHNSEe/l6EnWcC7PI03o3oal3nlBRJfRW6RGkw9rcg/2h08X4j2kAKFUkl9l5jff23XwIDAQABAkB+h1OMtNWzQMDU6e3UN+2yd6/D1iQK+tF0+dNoZ0CoTIntMvvhrzaYRXPc5CXjUmZ7BthNDpkiHGsSOp3OKthxAiEAzCdplSfyrLhyKSl+Y+M5HCd6WYSd1o99S7lO9Rt1A9cCIQDKghNnRoS3U60kVocBTpQtpp1kiYpCUQ4SS1nOtuN3uQIgPn3t/t9clGxdXaY67x6V071t4UsL+aqwouZVegfumL8CIQCp9IUIVdyoZ2eWabAgXqxpq73IVM5eXdxraiXTIRbCsQIgbP7KXXuloNG5/O8FeKTN+ThcZrkPqka98KiBTx+Jmgo="
 token_solt = "manabest"
 token_expire = 180000
-fail_bypass = true
+fail_bypass = false
 app_name = "comstar"
 enable_organization = false
 organization_field = "ORG_ID"
@@ -26,9 +29,22 @@ permit_userfield = "username"
 permit_relative_field = "user_id"
 enable_api_secure = true
 check_relative_user = false
+appsecret_provider = ""
+appsecret_redis = ""
+
+[[app_secret_keys]]
+app_id = "sid3nX_rXucjt4l"
+app_secret = "XoGJ_Go2uwtGul6Tg5oNd01GYIbuw4BBLJYm"
+username = "longzou"
+orgname = ""
+encryption = true
+token = "growth-Hc909nIbC7C3eiKXtZ2MAaFELBkjIC5E_LtAb7bd6T87"
 
 [[app_secret_keys]]
 app_id = "siddkZIXldJt0NE"
 app_secret = "7AFJTZJ342GibE8GAda4JZeDb_iDXrrvJDni"
 username = "admin"
-token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwidXNlcmlkIjoiMSIsInN1cGVyYWRtaW4iOnRydWUsImRvbWFpbiI6ImNvbXN0YXIiLCJleHAiOjE4MjQxNDI2MDF9.qMuRij1mmbDMwUGW_n7MWvXkuu_kwdF1BFgr4lk8GNg"
+userid = "1"
+orgname = "api-zone"
+encryption = true
+token = "growth-94d_2sIbfgC6mtxDQxXoJ0XCH45b6u_Hdwd46hGo03pY"

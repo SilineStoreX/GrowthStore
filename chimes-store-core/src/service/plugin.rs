@@ -66,4 +66,28 @@ impl Invocation for PluginServiceInvocation {
             None => Box::pin(async { Err(anyhow!("Not implemented")) }),
         }
     }
+
+    fn invoke_direct_query_v2(
+        &'static self,
+        uri: &InvokeUri,
+        ctx: Arc<Mutex<InvocationContext>>,
+        query: Value,
+        args: Vec<Value>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, Error>> + Send>> {
+        match MxStoreService::get_plugin_service(&uri.url_no_method()) {
+            Some(nss) => nss.invoke_direct_query(query, ctx, args.to_vec()),
+            None => Box::pin(async { Err(anyhow!("Not implemented")) }),
+        }
+    }
+
+    fn invoke_direct_query(
+        &'static self,
+        uri: &InvokeUri,
+        ctx: Arc<Mutex<InvocationContext>>,
+        query: String,
+        args: Vec<Value>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, Error>> + Send>> {
+        let q = serde_json::from_str(&query).unwrap_or(Value::Null);
+        self.invoke_direct_query_v2(uri, ctx, q, args)
+    }
 }

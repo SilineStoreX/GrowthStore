@@ -1,12 +1,13 @@
 [package]
-name = "store-server"
 authors.workspace = true
 categories.workspace = true
 default-run = "store-server"
-description = "An BaaS store engine."
+description.workspace = true
 edition.workspace = true
 keywords.workspace = true
 license.workspace = true
+name = "store-server"
+repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 build = "build.rs"
@@ -16,28 +17,40 @@ build = "build.rs"
 
 [dependencies]
 anyhow.workspace = true
-url = "2.5.0"
-clap = { version = "4.3", features = ["derive"] }
-derivative = "2.2.0"
-flume = "0.11.0"
-itertools = "0.12"
+uuid.workspace = true
+url.workspace = true
+clap.workspace = true
+clap-cargo.workspace = true
+derivative.workspace = true
+flume.workspace = true
+itertools.workspace = true
 log.workspace = true
-regex = "1.8"
+tracing = { workspace = true, features = ["log"] }
+fastrace = { workspace = true, features = ["enable"] }
+fastrace-tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-log = "0.2"
+fastrace-datadog = "*"
+fastrace-jaeger = "*"
+regex.workspace = true
 lazy_static.workspace = true
-base64 = "0.21.0"
-captcha = "0.0.9"
-rand = "0.8.5"
-libloading = "*"
-flexi_logger = { version = "0.28", features = ["async", "specfile", "json", "compress"] }
+base64.workspace = true
+captcha = "*"
+rand.workspace = true
+sysinfo = "0.37"
+libloading.workspace = true
+futures-util.workspace = true
+flexi_logger = { version = "0.31", features = ["async", "specfile", "json", "compress", "trc"] }
 ## simple_logger = { version = "5", features = ["stderr", "colored"] }
-toml = "0.8.6"
-jsonwebtoken = "9.1"
+toml.workspace = true
+jsonwebtoken.workspace = true
+tokio-stream.workspace = true
 substring.workspace = true
 chrono.workspace = true
-async-std.workspace = true
+##async-std.workspace = true
 fancy-regex = "*"
 walkdir = "*"
-zip = { version = "2.1", default-features = false, features = ["bzip2","deflate64","deflate","lzma"] }
+zip = { version = "=2.4.2", default-features = false, features = ["bzip2","deflate64","deflate","lzma"] }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
@@ -46,24 +59,54 @@ rbatis.workspace = true
 chimes-store-core.workspace = true
 chimes-store-utils.workspace = true
 chimes-store-dbs.workspace = true
-store-plugin-compose.workspace = true
-store-plugin-restapi.workspace = true
-store-plugin-weixin.workspace = true
-store-plugin-rhai.workspace = true
-store-plugin-kafka.workspace = true
-store-plugin-mqtt.workspace = true
+store-plugin-compose = "*"
+store-plugin-restapi = "*"
+store-plugin-weixin = "*"
+store-plugin-rhai = "*"
+store-plugin-python = { version = "*", optional = true }
+store-plugin-kafka = { version = "*", optional = true }
+store-plugin-mqtt = { version = "*", optional = true }
+store-plugin-es = { version = "*", optional = true }
+store-plugin-synctask = { version = "*", optional = true }
 salvo.workspace = true
+reqwest.workspace = true
+fastrace-opentelemetry = { version="*", optional = true}
+opentelemetry = { version = "0.30.0", optional = true, default-features = false, features = [
+  "trace",
+]}
+opentelemetry-otlp = { version = "0.30.0", optional = true, default-features = false, features = [
+  "trace",
+  "grpc-tonic",
+] }
+opentelemetry_sdk = { version = "0.30.0", optional = true, default-features = false, features = [
+  "trace",
+] }
 
 [target.'cfg(windows)'.dependencies]
-windows-service="0.6.0"
-windows={ version="0.48.0", features = [ "Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Time", "Win32_System_ProcessStatus", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper", "Win32_System_SystemInformation","Win32_System_Diagnostics_Debug"]}
+windows-service="0.8"
+windows={ version="0.62", features = [ "Win32_Foundation", "Win32_System_Threading", "Win32_System_Memory", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Time", "Win32_System_ProcessStatus", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper", "Win32_System_SystemInformation","Win32_System_Diagnostics_Debug"]}
 
 [target.'cfg(not(windows))'.dependencies]
 libc = "*"
-nix = { version = "*", features = ["default"] }
+nix = {version = "*", features = ["default"]}
+
 
 [features]
-default = ["plugin_rlib"]
+default = ["base", "python", "synctask"]
+base = ["plugin_rlib", "mqtt", "kafka", "es"]
 plugin_dylib = []
 plugin_rlib = []
-
+python = ["store-plugin-python"]
+mqtt = ["store-plugin-mqtt"]
+kafka = ["store-plugin-kafka"]
+es = ["store-plugin-es"]
+opentelemetry_reporter = ["fastrace-opentelemetry", "opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp"]
+mcp = []
+ragent = []
+voice = []
+rag = []
+rivermap = []
+synctask = ["store-plugin-synctask"]
+datagraph = []
+imagination = []
+filesystem = []

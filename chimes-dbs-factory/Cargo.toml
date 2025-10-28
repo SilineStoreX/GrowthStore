@@ -29,4 +29,4 @@ rbdc-tdengine = { version = "4.5" }
 #rbdc-mssql = { version = "4.5", default-features = false, features = ["tls-native-tls"] }
 #rbdc-tdengine = { version = "4.5", default-features = false, features = ["ws", "ws-tls-native-tls"] }
 rbatis.workspace = true
-rbdc = { version = "4.5" }
+rbdc.workspace = true

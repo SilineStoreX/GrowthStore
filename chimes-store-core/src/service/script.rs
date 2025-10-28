@@ -2,14 +2,12 @@ use anyhow::anyhow;
 use itertools::Itertools;
 use rbatis::Page;
 use serde_json::Value;
-use std::sync::Mutex;
-use std::{
-    collections::HashMap,
-    mem::MaybeUninit,
-    sync::{Arc, Once},
-};
+use std::sync::{Mutex, OnceLock};
+use std::{collections::HashMap, sync::Arc};
 
 use super::invoker::InvocationContext;
+
+pub type FnScriptEvalNamespaces = fn(script: &str) -> Result<Vec<String>, anyhow::Error>;
 
 pub type FnScriptReturnOptionEval = fn(
     script: &str,
@@ -48,6 +46,7 @@ pub type FnScriptFileReturnPageEval = fn(
 pub struct LangExtensions {
     pub lang: String,
     pub full_name: String,
+    pub fn_eval_script_namespace: Option<FnScriptEvalNamespaces>,
     pub fn_return_option_script: Option<FnScriptReturnOptionEval>,
     pub fn_return_option_file: Option<FnScriptFileReturnOptionEval>,
     pub fn_return_vec_script: Option<FnScriptReturnVecEval>,
@@ -98,6 +97,11 @@ impl LangExtensions {
         self.fn_return_page_file = Some(func);
         self
     }
+
+    pub fn with_eval_script_namespaces_fn(mut self, func: FnScriptEvalNamespaces) -> Self {
+        self.fn_eval_script_namespace = Some(func);
+        self
+    }
 }
 
 pub struct ExtensionRegistry {
@@ -105,27 +109,25 @@ pub struct ExtensionRegistry {
 }
 
 impl ExtensionRegistry {
-    pub fn get_mut() -> &'static mut ExtensionRegistry {
+    pub fn get() -> &'static Mutex<ExtensionRegistry> {
         // 使用MaybeUninit延迟初始化
-        static mut EXTENSION_REG_MAP: MaybeUninit<ExtensionRegistry> = MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static EXTENSION_ONCE: Once = Once::new();
+        static EXTENSION_REG_MAP: OnceLock<Mutex<ExtensionRegistry>> = OnceLock::new();
 
-        EXTENSION_ONCE.call_once(|| unsafe {
-            EXTENSION_REG_MAP.as_mut_ptr().write(ExtensionRegistry {
+        EXTENSION_REG_MAP.get_or_init(|| {
+            Mutex::new(ExtensionRegistry {
                 map: HashMap::new(),
-            });
-        });
-
-        unsafe { &mut (*EXTENSION_REG_MAP.as_mut_ptr()) }
+            })
+        })
     }
 
-    pub fn get() -> &'static ExtensionRegistry {
-        Self::get_mut()
-    }
+    // pub fn get() -> &'static ExtensionRegistry {
+    //     Self::get_mut()
+    // }
 
     pub fn get_extensions() -> Vec<(String, String)> {
         Self::get()
+            .lock()
+            .unwrap()
             .map
             .values()
             .map(|k| (k.lang.clone(), k.full_name.clone()))
@@ -133,13 +135,20 @@ impl ExtensionRegistry {
     }
 
     pub fn register(lang: &str, langext: LangExtensions) {
-        Self::get_mut()
+        Self::get()
+            .lock()
+            .unwrap()
             .map
             .insert(lang.to_owned(), Arc::new(langext));
     }
 
-    pub fn get_extension(lang: &str) -> Option<&Arc<LangExtensions>> {
-        Self::get().map.get(lang)
+    pub fn get_extension(lang: &str) -> Option<Arc<LangExtensions>> {
+        Self::get()
+            .lock()
+            .unwrap()
+            .map
+            .get(lang)
+            .map(|f| f.to_owned())
     }
 
     pub async fn invoke_return_one(

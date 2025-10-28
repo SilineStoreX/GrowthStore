@@ -6,21 +6,32 @@ use crate::{
     manager::{ManagementRequest, ManagementState},
     salvo_main::JwtClaims,
     utils::{
-        naming_property, zip::{check_zip_match_archive, create_zip_file, extract_zip_file}, AppConfig, ManageApiResult
+        naming_property,
+        zip::{check_zip_match_archive, create_zip_file, extract_zip_file},
+        AppConfig, ManageApiResult,
     },
 };
-use async_std::{path::PathBuf, stream::StreamExt};
-use chimes_store_core::{service::{invoker::JwtFromDepot, sdk::{InvokeUri, MxProbeService}, starter::save_config}, utils::global_data::{rsa_decrypt_with_private_key, rsa_encrypt_with_public_key}};
-use chimes_store_core::service::starter::MxStoreService;
+// use async_std::stream::StreamExt;
 use chimes_store_core::utils::ApiResult;
 use chimes_store_core::{
     config::{
         auth::AuthorizationConfig, Column, PluginConfig, QueryObject, ServerConfig, StoreObject,
         StoreServiceConfig,
     },
-    service::{invoker::InvocationContext, script::ExtensionRegistry}
+    service::{invoker::InvocationContext, script::ExtensionRegistry},
 };
-use chimes_store_dbs::docs::ToOpenApiDoc;
+use chimes_store_core::{docs::openapi::ToOpenApiDoc, service::starter::MxStoreService};
+use chimes_store_core::{
+    service::{
+        invoker::JwtFromDepot,
+        sdk::{InvokeUri, MxProbeService},
+        starter::save_config,
+    },
+    utils::global_data::{rsa_decrypt_with_private_key, rsa_encrypt_with_public_key},
+};
+
+use chimes_store_dbs::dbs::crud::remove_validate_object;
+use chimes_store_utils::file::get_current_dir;
 use itertools::Itertools;
 use jsonwebtoken::EncodingKey;
 use salvo::{
@@ -28,8 +39,9 @@ use salvo::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use substring::Substring;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use substring::Substring;
 
 #[derive(Serialize, Deserialize, Debug, ToParameters, ToSchema)]
 #[salvo(extract(
@@ -54,7 +66,6 @@ struct ChangePasswordRequest {
     pub new_password: String,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Default, ToParameters, ToSchema)]
 #[salvo(extract(
     default_source(from = "query"),
@@ -76,12 +87,16 @@ fn password_validate(username: &str, pt: &str, conf: &Config) -> bool {
     } else {
         Some(pt.to_owned())
     };
-    
+
     if pure.is_none() {
         return false;
     }
 
-    if let Some(ma) = maes.into_iter().filter(|p| p.username.to_lowercase() == username.to_owned().to_lowercase()).last() {
+    if let Some(ma) = maes
+        .into_iter()
+        .filter(|p| p.username.to_lowercase() == username.to_owned().to_lowercase())
+        .next_back()
+    {
         let mapwd = ma.credentials.clone();
         let mapure = if mapwd.starts_with("rsa:") {
             let mc = mapwd.substring(4, mapwd.len());
@@ -129,7 +144,7 @@ pub async fn signin(
                 expired: config.listen.expire_sec.unwrap_or(1800000),
             })),
             Err(err) => {
-                log::info!("Unable to encoding jwt_token: {}", err);
+                log::info!("Unable to encoding jwt_token: {err}");
                 Json(ManageApiResult::<AuthResponse>::error(
                     StatusCode::BAD_REQUEST.as_u16() as i32,
                     "Bad Request",
@@ -154,47 +169,59 @@ pub async fn change_pwd(
     if password_validate(&auth.username, &auth.password, config) {
         // update the config's manageraccount
         let mtx = ManagerAccountConfig::get_managers();
-        if  let Some(key) = config.rsa_public_key.clone() {
-            let cp = mtx.iter().map(|p| {
-                let mut f = p.clone();
-                if f.username.to_lowercase() == auth.username.to_lowercase() {
-                    if let Some(encpwd) = rsa_encrypt_with_public_key(&auth.new_password.clone(), &key) {
-                        f.credentials = format!("rsa:{}", encpwd);
-                    } else {
-                        f.credentials.clone_from(&auth.new_password);
+        if let Some(key) = config.rsa_public_key.clone() {
+            let cp = mtx
+                .iter()
+                .map(|p| {
+                    let mut f = p.clone();
+                    if f.username.to_lowercase() == auth.username.to_lowercase() {
+                        let newpwd = if auth.new_password.starts_with("rsa:") {
+                            let pwdtoken = auth.new_password.substring("rsa:".len(), auth.new_password.len());
+                            rsa_decrypt_with_private_key(pwdtoken, &config.rsa_private_key.clone().unwrap_or_default())
+                        } else {
+                            Some(auth.new_password.clone())
+                        };
+
+                        if let Some(encpwd) =
+                            rsa_encrypt_with_public_key(&newpwd.unwrap_or_default(), &key)
+                        {
+                            f.credentials = format!("rsa:{encpwd}");
+                        } else {
+                            f.credentials.clone_from(&auth.new_password);
+                        }
                     }
-                }
-                f
-            }).collect_vec();
+                    f
+                })
+                .collect_vec();
             ManagerAccountConfig::update(cp.clone());
             let mut conf = config.clone();
             conf.managers = cp;
-            // 
-            if let Ok(conf_path) = PathBuf::from_str(&MxStoreService::get_config_path()) {
-                if let Err(err) = save_config(&conf, conf_path.join("Config.toml")) {
-                    log::info!("Update configuration file failed {err}");
-                    Json(ManageApiResult::<AuthResponse>::error(
-                        StatusCode::FORBIDDEN.as_u16() as i32,
-                        "Username was not found or Password wrong",
-                    ))
-                } else {
-                    Json(ManageApiResult::<AuthResponse>::ok(
-                        AuthResponse {
-                            token: None,
-                            expired: 0
-                        }
-                    ))
+            //
+            let conf_path = match PathBuf::from_str(&MxStoreService::get_config_path()) {
+                Ok(cfpath) => cfpath,
+                Err(_) => {
+                    return Json(ManageApiResult::<AuthResponse>::error(
+                        StatusCode::BAD_REQUEST.as_u16() as i32,
+                        "Unable to parse PathBuf",
+                    ));
                 }
-            } else {
+            };
+            if let Err(err) = save_config(&conf, conf_path.join("Config.toml")) {
+                log::info!("Update configuration file failed {err}");
                 Json(ManageApiResult::<AuthResponse>::error(
-                    StatusCode::SERVICE_UNAVAILABLE.as_u16() as i32,
-                    "config_path error",
-                ))                
+                    StatusCode::FORBIDDEN.as_u16() as i32,
+                    "Username was not found or Password wrong",
+                ))
+            } else {
+                Json(ManageApiResult::<AuthResponse>::ok(AuthResponse {
+                    token: None,
+                    expired: 0,
+                }))
             }
         } else {
             Json(ManageApiResult::<AuthResponse>::error(
                 StatusCode::FORBIDDEN.as_u16() as i32,
-                "Username was not found or Password wrong",
+                "No public key setup",
             ))
         }
     } else {
@@ -223,7 +250,7 @@ pub async fn userinfo(depot: &mut Depot, _: &mut Request) -> Json<ApiResult<User
                     fullname: f.full_name.clone(),
                     id: f.username.clone(),
                 })
-                .last()
+                .next_back()
                 .unwrap_or(UserInfoResponse::default());
 
             Json(ApiResult::<UserInfoResponse>::ok(m))
@@ -251,7 +278,8 @@ pub async fn reload(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
         vec![reload_path.to_owned()],
     ));
 
-    let res: Option<Value> = mngr_receiver.into_stream().next().await;
+    // mngr_receiver.into_stream().next().await;
+    let res: Option<Value> = mngr_receiver.iter().next();
 
     Json(ApiResult::ok(json!({"result": res})))
 }
@@ -265,7 +293,8 @@ pub async fn save(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Value>
     // let request = Box::new(request.into());
     let _ = sender.send(ManagementRequest::Save(mngr_sender, vec![save_.to_owned()]));
 
-    let res: Option<Value> = mngr_receiver.into_stream().next().await;
+    // let res: Option<Value> = mngr_receiver.into_stream().next().await;
+    let res: Option<Value> = mngr_receiver.iter().next();
 
     Json(ApiResult::ok(json!({"result": res})))
 }
@@ -280,7 +309,7 @@ pub async fn auth_conf(
     log::info!("Loads authorization: {:?}", path.clone());
     match AuthorizationConfig::load(path) {
         Ok(auth) => Json(ApiResult::ok(auth)),
-        Err(err) => Json(ApiResult::error(400, &format!("error on {}", err))),
+        Err(err) => Json(ApiResult::error(400, &format!("error on {err}"))),
     }
 }
 
@@ -296,16 +325,13 @@ pub async fn save_auth_conf(
         Ok(authconf) => match authconf.save(path.clone()) {
             Ok(_) => {
                 if let Err(err) = AuthorizationConfig::load(path) {
-                    log::info!("Reload the Authorization.toml failed after saved. {}", err);
+                    log::info!("Reload the Authorization.toml failed after saved. {err}");
                 }
                 Json(ApiResult::ok(authconf))
             }
-            Err(err) => Json(ApiResult::error(500, &format!("error on {}", err))),
+            Err(err) => Json(ApiResult::error(500, &format!("error on {err}"))),
         },
-        Err(err) => Json(ApiResult::error(
-            400,
-            &format!("error on parse body {}", err),
-        )),
+        Err(err) => Json(ApiResult::error(400, &format!("error on parse body {err}"))),
     }
 }
 
@@ -316,7 +342,7 @@ pub async fn probe_schema(_depot: &mut Depot, req: &mut Request) -> Json<ApiResu
     match MxStoreService::get(ns_) {
         Some(ts) => match ts.probe_schema(schema_).await {
             Ok(rs) => Json(ApiResult::ok(json!(rs))),
-            Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+            Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
         },
         None => Json(ApiResult::error(404, "Service Not-Found ")),
     }
@@ -334,14 +360,17 @@ pub async fn probe_table(_depot: &mut Depot, req: &mut Request) -> Json<ApiResul
     match MxStoreService::get(ns_) {
         Some(ts) => match ts.probe_table(schema_, table_).await {
             Ok(rs) => {
-                let crs = rs.iter().map(|f| {
-                    let mut c = f.clone();
-                    c.prop_name = naming_property(f, rule_);
-                    c
-                }).collect_vec();
+                let crs = rs
+                    .iter()
+                    .map(|f| {
+                        let mut c = f.clone();
+                        c.prop_name = naming_property(f, rule_);
+                        c
+                    })
+                    .collect_vec();
                 Json(ApiResult::ok(json!(crs)))
-            },
-            Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+            }
+            Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
         },
         None => Json(ApiResult::error(404, "Service Not-Found ")),
     }
@@ -368,20 +397,31 @@ pub async fn generate(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Va
         .await
         .expect("Body format unexcept");
 
-    log::info!("Rec: {:?}", sto.clone());
 
     let newsto = if let Some(tss) = MxStoreService::get(&ns_) {
         let mut sxsto = vec![];
         for mut s in sto {
-            if s.object_type.is_empty() {
-                if let Ok(Some(tbl)) = tss.probe_one_table(&sch, &s.object_name).await {
-                    s.object_type = tbl.table_type.clone().unwrap_or_default();
+
+            let object_name = if let Some(schema_prefix) = s.schema_name.clone() {
+                let prefix = format!("{schema_prefix}.");
+                if s.object_name.starts_with(&prefix) {
+                    s.object_name.substring(prefix.len(), s.object_name.len()).to_string()
+                } else {
+                    s.object_name.clone()
                 }
-            }
-            let mut keys = s.get_key_columns().iter().map(|f| f.field_name.clone()).collect_vec();
-            
+            } else {
+                s.object_name.clone()
+            };
+
+
+            let mut keys = s
+                .get_key_columns()
+                .iter()
+                .map(|f| f.field_name.clone())
+                .collect_vec();
+
             if keys.is_empty() {
-                if let Ok(kss) = tss.probe_table_keys(&sch, &s.object_name).await {
+                if let Ok(kss) = tss.probe_table_keys(&sch, &object_name).await {
                     keys = kss
                         .into_iter()
                         .map(|f| f.column_name.unwrap())
@@ -389,7 +429,7 @@ pub async fn generate(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Va
                 }
             }
             if s.fields.is_empty() {
-                if let Ok(vss) = tss.probe_table(&sch, &s.object_name).await {
+                if let Ok(vss) = tss.probe_table(&sch, &object_name).await {
                     s.fields = vss
                         .into_iter()
                         .map(|f| {
@@ -401,6 +441,14 @@ pub async fn generate(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Va
                         })
                         .collect::<Vec<Column>>();
                 };
+            }
+
+            if let Ok(Some(tbl)) = tss.probe_one_table(&sch, &object_name).await {
+                if s.object_type.is_empty() {
+                    s.object_type = tbl.table_type.clone().unwrap_or_default();
+                }
+                s.object_name = tbl.table_name.clone().unwrap_or_default();
+                s.schema_name = tbl.table_schema.clone();
             }
 
             sxsto.push(s);
@@ -416,7 +464,8 @@ pub async fn generate(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Va
 
     let _ = sender.send(ManagementRequest::Save(mngr_sender, vec![ns_]));
 
-    let res: Option<Value> = mngr_receiver.into_stream().next().await;
+    // let res: Option<Value> = mngr_receiver.into_stream().next().await;
+    let res: Option<Value> = mngr_receiver.iter().next();
 
     Json(ApiResult::ok(json!({"result": res})))
 }
@@ -429,7 +478,23 @@ pub async fn fetch_namespaces(_depot: &mut Depot, _req: &mut Request) -> Json<Ap
 
     let ret = nss.into_iter().map(|f| json!({"id": f, "label": f, "icon": "Present", "children": FunctionRegistry::get_active_functions(&f).into_iter().map(|l| {
         let mut cl = l.clone();
-        cl.id = format!("{}:{}", f, l.id);
+        cl.id = if l.id == "_fs" || l.id == "_es" || l.id == "_redis" || l.id == "_growthai" {
+            if let Some(tss) = MxStoreService::get(&f) {
+                let plcd = tss.get_plugin_config_by_protocol(&l.name);
+                if plcd.is_empty() {
+                    format!("{}:{}:_", f, l.id)
+                } else {
+                    let plc = plcd[0].clone();
+                    format!("{}:{}:{}", f, l.id, plc.name)
+                }
+            } else {
+                format!("{}:{}:_", f, l.id)
+            }            
+        } else {
+            format!("{}:{}", f, l.id)
+        };
+
+        // log::info!("cl.id: {} with name: {}", cl.id, cl.name);
 
         let children: Vec<Value> = if let Some(tss) = MxStoreService::get(&f) {
             let conf = tss.get_config();
@@ -493,9 +558,10 @@ pub async fn update(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
                 "object" => match req.parse_body::<Vec<StoreObject>>().await {
                     Ok(sts) => {
                         MxStoreService::update_service_add_objects(&ns_, &sts);
+                        remove_validate_object(&ns_); //remove cached schema
                     }
                     Err(err) => {
-                        log::info!("Parse the request body error: {:?}", err);
+                        log::info!("Parse the request body error: {err:?}");
                         return Json(ApiResult::error(
                             400,
                             "Could not parse request body as StoreObject."
@@ -521,7 +587,7 @@ pub async fn update(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
                         MxStoreService::update_service_add_plugin(&ns_, &sts).await;
                     }
                     Err(err) => {
-                        log::info!("Could not parse to plugin-clonfig. {:?}", err);
+                        log::info!("Could not parse to plugin-clonfig. {err:?}");
                         return Json(ApiResult::error(
                             400,
                             "Could not parse request body as PluginConfig.",
@@ -534,12 +600,12 @@ pub async fn update(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
                         if let Err(err) = MxStoreService::update_and_save_namespace(&sts, path) {
                             return Json(ApiResult::error(
                                 500,
-                                &format!("Save the Namesapce config failed. {:?}", err),
+                                &format!("Save the Namesapce config failed. {err:?}"),
                             ));
                         }
                     }
                     Err(err) => {
-                        log::info!("Could not parse to plugin-clonfig. {:?}", err);
+                        log::info!("Could not parse to plugin-clonfig. {err:?}");
                         return Json(ApiResult::error(
                             400,
                             "Could not parse request body as PluginConfig.",
@@ -559,7 +625,9 @@ pub async fn update(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
 
             let _ = sender.send(ManagementRequest::Save(mngr_sender, vec![ns_]));
 
-            let res: Option<Value> = mngr_receiver.into_stream().next().await;
+            // let res: Option<Value> = mngr_receiver.into_stream().next().await;
+
+            let res: Option<Value> = mngr_receiver.iter().next();
 
             Json(ApiResult::ok(json!({"result": res})))
         }
@@ -599,12 +667,12 @@ pub async fn create_namespace(_depot: &mut Depot, req: &mut Request) -> Json<Api
                             Ok(_) => Json(ApiResult::ok(Value::String("OK".to_string()))),
                             Err(err) => Json(ApiResult::error(
                                 500,
-                                &format!("error to save file {:?}", err),
+                                &format!("error to save file {err:?}"),
                             )),
                         }
                     }
                     Err(err) => {
-                        log::info!("Could not parse to plugin-clonfig. {:?}", err);
+                        log::info!("Could not parse to plugin-clonfig. {err:?}");
                         Json(ApiResult::error(
                             400,
                             "Could not parse request body as PluginConfig.",
@@ -699,7 +767,8 @@ pub async fn delete(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Valu
 
             let _ = sender.send(ManagementRequest::Save(mngr_sender, vec![ns_]));
 
-            let res: Option<Value> = mngr_receiver.into_stream().next().await;
+            // let res: Option<Value> = mngr_receiver.into_stream().next().await;
+            let res: Option<Value> = mngr_receiver.iter().next();
 
             Json(ApiResult::ok(json!({"result": res})))
         }
@@ -753,8 +822,8 @@ pub async fn config_get(_depot: &mut Depot, req: &mut Request) -> Json<ApiResult
 
     let ctx = Arc::new(Mutex::new(InvocationContext::new()));
 
-    match MxStoreService::invoke_return_one(
-        format!("{}://{}/{}#get_config", schema_, ns_, name_),
+    match MxStoreService::manage_invoke(
+        format!("{schema_}://{ns_}/{name_}#get_config"),
         ctx,
         vec![],
     )
@@ -763,7 +832,6 @@ pub async fn config_get(_depot: &mut Depot, req: &mut Request) -> Json<ApiResult
         Ok(val) => Json(ApiResult::ok(val)),
         Err(_err) => Json(ApiResult::error(404, "Service Not-Found ")),
     }
-
 }
 
 #[endpoint]
@@ -780,7 +848,7 @@ pub async fn config_save(
     let body_val = match req.parse_body::<Value>().await {
         Ok(v) => v,
         Err(err) => {
-            log::debug!("Parse the body for save_config with errror {:?}", err);
+            log::debug!("Parse the body for save_config with errror {err:?}");
             return Json(ManageApiResult::error(500, "Could not parse the body"));
         }
     };
@@ -791,8 +859,8 @@ pub async fn config_save(
 
     let ctx = Arc::new(Mutex::new(InvocationContext::new()));
 
-    match MxStoreService::invoke_return_one(
-        format!("{}://{}/{}#save_config", schema_, ns_, name_),
+    match MxStoreService::manage_invoke(
+        format!("{schema_}://{ns_}/{name_}#save_config"),
         ctx,
         vec![body_val, json!({"model_path": config_path })],
     )
@@ -800,11 +868,10 @@ pub async fn config_save(
     {
         Ok(val) => Json(ManageApiResult::ok(val)),
         Err(err) => {
-            log::warn!("Could not service this method {:?}", err);
+            log::warn!("Could not service this method {err:?}");
             Json(ManageApiResult::error(500, "Service Not-Found"))
         }
     }
-
 }
 
 #[handler]
@@ -821,10 +888,7 @@ pub async fn metadata_get(depot: &mut Depot, req: &mut Request) -> Text<String> 
     // TODO: should to replace to assets path
     let meta_path = match webconfig.config_path.canonicalize() {
         Ok(mp) => mp.join("../").join("metadata/").canonicalize().unwrap(),
-        Err(_) => std::env::current_exe()
-            .map(|p| p.join("../").canonicalize().unwrap())
-            .unwrap_or(std::env::current_dir().unwrap())
-            .join("metadata/"),
+        Err(_) => get_current_dir().unwrap().join("metadata/"),
     };
 
     // 两套逻辑
@@ -844,7 +908,7 @@ pub async fn metadata_get(depot: &mut Depot, req: &mut Request) -> Text<String> 
     match std::fs::read_to_string(meta_file) {
         Ok(jt) => Text::Json(jt),
         Err(err) => {
-            log::debug!("Could not read the file {:?}", err);
+            log::debug!("Could not read the file {err:?}");
             Text::Json(json!(ApiResult::<Value>::ok(json!({}))).to_string())
         }
     }
@@ -861,8 +925,8 @@ pub async fn metadata_generate(
 
     let ctx = Arc::new(Mutex::new(InvocationContext::new()));
 
-    match MxStoreService::invoke_return_one(
-        format!("{}://{}/{}#get_config", schema_, ns_, name_),
+    match MxStoreService::manage_invoke(
+        format!("{schema_}://{ns_}/{name_}#get_config"),
         ctx,
         vec![],
     )
@@ -871,7 +935,6 @@ pub async fn metadata_generate(
         Ok(val) => Json(ApiResult::ok(val)),
         Err(_err) => Json(ApiResult::error(404, "Service Not-Found ")),
     }
-
 }
 
 #[handler]
@@ -916,17 +979,17 @@ pub async fn export_namespace(_depot: &mut Depot, req: &mut Request, res: &mut R
 
             let archive_file = archive_path
                 .join("archives/")
-                .with_file_name(format!("{}.zip", ns));
+                .with_file_name(format!("{ns}.zip"));
 
             match create_zip_file(archive_file.clone(), &asset_path, &files) {
                 Ok(_) => {
                     NamedFile::builder(archive_file)
-                        .attached_name(format!("{}.zip", ns))
+                        .attached_name(format!("{ns}.zip"))
                         .send(req.headers(), res)
                         .await;
                 }
                 Err(err) => {
-                    res.render(Json(ApiResult::<String>::error(500, &format!("{}", err))));
+                    res.render(Json(ApiResult::<String>::error(500, &format!("{err}"))));
                 }
             }
         }
@@ -975,8 +1038,7 @@ pub async fn restore_namespace(
                 return Json(ApiResult::<Option<Value>>::error(
                     500,
                     &format!(
-                        "Could not parse or extract the archive file for extract, err is {}",
-                        err
+                        "Could not parse or extract the archive file for extract, err is {err}"
                     ),
                 ));
             }
@@ -993,7 +1055,8 @@ pub async fn restore_namespace(
             vec![reload_path.to_owned()],
         ));
 
-        let res: Option<Value> = mngr_receiver.into_stream().next().await;
+        // let res: Option<Value> = mngr_receiver.into_stream().next().await;
+        let res: Option<Value> = mngr_receiver.iter().next();
 
         Json(ApiResult::ok(res))
     } else {
@@ -1015,13 +1078,15 @@ pub async fn metadata_openapi(depot: &mut Depot, req: &mut Request) -> Text<Stri
         version: Some("0.2.0".to_owned()),
     };
 
+    log::info!("calling metadata openapi.json");
+
     match MxStoreService::get(&ns) {
         Some(tss) => {
             let doc = tss.to_openapi_doc(&conf);
             match serde_json::to_string(&doc) {
                 Ok(text) => Text::Json(text),
                 Err(err) => {
-                    log::info!("could not generate api-docs {}", err);
+                    log::info!("could not generate api-docs {err}");
                     Text::Json(json!({}).to_string())
                 }
             }
@@ -1038,19 +1103,29 @@ pub async fn auth_roles(_depot: &mut Depot, _req: &mut Request) -> Json<ApiResul
 }
 
 #[handler]
-pub async fn fetch_plugin_name(_depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Vec<String>>> {
+pub async fn fetch_plugin_name(
+    _depot: &mut Depot,
+    req: &mut Request,
+) -> Json<ApiResult<Vec<String>>> {
     if let Ok(query) = req.parse_queries::<Value>() {
-        let protocol = query.get("protocol").map(|f| f.as_str().unwrap_or_default().to_owned()).unwrap_or_default();
-        let ns = query.get("ns").map(|f| f.as_str().unwrap_or_default().to_owned()).unwrap_or_default();
+        let protocol = query
+            .get("protocol")
+            .map(|f| f.as_str().unwrap_or_default().to_owned())
+            .unwrap_or_default();
+        let ns = query
+            .get("ns")
+            .map(|f| f.as_str().unwrap_or_default().to_owned())
+            .unwrap_or_default();
         if let Some(stt) = MxStoreService::get(&ns) {
             let plss = stt.get_plugin_config_by_protocol(&protocol);
-            return Json(ApiResult::ok(plss.iter().map(|f| f.name.clone()).collect::<Vec<String>>()));
+            return Json(ApiResult::ok(
+                plss.iter().map(|f| f.name.clone()).collect::<Vec<String>>(),
+            ));
         }
     }
 
     Json(ApiResult::ok(vec![]))
 }
-
 
 #[handler]
 pub async fn execute_common_management(
@@ -1068,20 +1143,17 @@ pub async fn execute_common_management(
             match tt.clone() {
                 Value::Array(mut tms) => {
                     args.append(&mut tms);
-                },
+                }
                 Value::Object(_tm) => {
                     args.push(tt);
                 }
                 _ => {
-                    return Json(ApiResult::error(
-                        400,
-                        "No payload provided",
-                    ));
+                    return Json(ApiResult::error(400, "No payload provided"));
                 }
             };
         }
         Err(err) => {
-            log::info!("Could not parse the body as json value {:?}", err);
+            log::info!("Could not parse the body as json value {err:?}");
             args.push(Value::Null);
         }
     }
@@ -1094,19 +1166,16 @@ pub async fn execute_common_management(
                     Ok(ret) => Json(ApiResult::ok(ret)),
                     Err(err) => Json(ApiResult::error(
                         500,
-                        &format!("Runtime exception: {:?}", err),
+                        &format!("Runtime exception: {err:?}"),
                     )),
                 }
             }
             None => Json(ApiResult::error(
                 404,
-                &format!("Not-Found for plugin-service {}", uri),
+                &format!("Not-Found for plugin-service {uri}"),
             )),
         }
     } else {
-        Json(ApiResult::error(
-            404,
-            &format!("Could not parse URI {}", uri),
-        ))
+        Json(ApiResult::error(404, &format!("Could not parse URI {uri}")))
     }
 }

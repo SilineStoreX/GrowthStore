@@ -1,3 +1,4 @@
+use crate::docs::openapi::ToMCPTools;
 use crate::pin_submit;
 use crate::service::invoker::InvocationContext;
 use crate::service::script::ExtensionRegistry;
@@ -6,15 +7,18 @@ use crate::service::starter::MxStoreService;
 use crate::utils::global_data::i64_from_str;
 use anyhow::anyhow;
 use auth::JwtUserClaims;
-use futures_lite::Future;
+use chimes_dbs_factory::get_query_field_value_present;
+use chimes_store_utils::template::SchemaObjectType;
 use itertools::Itertools;
 use rbatis::Page;
 use rbatis::PageRequest;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
+use substring::Substring;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -41,12 +45,12 @@ pub trait HookInvoker {
         &self,
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
-    ) -> impl Future<Output = Result<Option<Value>, anyhow::Error>> + Send;
+    ) -> Pin<Box<dyn Future<Output = Result<Option<Value>, anyhow::Error>> + Send>>;
     fn invoke_return_page(
         &self,
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
-    ) -> impl Future<Output = Result<Page<Value>, anyhow::Error>> + Send;
+    ) -> Pin<Box<dyn Future<Output = Result<Page<Value>, anyhow::Error>> + Send>>;
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -65,45 +69,52 @@ impl HookInvoker for MethodHook {
     /**
      * 根据Hook的脚本来执行对应的Hook
      */
-    async fn invoke_return_option(
+    fn invoke_return_option(
         &self,
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
-    ) -> Result<Option<Value>, anyhow::Error> {
+    ) -> Pin<Box<dyn Future<Output = Result<Option<Value>, anyhow::Error>> + Send>> {
         let script_ = self.script.clone();
-        if self.lang == *"invoke_uri" {
-            if self.event {
+        let lang_ = self.lang.clone();
+        let event_ = self.event;
+
+        if lang_ == *"invoke_uri" {
+            if event_ {
                 let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
                 pin_submit!(async move {
-                    if let Err(err) = MxStoreService::invoke_return_one(script_, taskctx, args).await {
+                    if let Err(err) =
+                        MxStoreService::invoke_return_one(script_, taskctx, args).await
+                    {
                         log::info!("error in invoker {err}");
                     }
                 });
-                Ok(None)
+                Box::pin(async move { Ok(None) })
             } else {
-                MxStoreService::invoke_return_one(script_, ctx, args).await
+                Box::pin(async move { MxStoreService::invoke_return_one(script_, ctx, args).await })
             }
-        } else if let Some(lang) = ExtensionRegistry::get_extension(&self.lang) {
-            if let Some(eval_func) = lang.fn_return_option_script {
-                if self.event {
+        } else if let Some(langext) = ExtensionRegistry::get_extension(&lang_) {
+            if let Some(eval_func) = langext.fn_return_option_script {
+                if event_ {
                     let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
-                    pin_submit!(async move { 
+                    pin_submit!(async move {
                         if let Err(err) = eval_func(&script_, taskctx, &args) {
                             log::info!("error on eval script {err}");
-                        } 
+                        }
                     });
-                    Ok(None)
+                    Box::pin(async move { Ok(None) })
                 } else {
-                    eval_func(&script_, ctx, &args)
+                    Box::pin(async move { eval_func(&script_, ctx, &args) })
                 }
             } else {
-                Err(anyhow!(
-                    "Not Found the lang extension to eval return_one invoker {}",
-                    self.lang
-                ))
+                Box::pin(async move {
+                    Err(anyhow!(
+                        "Not Found the lang extension to eval return_one invoker {}",
+                        lang_
+                    ))
+                })
             }
         } else {
-            Err(anyhow!("Not Found the lang extension {}", self.lang))
+            Box::pin(async move { Err(anyhow!("Not Found the lang extension {}", lang_)) })
         }
     }
 
@@ -122,18 +133,18 @@ impl HookInvoker for MethodHook {
             if event_ {
                 let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
                 pin_submit!(async move {
-                    if let Err(err) = MxStoreService::invoke_return_vec(script_, taskctx, args).await {
+                    if let Err(err) =
+                        MxStoreService::invoke_return_vec(script_, taskctx, args).await
+                    {
                         log::info!("error in invoker vec {err}");
                     }
                 });
                 Box::pin(async move { Ok(vec![]) })
             } else {
-                log::debug!("Calling the hook in blockon.");
                 Box::pin(async move {
-                    match MxStoreService::invoke_return_vec(script_, ctx, args).await
-                    {
+                    match MxStoreService::invoke_return_vec(script_, ctx, args).await {
                         Ok(tt) => {
-                            log::info!("Ret: {:?}", tt);
+                            log::info!("Ret: {tt:?}");
                             Ok(tt)
                         }
                         Err(err) => Err(err),
@@ -144,16 +155,14 @@ impl HookInvoker for MethodHook {
             if let Some(eval_func) = lang.fn_return_vec_script {
                 if self.event {
                     let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
-                    pin_submit!(async move { 
+                    pin_submit!(async move {
                         if let Err(err) = eval_func(&script_, taskctx, &args) {
                             log::info!("error eval script {err}");
                         }
                     });
                     Box::pin(async move { Ok(vec![]) })
                 } else {
-                    Box::pin(async move {
-                        eval_func(&script_, ctx, &args)
-                    })
+                    Box::pin(async move { eval_func(&script_, ctx, &args) })
                 }
             } else {
                 Box::pin(async move {
@@ -164,54 +173,62 @@ impl HookInvoker for MethodHook {
                 })
             }
         } else {
-            Box::pin(async move {
-                Err(anyhow!("Not Found the lang extension {}", lang_))
-            })
+            Box::pin(async move { Err(anyhow!("Not Found the lang extension {}", lang_)) })
         }
     }
 
     /**
      * 根据Hook的脚本来执行对应的Hook
      */
-    async fn invoke_return_page(
+    fn invoke_return_page(
         &self,
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
-    ) -> Result<Page<Value>, anyhow::Error> {
+    ) -> Pin<Box<dyn Future<Output = Result<Page<Value>, anyhow::Error>> + Send>> {
+        let lang_ = self.lang.clone();
+        let event_ = self.event;
         let script_ = self.script.clone();
-        if self.lang == *"invoke_uri" {
-            if self.event {
+
+        if lang_ == *"invoke_uri" {
+            if event_ {
                 let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
                 pin_submit!(async move {
-                    if let Err(err) = MxStoreService::invoke_return_page(script_, taskctx, args).await {
+                    if let Err(err) =
+                        MxStoreService::invoke_return_page(script_, taskctx, args).await
+                    {
                         log::info!("error in invoker page {err}");
                     }
                 });
-                Ok(Page::new_total(0, 0, 0))
+
+                Box::pin(async move { Ok(Page::new_total(0, 0, 0)) })
             } else {
-                MxStoreService::invoke_return_page(script_, ctx, args).await
+                Box::pin(
+                    async move { MxStoreService::invoke_return_page(script_, ctx, args).await },
+                )
             }
-        } else if let Some(lang) = ExtensionRegistry::get_extension(&self.lang) {
+        } else if let Some(lang) = ExtensionRegistry::get_extension(&lang_) {
             if let Some(eval_func) = lang.fn_return_page_script {
                 if self.event {
                     let taskctx = Arc::new(Mutex::new(InvocationContext::new()));
-                    pin_submit!(async move { 
+                    pin_submit!(async move {
                         if let Err(err) = eval_func(&script_, taskctx, &args) {
                             log::info!("error eval script {err}");
                         }
                     });
-                    Ok(Page::new_total(0, 0, 0))
+                    Box::pin(async move { Ok(Page::new_total(0, 0, 0)) })
                 } else {
-                    eval_func(&script_, ctx, &args)
+                    Box::pin(async move { eval_func(&script_, ctx, &args) })
                 }
             } else {
-                Err(anyhow!(
-                    "Not Found the lang extension to eval return_one invoker {}",
-                    self.lang
-                ))
+                Box::pin(async move {
+                    Err(anyhow!(
+                        "Not Found the lang extension to eval return_one invoker {}",
+                        lang_
+                    ))
+                })
             }
         } else {
-            Err(anyhow!("Not Found the lang extension {}", self.lang))
+            Box::pin(async move { Err(anyhow!("Not Found the lang extension {}", lang_)) })
         }
     }
 }
@@ -223,7 +240,7 @@ pub struct Column {
     pub prop_name: Option<String>,
 
     #[serde(default)]
-    #[serde(deserialize_with = "i64_from_str")]    
+    #[serde(deserialize_with = "i64_from_str")]
     pub col_length: Option<i64>,
     pub col_type: Option<String>,
     pub field_type: Option<String>,
@@ -231,22 +248,29 @@ pub struct Column {
     pub pkey: bool,
 
     #[serde(default)]
+    pub required: bool,
+
+    #[serde(default)]
     pub base64: bool,
 
     #[serde(default)]
-    pub crypto_store: bool,        // 该字段保存加密后的信息
+    pub incidental: bool, // True表示该字段为附带字段，将不作为保存处理
 
     #[serde(default)]
-    pub detail_only: bool,         // 该字段只在select/find_one中体现，对query/paged_query则不进行查出，主要用于text/blob字段处理。
+    pub crypto_store: bool, // 该字段保存加密后的信息
+
+    #[serde(default)]
+    pub detail_only: bool, // 该字段只在select/find_one中体现，对query/paged_query则不进行查出，主要用于text/blob字段处理。
     pub title: Option<String>,
     pub generator: Option<String>,
     pub validation: Option<String>, // 验证该字段数据的表达式（主要作为于Insert/Update/Upsert）
     pub desensitize: Option<String>, // 脱敏配置
+    pub conv_params: Option<String>, // 字典转换或查询转换时指定的参数
     pub permitted: Option<String>,  // 赋予某角色可读写
     pub relation_object: Option<String>,
     pub relation_field: Option<String>,
     #[serde(default)]
-    pub relation_array: bool,            // 对于N..N关系，以及 1..N关系，，在Query时不加载出来，只有在find_one或select时才进行加载..N的关系
+    pub relation_array: bool, // 对于N..N关系，以及 1..N关系，，在Query时不加载出来，只有在find_one或select时才进行加载..N的关系
     pub relation_middle: Option<String>, // 中间表的表达式，用于实现N..N关系
 }
 
@@ -254,10 +278,192 @@ unsafe impl Send for Column {}
 
 unsafe impl Sync for Column {}
 
+
+impl Column {
+    
+    pub fn is_autogenerate_column(&self) -> bool {
+        if let Some(g) = &self.generator {
+            match g.as_str() {
+                "autoincrement" | "uuid" | "snowflakeid" => true,
+                _ => false
+            }
+        } else {
+            false
+        }
+    }
+
+    fn parse_validate(&self, valpatter: Option<String>) -> Result<(Option<i64>, Option<i64>, Option<i64>, Option<String>), anyhow::Error> {
+        if let Some(validation) = valpatter {
+            if validation.contains("min=") || validation.contains("max=") {
+                if let Some((stfirst, stlast)) = validation.split_once(";") {
+                    let first = stfirst.trim();
+                    let last = stlast.trim();
+
+                    let min = if first.starts_with("min=") {
+                        first.substring(4, first.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else if last.starts_with("min=") {
+                        last.substring(4, last.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else {
+                        None
+                    };
+
+                    let max = if first.starts_with("max=") {
+                        first.substring(4, first.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else if last.starts_with("max=") {
+                        last.substring(4, last.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else {
+                        None
+                    };
+                    Ok((max, min, None, None))
+                } else {
+                    Ok((None, None, None, None))
+                }
+            } else if validation.contains("min-len=") || validation.contains("pattern="){
+                if let Some((stfirst, stlast)) = validation.split_once(";") {
+                    let first = stfirst.trim();
+                    let last = stlast.trim();                    
+                    let minlen = if first.starts_with("min-len=") {
+                        first.substring("min-len=".len(), first.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else if last.starts_with("min-len=") {
+                        last.substring(4, last.len()).parse::<i64>().map(Some).unwrap_or(None)
+                    } else {
+                        None
+                    };
+
+                    let pattern = if first.starts_with("pattern=") {
+                        first.substring("pattern=".len(), first.len())
+                    } else if last.starts_with("pattern=") {
+                        last.substring("pattern=".len(), last.len())
+                    } else {
+                        last
+                    };
+                    Ok((None, None, minlen, Some(pattern.to_owned())))
+                } else {
+                    Ok((None, None, None, None))
+                }
+            } else {
+                // Only regex pattern
+                Ok((None, None, None, Some(validation)))
+            }
+        } else {
+            Ok((None, None, None, None))
+        }
+    }
+
+    pub fn to_column_schema(&self, stc: &StoreServiceConfig, withpk: bool) -> SchemaObjectType {
+        // 这里有一个问题，需要重新建模
+        // 如果该字段所映射的是一个一对多的关系，则在这里无法进行表达了，
+        // 一对一的，则应该可以
+        // let prop_name = self.prop_name.clone().unwrap_or(self.field_name.clone());
+        if let Some(objname) = &self.relation_object {
+            if let Some(sto) = stc.get_object(&objname) {
+                if let Some(sch) = sto.to_validate_schema(stc, false, withpk).map(Some).unwrap_or(None) {
+                    let prop_schema = if self.relation_array {
+                        SchemaObjectType {
+                            title: self.title.clone(),
+                            r#type: Some("array".to_string()),
+                            items: Some(vec![sch]),
+                            ..Default::default()
+                        }
+                    } else {
+                        sch
+                    };
+
+                    return prop_schema;
+                }
+            }
+        }
+        let (max, min, minlen, pattern) = self.parse_validate(self.validation.clone()).unwrap_or((None, None, None, None));
+        // let required = if withpk && self.pkey {
+        //     true
+        // } else {
+        //     self.required || (!withpk && !self.is_autogenerate_column())
+        // };
+
+        // if required {
+        //     // required_fields.push(prop_name.clone());
+        // }
+
+        let col_type = self.col_type
+            .clone()
+            .map(|f| match f.to_lowercase().as_str() {
+                "String" | "varchar" | "string" | "text" | "longtext" => {
+                    "string"
+                },
+                "Long" | "long" | "i64" | "u64" | "i128" | "bigint" => {
+                    "int64"
+                },
+                "Integer" | "integer" | "int" | "i32" | "u32" => {
+                    "integer"
+                },
+                "Float" | "Double" | "f32" | "f64" => {
+                    "number"
+                },
+                "Boolean" | "Bool" | "bool" | "boolean" => {
+                    "boolean"
+                },
+                "date" | "datetime" | "time" | "timestamp" => {
+                    "string"
+                },
+                _ => "object",
+            })
+            .unwrap_or("object");
+        
+        let col_fmt = self.col_type
+            .clone()
+            .map(|f| match f.to_lowercase().as_str() {
+                "long" | "i64" | "u64" | "i128" | "bigint" => {
+                    Some("int64".to_string())
+                }
+                "int" | "i32" | "integer" | "u32" => {
+                    Some("int32".to_string())
+                }
+                "smallint" => Some("int16".to_string()),
+                "tinyint" => Some("int8".to_string()),
+                "bool" | "boolean" => {
+                    None
+                }
+                "date" => Some("date".to_string()),
+                "datetime" => Some("date-time".to_string()),
+                "decimal" | "numeric" => {
+                    Some("decimal".to_string())
+                }
+                "float" | "f32" => {
+                    Some("float".to_string())
+                }
+                "double" | "f64" => {
+                    Some("double".to_string())
+                }
+                "relation" => {
+                    None
+                }
+                _ => None,
+            })
+            .unwrap_or(None);
+
+        SchemaObjectType {
+            title: self.title.clone(),
+            r#type: Some(col_type.to_string()),
+            format: if pattern.is_none() { // 如果已经指定了Regex模式，则col_fmt须置为None
+                col_fmt
+            } else {
+                None
+            },
+            max_length: self.col_length,
+            maximum: max,
+            minimum: min,
+            min_length: minlen,
+            pattern: pattern,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StoreObject {
     pub name: String,
+    pub schema_name: Option<String>,
     pub object_name: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fields: Vec<Column>,
@@ -276,7 +482,7 @@ pub struct StoreObject {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub upsert_hooks: Vec<MethodHook>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub savebatch_hooks: Vec<MethodHook>,    
+    pub savebatch_hooks: Vec<MethodHook>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub delete_hooks: Vec<MethodHook>,
     #[serde(default)]
@@ -285,6 +491,16 @@ pub struct StoreObject {
     pub parti_valid: bool,
     #[serde(default)]
     pub enable_cache: bool,
+
+    pub rest_desc: Option<String>,
+
+    #[serde(default)]
+    pub mcp_tool_query: bool,
+    #[serde(default)]
+    pub mcp_tool_update: bool,
+    #[serde(default)]
+    pub mcp_tool_delete: bool,
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub cache_time: Option<i64>,
@@ -293,7 +509,7 @@ pub struct StoreObject {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub write_perm_roles: Vec<String>,
     #[serde(default)]
-    pub data_permission: bool,            // 启用数据权限
+    pub data_permission: bool, // 启用数据权限
     pub permission_field: Option<String>, // 用于与数据权限建立关联的字段
     pub relative_field: Option<String>,   // 用于与数据权限建立关联的字段
 
@@ -346,7 +562,7 @@ impl StoreObject {
             .filter(|c| {
                 !(c.field_name != *field || kp && c.col_type == Some("relation".to_owned()))
             })
-            .last()
+            .next_back()
     }
 
     pub fn get_key_columns(&self) -> Vec<Column> {
@@ -369,7 +585,7 @@ impl StoreObject {
                 self.write_perm_roles
                     .clone()
                     .into_iter()
-                    .any(|f| roles.contains(&f))
+                    .any(|f| f.is_empty() || roles.contains(&f))
             }
         } else if self.read_perm_roles.is_empty() {
             true
@@ -377,8 +593,87 @@ impl StoreObject {
             self.read_perm_roles
                 .clone()
                 .into_iter()
-                .any(|f| roles.contains(&f))
+                .any(|f| f.is_empty() || roles.contains(&f))
         }
+    }
+
+    pub fn get_mcp_tools(&self, ns: &str) -> Result<Vec<Value>, anyhow::Error> {
+        self.to_mcp_tools(ns)
+    }
+
+    pub fn validate_value_by_schema(schema: &Value, objval: &Value) -> Result<(), anyhow::Error>  {
+        log::debug!("JSONSchema: {}", serde_json::to_string(schema).unwrap_or_default());
+        let mut errors = vec![];
+        for err in jsonschema::options()
+                    .should_validate_formats(true)
+                    .should_ignore_unknown_formats(true)
+                    .build(schema)
+                    .map_err(|m| anyhow!("error for create validate: {m}"))?
+                    .iter_errors(&objval)
+        {
+            errors.push(format!("{err:?}"));
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(anyhow!(errors.join("\n")))
+        }
+    }
+
+    /**
+     * for insert, withpk should be false if the pk is auto-increment (serial for pgsql).
+     * for update, withpk should be true
+     * for delete, withpk will be ignored
+     */
+    pub fn to_validate_schema(&self, stc: &StoreServiceConfig, onlypk: bool, withpk: bool) -> Result<SchemaObjectType, anyhow::Error> {
+        let mut required_fields = vec![];
+
+        let map = self.fields.iter().filter(|p| {
+                if onlypk {
+                    return p.pkey;
+                } else {
+                    return true;
+                }
+            }).map(|c| {
+                // 这里有一个问题，需要重新建模
+                // 如果该字段所映射的是一个一对多的关系，则在这里无法进行表达了，
+                // 一对一的，则应该可以
+                let prop_name = c.prop_name.clone().unwrap_or(c.field_name.clone());
+                let required = if withpk == false && c.is_autogenerate_column() {
+                    false
+                } else if withpk && c.pkey {
+                    true
+                } else {
+                    c.required
+                };
+
+                if required {
+                    required_fields.push(prop_name.clone());
+                }
+
+                (prop_name, c.to_column_schema(stc, withpk))
+            }).collect::<HashMap<String, SchemaObjectType>>();
+
+        let topobj = SchemaObjectType {
+            title: self.rest_desc.clone(),
+            r#type: Some("object".to_string()),
+            properties: map,
+            required: required_fields,
+            ..Default::default()
+        };
+
+        Ok(topobj)
+    }
+}
+
+impl QueryColumn for StoreObject {
+    fn get_column(&self, field_name: &str) -> Option<Column> {
+        self.fields
+            .clone()
+            .into_iter()
+            .filter(|c| c.field_name == *field_name)
+            .next_back()
     }
 }
 
@@ -391,6 +686,9 @@ pub struct PluginConfig {
     pub enable: bool,
 }
 
+unsafe impl Send for PluginConfig {}
+unsafe impl Sync for PluginConfig {}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StoreServiceConfig {
@@ -402,6 +700,18 @@ pub struct StoreServiceConfig {
     pub rsa_public_key: Option<String>,
     pub rsa_private_key: Option<String>,
     pub redis_url: Option<String>,
+
+    #[serde(default)]
+    pub api_audit: bool,
+
+    pub datetime_format: Option<String>,
+
+    pub dict_uri: Option<String>,
+    pub range_uri: Option<String>,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "i64_from_str")]
+    pub max_redis_pool: Option<i64>,
 
     #[serde(default)]
     pub relaxy_timezone: bool,
@@ -514,8 +824,7 @@ impl StoreServiceConfig {
     }
 
     pub fn get_object(&self, name: &str) -> Option<StoreObject> {
-        let cp = self.object_map.get(name).map(|f| f.to_owned());
-        cp
+        self.object_map.get(name).map(|f| f.to_owned())
     }
 
     pub fn get_query(&self, name: &str) -> Option<&QueryObject> {
@@ -531,6 +840,12 @@ pub struct QueryObject {
     #[serde(default)]
     pub pagable: bool,
 
+    #[serde(default)]
+    pub updatable: bool,
+
+    #[serde(default)]
+    pub onlyone: bool,
+
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hooks: Vec<MethodHook>,
     pub query_body: String,
@@ -544,6 +859,14 @@ pub struct QueryObject {
 
     #[serde(default)]
     pub enable_cache: bool,
+
+    #[serde(default)]
+    pub validate_params: bool,    
+
+    pub rest_desc: Option<String>,
+
+    #[serde(default)]
+    pub mcp_tool: bool,
 
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
@@ -573,8 +896,56 @@ impl QueryObject {
             self.perm_roles
                 .clone()
                 .into_iter()
-                .any(|f| roles.contains(&f))
+                .any(|f| f.is_empty() || roles.contains(&f))
         }
+    }
+
+    pub fn get_mcp_tools(&self, ns: &str) -> Result<Vec<Value>, anyhow::Error> {
+        self.to_mcp_tools(ns)
+    }
+
+    pub fn to_params_schema(&self, stc: &StoreServiceConfig) -> Result<SchemaObjectType, anyhow::Error> {
+        let map = self.params.iter().map(|c| {
+                // 这里有一个问题，需要重新建模
+                // 如果该字段所映射的是一个一对多的关系，则在这里无法进行表达了，
+                // 一对一的，则应该可以
+                let prop_name = c.prop_name.clone().unwrap_or(c.field_name.clone());
+                (prop_name, c.to_column_schema(stc, true))
+            }).collect::<HashMap<String, SchemaObjectType>>();
+
+        Ok(SchemaObjectType {
+            r#type: Some("object".to_string()),
+            title: self.rest_desc.clone(),
+            properties: map,
+            ..Default::default()
+        })
+    }
+
+    pub fn to_result_schema(&self, stc: &StoreServiceConfig) -> Result<SchemaObjectType, anyhow::Error> {
+        let map = self.fields.iter().map(|c| {
+                // 这里有一个问题，需要重新建模
+                // 如果该字段所映射的是一个一对多的关系，则在这里无法进行表达了，
+                // 一对一的，则应该可以
+                let prop_name = c.prop_name.clone().unwrap_or(c.field_name.clone());
+                (prop_name, c.to_column_schema(stc, true))
+            }).collect::<HashMap<String, SchemaObjectType>>();
+
+        Ok(SchemaObjectType {
+            r#type: Some("object".to_string()),
+            title: self.rest_desc.clone(),
+            properties: map,
+            ..Default::default()
+        })
+    }
+}
+
+impl QueryColumn for QueryObject {
+    fn get_column(&self, field_name: &str) -> Option<Column> {
+        self.fields
+            .iter()
+            .filter(|p| p.field_name == *field_name)
+            .map(|c| c.to_owned())
+            .next_back()
     }
 }
 
@@ -619,45 +990,72 @@ unsafe impl Send for IPaging {}
 unsafe impl Sync for IPaging {}
 
 impl ConditionItem {
-    fn compose_query(&self, args: &mut Vec<Value>) -> String {
+    fn compose_query(
+        &self,
+        cols: &dyn QueryColumn,
+        driver_type: &str,
+        args: &mut Vec<Value>,
+    ) -> String {
+        let col_type = match cols.get_column(&self.field) {
+            Some(col) => col.field_type.unwrap_or_default(),
+            None => String::new(),
+        };
+
+        let queryplace = get_query_field_value_present(driver_type, &col_type);
+
         if self.op.trim().to_lowercase() == "between" {
             args.push(self.value.clone());
             args.push(self.value2.clone());
-            format!("{} {} ? and ?", self.field.clone(), self.op.clone())
+
+            format!(
+                "{} {} {queryplace} and {queryplace}",
+                self.field.clone(),
+                self.op.clone()
+            )
         } else if self.op.trim().to_lowercase() == "not in" {
             let (cs, mut vals) = match self.value.clone() {
                 Value::Array(mps) => {
-                    let st = mps.iter().map(|_| "?").join(",");
+                    let st = mps.iter().map(|_| queryplace.clone()).join(",");
                     (st, mps.clone())
                 }
-                _ => ("?".to_owned(), vec![self.value.clone()]),
+                _ => (queryplace.clone(), vec![self.value.clone()]),
             };
             args.append(&mut vals);
             format!("{} {} ({})", self.field.clone(), self.op.clone(), cs)
         } else if self.op.trim().to_lowercase() == "in" {
             let (cs, mut vals) = match self.value.clone() {
                 Value::Array(mps) => {
-                    let st = mps.iter().map(|_| "?").join(",");
+                    let st = mps.iter().map(|_| queryplace.clone()).join(",");
                     (st, mps.clone())
                 }
-                _ => ("?".to_owned(), vec![self.value.clone()]),
+                _ => (queryplace.clone(), vec![self.value.clone()]),
             };
             args.append(&mut vals);
             format!("{} {} ({})", self.field.clone(), self.op.clone(), cs)
+        } else if self.op.trim().to_lowercase() == "is null"
+            || self.op.trim().to_lowercase() == "is not null"
+        {
+            // args.push(self.value.clone());
+            format!("{} {}", self.field.clone(), self.op.clone())
         } else {
             args.push(self.value.clone());
-            format!("{} {} ?", self.field.clone(), self.op.clone())
+            format!("{} {} {queryplace}", self.field.clone(), self.op.clone())
         }
     }
 
-    pub(crate) fn to_query(&self, args: &mut Vec<Value>) -> anyhow::Result<String> {
+    pub(crate) fn to_query(
+        &self,
+        cols: &dyn QueryColumn,
+        driver_type: &str,
+        args: &mut Vec<Value>,
+    ) -> anyhow::Result<String> {
         let mut cond_sql = String::new();
 
-        let c = self.compose_query(args);
+        let c = self.compose_query(cols, driver_type, args);
         cond_sql.push_str(&c);
 
         for cond in self.and.iter() {
-            let q = cond.to_query(args)?;
+            let q = cond.to_query(cols, driver_type, args)?;
             cond_sql.push_str(" and ");
             cond_sql.push('(');
             cond_sql.push_str(&q);
@@ -670,7 +1068,7 @@ impl ConditionItem {
             }
 
             for cond in self.or.iter() {
-                let q = cond.to_query(args)?;
+                let q = cond.to_query(cols, driver_type, args)?;
                 cond_sql.push_str(" or ");
                 cond_sql.push('(');
                 cond_sql.push_str(&q);
@@ -682,6 +1080,10 @@ impl ConditionItem {
     }
 }
 
+pub trait QueryColumn {
+    fn get_column(&self, field_name: &str) -> Option<Column>;
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct QueryCondition {
@@ -690,6 +1092,8 @@ pub struct QueryCondition {
     pub sorts: Vec<OrdianlItem>,
     pub group_by: Vec<OrdianlItem>,
     pub paging: Option<IPaging>,
+    pub dont_update_exist: Option<bool>,
+    pub retrieved_detail: Option<bool>, // Get the detail for detail-field on query and paged_query
 }
 
 unsafe impl Send for QueryCondition {}
@@ -708,18 +1112,23 @@ impl QueryCondition {
         self.and.is_empty() && self.or.is_empty()
     }
 
-    pub fn to_query(&self, onlyquery: bool) -> anyhow::Result<(String, Vec<Value>)> {
+    pub fn to_query(
+        &self,
+        cols: &dyn QueryColumn,
+        driver_type: &str,
+        onlyquery: bool,
+    ) -> anyhow::Result<(String, Vec<Value>)> {
         let mut cond_sql = String::new();
         let mut args = vec![];
 
         for (idx, cond) in self.and.iter().enumerate() {
             if idx == 0 {
-                let q = cond.to_query(&mut args)?;
+                let q = cond.to_query(cols, driver_type, &mut args)?;
                 cond_sql.push('(');
                 cond_sql.push_str(&q);
                 cond_sql.push(')');
             } else {
-                let q = cond.to_query(&mut args)?;
+                let q = cond.to_query(cols, driver_type, &mut args)?;
                 cond_sql.push_str(" and ");
                 cond_sql.push('(');
                 cond_sql.push_str(&q);
@@ -734,12 +1143,12 @@ impl QueryCondition {
 
             for (idx, cond) in self.or.iter().enumerate() {
                 if idx == 0 {
-                    let q = cond.to_query(&mut args)?;
+                    let q = cond.to_query(cols, driver_type, &mut args)?;
                     cond_sql.push('(');
                     cond_sql.push_str(&q);
                     cond_sql.push(')');
                 } else {
-                    let q = cond.to_query(&mut args)?;
+                    let q = cond.to_query(cols, driver_type, &mut args)?;
                     cond_sql.push_str(" or ");
                     cond_sql.push('(');
                     cond_sql.push_str(&q);

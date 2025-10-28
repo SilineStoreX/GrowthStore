@@ -14,88 +14,77 @@ pub async fn redis_get_object(
     req: &mut Request,
 ) -> Json<ApiResult<Option<Value>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
 
     let ctx = Arc::new(Mutex::new(InvocationContext::from_depot(depot)));
 
-    match MxStoreService::invoke_return_one(
-        format!("redis://{}/redis?{}#get", ns, query),
-        ctx,
-        vec![],
-    )
-    .await
+    match MxStoreService::invoke_return_one(format!("redis://{ns}/redis?{query}#get"), ctx, vec![])
+        .await
     {
         Ok(rs) => Json(ApiResult::ok(rs)),
-        Err(err) => Json(ApiResult::error(506, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(506, format!("{err}").as_str())),
     }
 }
 
 #[handler]
 pub async fn redis_get_vec(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Vec<Value>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
 
     let ctx = Arc::new(Mutex::new(InvocationContext::from_depot(depot)));
 
-    match MxStoreService::invoke_return_vec(
-        format!("redis://{}/redis?{}#get", ns, query),
-        ctx,
-        vec![],
-    )
-    .await
+    match MxStoreService::invoke_return_vec(format!("redis://{ns}/redis?{query}#get"), ctx, vec![])
+        .await
     {
         Ok(rs) => Json(ApiResult::ok(rs)),
-        Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
     }
-
 }
 
 #[handler]
 pub async fn redis_get_page(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Page<Value>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
 
     let ctx = Arc::new(Mutex::new(InvocationContext::from_depot(depot)));
 
-    match MxStoreService::invoke_return_page(
-        format!("redis://{}/redis?{}#get", ns, query),
-        ctx,
-        vec![],
-    )
-    .await
+    match MxStoreService::invoke_return_page(format!("redis://{ns}/redis?{query}#get"), ctx, vec![])
+        .await
     {
         Ok(rs) => Json(ApiResult::ok(rs)),
-        Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
     }
-
 }
 
 #[handler]
-pub async fn redis_set_infinit(depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Option<Value>>> {
+pub async fn redis_set_infinit(
+    depot: &mut Depot,
+    req: &mut Request,
+) -> Json<ApiResult<Option<Value>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
     let body = match req.parse_body::<Value>().await {
         Ok(b) => b,
         Err(err) => {
-            return Json(ApiResult::error(400, format!("{}", err).as_str()));
+            return Json(ApiResult::error(400, format!("{err}").as_str()));
         }
     };
 
     let ctx = Arc::new(Mutex::new(InvocationContext::from_depot(depot)));
 
     match MxStoreService::invoke_return_one(
-        format!("redis://{}/redis?{}#set", ns, query),
+        format!("redis://{ns}/redis?{query}#set"),
         ctx,
         vec![body],
     )
     .await
     {
         Ok(rs) => Json(ApiResult::ok(rs)),
-        Err(err) => Json(ApiResult::error(506, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(506, format!("{err}").as_str())),
     }
 }
 
@@ -105,36 +94,31 @@ pub async fn redis_del_infinit(
     req: &mut Request,
 ) -> Json<ApiResult<Option<Value>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
 
     let ctx = Arc::new(Mutex::new(InvocationContext::from_depot(depot)));
 
-    match MxStoreService::invoke_return_one(
-        format!("redis://{}/redis?{}#del", ns, query),
-        ctx,
-        vec![],
-    )
-    .await
+    match MxStoreService::invoke_return_one(format!("redis://{ns}/redis?{query}#del"), ctx, vec![])
+        .await
     {
         Ok(rs) => {
-            log::info!("RS: {:?}", rs);
+            log::info!("RS: {rs:?}");
             Json(ApiResult::ok(rs))
         }
-        Err(err) => Json(ApiResult::error(506, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(506, format!("{err}").as_str())),
     }
-
 }
 
 #[handler]
 pub async fn redis_keys_vec(_depot: &mut Depot, req: &mut Request) -> Json<ApiResult<Vec<String>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
-    log::info!("invoke redis_keys cmd");
+    // log::info!("invoke redis_keys cmd");
     match redis_keys(&ns, &query) {
         Ok(t) => Json(ApiResult::ok(t)),
-        Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
     }
 }
 
@@ -144,10 +128,10 @@ pub async fn redis_flushall(
     req: &mut Request,
 ) -> Json<ApiResult<Option<String>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     match redis_flushall_cmd(&ns) {
         Ok(t) => Json(ApiResult::ok(t)),
-        Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
     }
 }
 
@@ -157,11 +141,11 @@ pub async fn redis_delexp(
     req: &mut Request,
 ) -> Json<ApiResult<Option<String>>> {
     // let params = req.parse_params::<Value>().expect("unexpect format");
-    let ns = req.param::<String>("ns").unwrap();
+    let ns = req.param::<String>("ns").unwrap_or_default();
     let query = req.query::<String>("key").unwrap_or_default();
 
     match redis_delexp_cmd(&ns, &query) {
         Ok(t) => Json(ApiResult::ok(t)),
-        Err(err) => Json(ApiResult::error(500, format!("{}", err).as_str())),
+        Err(err) => Json(ApiResult::error(500, format!("{err}").as_str())),
     }
 }

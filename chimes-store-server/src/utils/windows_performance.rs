@@ -2,15 +2,16 @@ use std::{ffi::c_void, mem::size_of};
 use windows::Win32::{
     Foundation::CloseHandle,
     NetworkManagement::IpHelper::MIB_TCPROW_LH_0,
-    System::Diagnostics::ToolHelp::{
+    System::{Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Thread32First, Thread32Next, THREADENTRY32,
-    },
+    }, Memory::HEAP_FLAGS},
 };
+
 use windows::{
-    imp::{GetProcessHeap, HeapAlloc, HeapFree},
+    // imp::{GetProcessHeap, HeapAlloc, HeapFree},
     Win32::{
         Foundation::{
-            BOOL, BOOLEAN, ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, FILETIME, NO_ERROR,
+            ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, FILETIME, NO_ERROR,
             WIN32_ERROR,
         },
         NetworkManagement::IpHelper::{
@@ -34,6 +35,9 @@ use windows::{
                 GetCurrentProcess, GetCurrentProcessId, GetProcessHandleCount,
                 GetProcessIoCounters, GetProcessTimes, IO_COUNTERS,
             },
+            Memory::{
+                HeapAlloc, HeapFree, GetProcessHeap
+            }
         },
     },
 };
@@ -47,10 +51,11 @@ impl WindowsPerformance {
         unsafe { GetCurrentProcessId() }
     }
 
+    #[allow(dead_code)]
     pub fn get_cpu_cores() -> u32 {
         unsafe {
             let mut st = SYSTEM_INFO::default();
-            let st_ptr = std::ptr::addr_of_mut!(st) as *mut SYSTEM_INFO;
+            let st_ptr = std::ptr::addr_of_mut!(st); // as *mut SYSTEM_INFO;
             GetSystemInfo(st_ptr);
             st.dwNumberOfProcessors
         }
@@ -64,25 +69,25 @@ impl WindowsPerformance {
                     let mut count = 0;
                     // th32.dwSize = sizeof(THREADENTRY32);
                     th32.dwSize = size_of::<THREADENTRY32>() as u32;
-                    if !Thread32First(h_thread_snap, &mut th32).as_bool() {
+                    if !Thread32First(h_thread_snap, &mut th32).is_ok() {
                         log::info!("Could not iterate the Thread.");
-                        CloseHandle(h_thread_snap);
+                        let _ = CloseHandle(h_thread_snap).is_ok();
                         count = 0;
                     } else {
                         if th32.th32OwnerProcessID == dw_process_id {
                             count += 1;
                         }
-                        while Thread32Next(h_thread_snap, &mut th32).as_bool() {
+                        while Thread32Next(h_thread_snap, &mut th32).is_ok() {
                             if th32.th32OwnerProcessID == dw_process_id {
                                 count += 1;
                             }
                         }
-                        CloseHandle(h_thread_snap);
+                        let _ = CloseHandle(h_thread_snap).is_ok();
                     }
                     count
                 }
                 Err(err) => {
-                    log::info!("Error to Get Thread Count of current process: {}", err);
+                    log::info!("Error to Get Thread Count of current process: {err}");
                     0
                 }
             }
@@ -109,8 +114,8 @@ impl WindowsPerformance {
                 &mut kernel_time,
                 &mut user_time,
             );
-            CloseHandle(hprocess);
-            if ret.as_bool() {
+            let _ = CloseHandle(hprocess).is_ok();
+            if ret.is_ok() {
                 let ktime_h = kernel_time.dwHighDateTime as u64;
                 let ktime: u64 = (ktime_h << 32) + kernel_time.dwLowDateTime as u64;
                 let utime_h = user_time.dwHighDateTime as u64;
@@ -130,7 +135,8 @@ impl WindowsPerformance {
         }
     }
 
-    pub fn get_memory_usages() -> (u64, u64) {
+    #[allow(dead_code)]
+    pub fn get_memory_usages() -> (u64, u64, u64) {
         unsafe {
             let hprocess = GetCurrentProcess();
             //if hprocess.is_invalid() {
@@ -142,7 +148,7 @@ impl WindowsPerformance {
             pmc.cb = cb;
             let pmc_ptr = std::ptr::addr_of!(pmc) as *mut PROCESS_MEMORY_COUNTERS;
             let ret = GetProcessMemoryInfo(hprocess, pmc_ptr, cb);
-            CloseHandle(hprocess);
+            let _ = CloseHandle(hprocess).is_ok();
 
             let status = MEMORYSTATUS {
                 dwLength: size_of::<MEMORYSTATUS>() as u32,
@@ -153,10 +159,18 @@ impl WindowsPerformance {
 
             GlobalMemoryStatus(status_ptr); //调用GlobalMemoryStatus函数获取内存信息
 
-            if ret.as_bool() {
-                (status.dwTotalPhys as u64, pmc.WorkingSetSize as u64)
+            if ret.is_ok() {
+                (
+                    status.dwTotalPhys as u64,
+                    pmc.WorkingSetSize as u64,
+                    status.dwAvailVirtual as u64,
+                )
             } else {
-                (status.dwTotalPhys as u64, 0u64)
+                (
+                    status.dwTotalPhys as u64,
+                    0u64,
+                    status.dwAvailVirtual as u64,
+                )
             }
         }
     }
@@ -165,22 +179,24 @@ impl WindowsPerformance {
         unsafe {
             let mut pdwhandlecount = 0;
             let hprocess = GetCurrentProcess();
-            GetProcessHandleCount(hprocess, &mut pdwhandlecount);
-            CloseHandle(hprocess);
+            let _ = GetProcessHandleCount(hprocess, &mut pdwhandlecount).is_ok();
+            let _ = CloseHandle(hprocess).is_ok();
             pdwhandlecount
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_io_counter() -> (u64, u64) {
         unsafe {
             let mut ct = IO_COUNTERS::default();
             let hprocess = GetCurrentProcess();
-            GetProcessIoCounters(hprocess, &mut ct);
-            CloseHandle(hprocess);
+            let _ = GetProcessIoCounters(hprocess, &mut ct).is_ok();
+            let _ = CloseHandle(hprocess).is_ok();
             (ct.ReadTransferCount, ct.WriteTransferCount)
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_network_io_counter() -> (u64, u64) {
         match NetworkPerformanceItem::scan_network_performance(
             Self::get_current_process_id(),
@@ -195,7 +211,7 @@ impl WindowsPerformance {
                 (sumitem.bytes_in, sumitem.bytes_out)
             }
             Err(err) => {
-                log::info!("Error on scan networks performance {}", err);
+                log::info!("Error on scan networks performance {err}");
                 (0u64, 0u64)
             }
         }
@@ -222,6 +238,8 @@ pub struct NetworkPerformanceItem {
 }
 
 impl NetworkPerformanceItem {
+
+    #[allow(dead_code)]
     pub fn scan_network_performance(
         process_id: u32,
         resv: bool,
@@ -236,6 +254,7 @@ impl NetworkPerformanceItem {
         }
     }
 
+    #[allow(dead_code)]
     pub unsafe fn scan_network_performance_tcp4(
         _process_id: u32,
         resv: bool,
@@ -244,17 +263,18 @@ impl NetworkPerformanceItem {
         let mut dw_size = size_of::<MIB_TCPTABLE_OWNER_PID>() as u32;
         let mut dw_ret_value = ERROR_INSUFFICIENT_BUFFER;
         let mut network_performance_items = vec![];
-        let heapbase = GetProcessHeap();
+        let heapbase = GetProcessHeap()?;
+        
         // let mut buffer: Vec<c_void> = Vec::with_capacity(dw_size as usize);
         let mut buffer: *mut c_void = std::ptr::null::<c_void>() as *mut c_void;
 
         while dw_ret_value == ERROR_INSUFFICIENT_BUFFER {
             // buffer.resize(dw_size as usize, 0);
-            if buffer != std::ptr::null::<c_void>() as *mut c_void {
-                HeapFree(heapbase, 0, buffer);
+            if !std::ptr::eq(buffer, std::ptr::null::<c_void>()) {
+                HeapFree(heapbase, HEAP_FLAGS(0), Some(buffer))?;
             }
-            buffer = HeapAlloc(heapbase, 0x00000008, dw_size as usize); //Vec::with_capacity(dw_size as usize);
-            let bl = BOOL(0);
+            buffer = HeapAlloc(heapbase, HEAP_FLAGS(0x00000008), dw_size as usize); //Vec::with_capacity(dw_size as usize);
+            let bl = false;
             let ptr = Some(buffer);
             dw_ret_value = WIN32_ERROR(GetExtendedTcpTable(
                 ptr,
@@ -301,10 +321,7 @@ impl NetworkPerformanceItem {
                         item.local_address = if ret_addr.is_null() {
                             None
                         } else {
-                            match ret_addr.to_string() {
-                                Ok(t) => Some(t),
-                                Err(_) => None,
-                            }
+                            ret_addr.to_string().ok()
                         };
 
                         let mut p = IN_ADDR_0::default(); //Box::new(IN_ADDR_0::default());
@@ -316,10 +333,7 @@ impl NetworkPerformanceItem {
                         item.remote_address = if ret_addr.is_null() {
                             None
                         } else {
-                            match ret_addr.to_string() {
-                                Ok(t) => Some(t),
-                                Err(_) => None,
-                            }
+                            ret_addr.to_string().ok()
                         };
                     }
 
@@ -343,7 +357,7 @@ impl NetworkPerformanceItem {
                         let mut data_rw_ptr = [0u8; size_of::<TCP_ESTATS_DATA_RW_v0>()];
                         let data_rw = data_rw_ptr.as_mut_ptr() as *mut TCP_ESTATS_DATA_RW_v0; //TCP_ESTATS_DATA_RW_v0::default();
                                                                                               // *data_rw.EnableCollection = BOOLEAN(1);
-                        (*data_rw).EnableCollection = BOOLEAN(1);
+                        (*data_rw).EnableCollection = true;
 
                         let mut band_width_ptr = [0u8; size_of::<TCP_ESTATS_BANDWIDTH_RW_v0>()];
                         // let mut band_width = TCP_ESTATS_BANDWIDTH_RW_v0::default();
@@ -447,11 +461,12 @@ impl NetworkPerformanceItem {
             }
         }
 
-        HeapFree(heapbase, 0, buffer);
+        HeapFree(heapbase, HEAP_FLAGS(0), Some(buffer))?;
 
         Ok(network_performance_items)
     }
 
+    #[allow(dead_code)]
     pub unsafe fn scan_network_performance_tcp6(
         _process_id: u32,
         resv: bool,
@@ -460,18 +475,18 @@ impl NetworkPerformanceItem {
         let mut dw_size = size_of::<MIB_TCP6TABLE_OWNER_PID>() as u32;
         let mut dw_ret_value = ERROR_INSUFFICIENT_BUFFER;
         let mut network_performance_items = vec![];
-        let heapbase = GetProcessHeap();
+        let heapbase = GetProcessHeap()?;
         // let mut buffer: Vec<c_void> = Vec::with_capacity(dw_size as usize);
 
         let mut buffer: *mut c_void = std::ptr::null::<c_void>() as *mut c_void;
 
         while dw_ret_value == ERROR_INSUFFICIENT_BUFFER {
             // buffer.resize(dw_size as usize, 0);
-            if buffer != std::ptr::null::<c_void>() as *mut c_void {
-                HeapFree(heapbase, 0, buffer);
+            if !std::ptr::eq(buffer, std::ptr::null::<c_void>()) {
+                HeapFree(heapbase, HEAP_FLAGS(0), Some(buffer))?;
             }
-            buffer = HeapAlloc(heapbase, 0x00000008, dw_size as usize); //Vec::with_capacity(dw_size as usize);
-            let bl = BOOL(0);
+            buffer = HeapAlloc(heapbase, HEAP_FLAGS(0x00000008), dw_size as usize); //Vec::with_capacity(dw_size as usize);
+            let bl = false;
             let ptr = Some(buffer);
             dw_ret_value = WIN32_ERROR(GetExtendedTcpTable(
                 ptr,
@@ -518,10 +533,7 @@ impl NetworkPerformanceItem {
                         item.local_address = if ret_addr.is_null() {
                             None
                         } else {
-                            match ret_addr.to_string() {
-                                Ok(t) => Some(t),
-                                Err(_) => None,
-                            }
+                            ret_addr.to_string().ok()
                         };
 
                         let mut pstraddr = [0u16; 128];
@@ -531,10 +543,7 @@ impl NetworkPerformanceItem {
                         item.remote_address = if ret_addr.is_null() {
                             None
                         } else {
-                            match ret_addr.to_string() {
-                                Ok(t) => Some(t),
-                                Err(_) => None,
-                            }
+                            ret_addr.to_string().ok()
                         };
                     }
 
@@ -556,7 +565,7 @@ impl NetworkPerformanceItem {
                         let mut data_rw_ptr = [0u8; size_of::<TCP_ESTATS_DATA_RW_v0>()];
                         let data_rw = data_rw_ptr.as_mut_ptr() as *mut TCP_ESTATS_DATA_RW_v0; //TCP_ESTATS_DATA_RW_v0::default();
                                                                                               // *data_rw.EnableCollection = BOOLEAN(1);
-                        (*data_rw).EnableCollection = BOOLEAN(1);
+                        (*data_rw).EnableCollection = true;
 
                         let mut band_width_ptr = [0u8; size_of::<TCP_ESTATS_BANDWIDTH_RW_v0>()];
                         // let mut band_width = TCP_ESTATS_BANDWIDTH_RW_v0::default();
@@ -661,7 +670,7 @@ impl NetworkPerformanceItem {
             }
         }
 
-        HeapFree(heapbase, 0, buffer);
+        HeapFree(heapbase, HEAP_FLAGS(0), Some(buffer))?;
 
         Ok(network_performance_items)
     }

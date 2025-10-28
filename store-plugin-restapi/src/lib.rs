@@ -17,37 +17,40 @@ mod proc;
  * 在Plugin中，无法使用主程序中定义的全局变量
  * 函数是一样的，但因为导出的方式不同  
  */
-
 pub fn get_plugin_name() -> &'static str {
     "restapi"
 }
 
-
 pub fn plugin_router_register() -> Vec<Router> {
     vec![
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").get(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").post(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").put(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").get(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").post(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").put(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").get(api::execute_paged_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").post(api::execute_paged_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").put(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/schema").get(api::get_schema),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").get(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").post(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").put(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").get(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").post(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").put(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").get(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").post(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").put(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/sse").get(api::execute_sse_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/sse").post(api::execute_sse_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/sse").put(api::execute_sse_request),
     ]
 }
 
 pub fn plugin_anonymous_router_register() -> Vec<Router> {
     vec![
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").get(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").post(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/single").put(api::execute_single_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").get(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").post(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/list").put(api::execute_vec_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").get(api::execute_paged_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").post(api::execute_paged_request),
-        Router::with_path("/restapi/<ns>/<name>/<method>/page").put(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/schema").get(api::get_schema),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").get(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").post(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/single").put(api::execute_single_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").get(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").post(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/list").put(api::execute_vec_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").get(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").post(api::execute_paged_request),
+        Router::with_path("/restapi/{ns}/{name}/{method}/page").put(api::execute_paged_request),
     ]
 }
 
@@ -57,7 +60,7 @@ pub fn plugin_anonymous_router_register() -> Vec<Router> {
 pub fn plugin_init(ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output = ()> + Send>> {
     match RestapiPluginService::new(ns, conf) {
         Ok(wplc) => {
-            log::info!(
+            log::debug!(
                 "Process the config of plugin and init the plugin for {}.",
                 conf.name
             );
@@ -69,10 +72,9 @@ pub fn plugin_init(ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output =
         }
         Err(err) => {
             log::warn!(
-                "Plugin restapi was not be apply to {ns}. The config of this plugin was not be parsed. The error is {:?}", 
-                err
+                "Plugin restapi was not be apply to {ns}. The config of this plugin was not be parsed. The error is {err:?}"
             );
         }
     }
-    Box::pin(async {})
+    Box::pin(async move {})
 }

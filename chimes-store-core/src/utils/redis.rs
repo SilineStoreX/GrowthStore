@@ -7,7 +7,7 @@ use redis::{
     cluster::ClusterClientBuilder, from_redis_value, ConnectionLike, FromRedisValue, RedisError,
     RedisResult,
 };
-use redis::{Commands, Value};
+use redis::{Cmd, Commands, Value};
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -95,7 +95,10 @@ impl RedisConnection {
     pub fn query<T: FromRedisValue>(&mut self, cmd: &redis::Cmd) -> RedisResult<T> {
         match self {
             RedisConnection::Single(sc) => match sc.as_mut().req_command(cmd) {
-                Ok(val) => from_redis_value(&val),
+                Ok(val) => {
+                    // log::info!("Query result is {val:?}");
+                    from_redis_value(&val)
+                }
                 Err(e) => Err(e),
             },
             RedisConnection::Cluster(cc) => match cc.req_command(cmd) {
@@ -119,15 +122,15 @@ impl RedisConnection {
     }
 
     pub fn raw_keys(&mut self, key: &str) -> RedisResult<Vec<String>> {
-        log::info!("redis keys {}", key);
+        // log::info!("redis keys {}", key);
         match self {
             RedisConnection::Single(sc) => match sc.as_mut().keys(key) {
                 Ok(val) => {
-                    log::info!("Result: {:?}", val);
+                    // log::info!("Result: {:?}", val);
                     match from_redis_value(&val) {
                         Ok(t) => Ok(t),
                         Err(err) => {
-                            log::info!("Err parse {:?}", err);
+                            log::info!("Err parse {err:?}");
                             Err(err)
                         }
                     }
@@ -160,10 +163,10 @@ impl r2d2::ManageConnection for RedisConnectionManager {
     fn is_valid(&self, conn: &mut RedisConnection) -> Result<(), Self::Error> {
         match conn {
             RedisConnection::Single(sc) => {
-                redis::cmd("PING").query(sc)?;
+                redis::cmd("PING").query::<String>(sc)?;
             }
             RedisConnection::Cluster(cc) => {
-                redis::cmd("PING").query(cc)?;
+                redis::cmd("PING").query::<String>(cc)?;
             }
         }
         Ok(())
@@ -181,18 +184,19 @@ impl r2d2::ManageConnection for RedisConnectionManager {
 //     });
 // }
 
-pub fn gen_redis_conn_pool(url: &str) -> Result<Pool<RedisConnectionManager>, Error> {
+pub fn gen_redis_conn_pool(url: &str, maxpool: u32) -> Result<Pool<RedisConnectionManager>, Error> {
     let redis_client: RedisClient = match to_redis_client(url) {
         Ok(rc) => rc,
         Err(err) => {
             return Err(anyhow!(err.to_string()));
         }
     };
+
     let manager = RedisConnectionManager { redis_client };
     match r2d2::Pool::builder()
-        .max_size(128)
-        .min_idle(Some(10))
-        .connection_timeout(Duration::from_secs(30))
+        .max_size(maxpool)
+        .min_idle(Some(5))
+        .connection_timeout(Duration::from_secs(10))
         .build(manager)
     {
         Ok(pool) => Ok(pool),
@@ -210,11 +214,15 @@ pub fn init_global_redis() {
 pub fn init_ns_scoped_redis(conf: &StoreServiceConfig) {
     if let Some(mp) = GLOBAL_REDIS_POOL.get() {
         if let Some(url) = conf.redis_url.clone() {
-            log::info!("{}'s redis-url: {}", conf.namespace, url);
-            if let Ok(t) = gen_redis_conn_pool(&url) {
-                mp.lock()
-                    .unwrap()
-                    .insert(conf.namespace.clone(), Arc::new(t));
+            if !url.is_empty() {
+                if let Ok(t) = gen_redis_conn_pool(
+                    &url,
+                    conf.max_redis_pool.map(|t| t as u32).unwrap_or(20u32),
+                ) {
+                    mp.lock()
+                        .unwrap()
+                        .insert(conf.namespace.clone(), Arc::new(t));
+                }
             }
         }
     }
@@ -239,14 +247,16 @@ pub fn redis_get(ns: &str, key: &str) -> Result<Option<String>, Error> {
             Ok(mut tc) => match tc.query::<redis::Value>(redis::cmd("GET").arg(key)) {
                 Ok(xv) => {
                     let cn = match xv {
-                        redis::Value::Bulk(_) => String::new(),
-                        redis::Value::Okay => String::new(),
-                        redis::Value::Status(st) => st,
-                        redis::Value::Data(tp) => String::from_utf8(tp).unwrap(),
+                        redis::Value::BulkString(ts) => String::from_utf8(ts).unwrap_or_default(),
+                        redis::Value::SimpleString(text) => text,
+                        redis::Value::Okay => "OK".to_string(),
+                        redis::Value::BigNumber(tp) => tp.to_string(),
                         redis::Value::Int(tp) => tp.to_string(),
                         redis::Value::Nil => String::new(),
+                        redis::Value::ServerError(sr) => sr.code().to_string(),
+                        _ => String::new(),
                     };
-                    log::info!("resp: {cn}");
+                    // log::info!("resp: {cn}");
                     if cn.is_empty() {
                         Ok(None)
                     } else {
@@ -298,33 +308,127 @@ pub fn redis_set_expire(
     }
 }
 
+pub fn redis_set_expire_nx(
+    ns: &str,
+    key: &str,
+    value: &str,
+    expire: u64,
+    nxxx: Option<bool>,
+) -> Result<Option<String>, Error> {
+    let conn = get_redis_connection(ns);
+    match conn {
+        Some(c) => match c.get() {
+            Ok(mut tc) => {
+                let mut cmd = redis::cmd("SET");
+                let nxcmd = if let Some(nx) = nxxx {
+                    if nx {
+                        cmd.arg(key).arg(value).arg("EX").arg(expire).arg("NX")
+                    } else {
+                        cmd.arg(key).arg(value).arg("EX").arg(expire).arg("XX")
+                    }
+                } else {
+                    cmd.arg(key).arg(value).arg("EX").arg(expire)
+                };
+
+                match tc.query::<Option<String>>(nxcmd) {
+                    Ok(xv) => {
+                        // log::info!("Return after lock is {xv:?}");
+                        if xv.is_none() {
+                            // May be nil so
+                            Err(anyhow!("Could not lock the key {key}"))
+                        } else {
+                            Ok(xv)
+                        }
+                    }
+                    Err(err) => Err(anyhow!(err.to_string())),
+                }
+            }
+            Err(err) => Err(anyhow!(err.to_string())),
+        },
+        None => Ok(None),
+    }
+}
+
+pub fn redis_lock_expire_nx(
+    ns: &str,
+    key: &str,
+    value: &str,
+    expire: u64,
+    nxxx: Option<bool>,
+) -> Result<Option<String>, Error> {
+    let conn = get_redis_connection(ns);
+    match conn {
+        Some(c) => match c.get() {
+            Ok(mut tc) => {
+                let mut cmd = redis::cmd("SET");
+                let nxcmd = if let Some(nx) = nxxx {
+                    if nx {
+                        if expire == 0 {
+                            cmd.arg(key).arg(value).arg("NX")
+                        } else {
+                            cmd.arg(key).arg(value).arg("EX").arg(expire).arg("NX")
+                        }
+                    } else if expire == 0 {
+                        cmd.arg(key).arg(value).arg("XX")
+                    } else {
+                        cmd.arg(key).arg(value).arg("EX").arg(expire).arg("XX")
+                    }
+                } else {
+                    cmd.arg(key).arg(value).arg("EX").arg(expire)
+                };
+                let mut iterval = 0u64;
+                let total_weak = expire * 1000; // Second to millise
+                loop {
+                    match tc.query::<Option<String>>(nxcmd) {
+                        Ok(xv) => {
+                            // log::info!("Return after lock is {xv:?}");
+                            if xv.is_none() {
+                                // May be nil so
+                                iterval += 100;
+                                if iterval < total_weak {
+                                    log::info!("wait the lock and try again");
+                                    std::thread::park_timeout(Duration::from_millis(100));
+                                    continue;
+                                } else {
+                                    return Err(anyhow!("Could not lock the key {key}"));
+                                }
+                            } else {
+                                return Ok(xv);
+                            }
+                        }
+                        Err(err) => {
+                            return Err(anyhow!(err.to_string()));
+                        }
+                    }
+                }
+            }
+            Err(err) => Err(anyhow!(err.to_string())),
+        },
+        None => Ok(None),
+    }
+}
+
 pub fn redis_del(ns: &str, key: &str) -> Result<Option<String>, Error> {
-    log::info!("key to del: {}", key);
     let conn = get_redis_connection(ns);
     match conn {
         Some(c) => match c.get() {
             Ok(mut tc) => match tc.raw_del(key) {
                 Ok(xv) => {
-                    log::info!("was query send.");
                     let cv = match xv {
                         redis::Value::Int(t) => t.to_string(),
                         _ => "err".to_string(),
                     };
-                    log::info!("response: {}", cv);
                     Ok(Some(cv))
                 }
-                Err(err) => {
-                    log::info!("del error {err:?}");
-                    Err(anyhow!(err.to_string()))
-                }
+                Err(err) => Err(anyhow!(err.to_string())),
             },
             Err(err) => {
-                log::info!("remove error {err:?}");
+                // log::info!("remove error {err:?}");
                 Err(anyhow!(err.to_string()))
             }
         },
         None => {
-            log::info!("No connection.");
+            // log::info!("No connection.");
             Ok(None)
         }
     }
@@ -335,11 +439,11 @@ pub fn redis_delexp_cmd(ns: &str, key: &str) -> Result<Option<String>, Error> {
     match conn {
         Some(c) => match c.get() {
             Ok(mut tc) => {
-                match tc.query::<Vec<String>>(redis::cmd("KEYS").arg(&format!("{}*", key))) {
+                match tc.query::<Vec<String>>(redis::cmd("KEYS").arg(format!("{key}*"))) {
                     Ok(xv) => {
                         for mc in xv {
                             if let Err(err) = tc.query::<String>(redis::cmd("DEL").arg(&mc)) {
-                                log::info!("Del {} by an error {}", mc, err);
+                                log::info!("Del {mc} by an error {err}");
                             }
                         }
                         Ok(None)
@@ -357,9 +461,9 @@ pub fn redis_keys(ns: &str, key: &str) -> Result<Vec<String>, Error> {
     let conn = get_redis_connection(ns);
     match conn {
         Some(c) => match c.get() {
-            Ok(mut tc) => match tc.raw_keys(&format!("{}*", key)) {
+            Ok(mut tc) => match tc.raw_keys(&format!("{key}*")) {
                 Ok(xv) => {
-                    log::info!("result: {xv:?}");
+                    // log::info!("result: {xv:?}");
                     Ok(xv)
                 }
                 Err(err) => Err(anyhow!(err.to_string())),
@@ -384,5 +488,62 @@ pub fn redis_flushall_cmd(ns: &str) -> Result<Option<String>, Error> {
             Err(err) => Err(anyhow!(err.to_string())),
         },
         None => Ok(None),
+    }
+}
+
+fn redis_create_cmd(cmd: &str, key: &str, val: &str, istart: isize, istop: isize) -> Cmd {
+    match cmd {
+        "lpush" => Cmd::lpush(key, val),
+        "rpush" => Cmd::lpush(key, val),
+        "lrange" => Cmd::lrange(key, istart, istop),
+        "llen" => Cmd::llen(key),
+        "lindex" => Cmd::lindex(key, istart),
+        "sadd" => Cmd::sadd(key, val),
+        "scard" => Cmd::scard(key),
+        "srem" => Cmd::srem(key, val),
+        "smembers" => Cmd::smembers(key),
+        _ => Cmd::new(),
+    }
+}
+
+pub fn redis_list_cmd(
+    ns: &str,
+    cmd: &str,
+    key: &str,
+    val: &str,
+    istart: isize,
+    istop: isize,
+) -> Result<Option<String>, Error> {
+    log::info!("key to del: {key}");
+    let conn = get_redis_connection(ns);
+    match conn {
+        Some(c) => match c.get() {
+            Ok(mut tc) => {
+                let cmd = redis_create_cmd(cmd, key, val, istart, istop);
+                match tc.query(&cmd) {
+                    Ok(xv) => {
+                        log::info!("was query send.");
+                        let cv = match xv {
+                            redis::Value::Int(t) => t.to_string(),
+                            _ => "err".to_string(),
+                        };
+                        log::info!("response: {cv}");
+                        Ok(Some(cv))
+                    }
+                    Err(err) => {
+                        log::info!("del error {err:?}");
+                        Err(anyhow!(err.to_string()))
+                    }
+                }
+            }
+            Err(err) => {
+                log::info!("remove error {err:?}");
+                Err(anyhow!(err.to_string()))
+            }
+        },
+        None => {
+            log::info!("No connection.");
+            Ok(None)
+        }
     }
 }

@@ -1,21 +1,34 @@
-use anyhow::Error;
-use async_std::path::PathBuf;
+use anyhow::{anyhow, Error};
 use base64::Engine;
-use futures_lite::Future;
+use chimes_store_utils::common::copy_to_slice;
+use chimes_store_utils::crypto::sha256_with_rsa_sign;
+use chimes_store_utils::template::MxStoreServiceProxy;
 use itertools::Itertools;
 use rbatis::{Page, RBatis};
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::future::Future;
+use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::{
-    collections::HashMap, fs::{self, create_dir_all, remove_file, File}, io::{BufReader, Read, Write}, 
-    mem::MaybeUninit, ops::Deref, path::Path, pin::Pin, sync::{Arc, Mutex, Once}
+    collections::HashMap,
+    fs::{self, create_dir_all, remove_file, File},
+    io::{BufReader, Read, Write},
+    ops::Deref,
+    path::Path,
+    pin::Pin,
+    sync::{Arc, Mutex},
 };
 
+use crate::SyncUnsafeCell;
 use crate::{
     config::{
         auth::JwtUserClaims, HookInvoker, MethodHook, PluginConfig, QueryObject, StoreObject,
         StoreServiceConfig,
     },
-    utils::{build_path, build_path_ns, copy_to_slice, get_multiple_rbatis, global_data::{rsa_decrypt_with_private_key, rsa_encrypt_with_public_key}},
+    utils::{
+        build_path, build_path_ns, get_multiple_rbatis_async,
+        global_data::{rsa_decrypt_with_private_key, rsa_encrypt_with_public_key},
+    },
 };
 
 use super::{
@@ -25,12 +38,10 @@ use super::{
     sdk::{InvokeUri, RxHookInvoker, RxPluginService},
 };
 
-
 pub type FnPluginInstall = fn(
     ns: &str,
     plc: &PluginConfig,
 ) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send>>;
-
 
 #[repr(transparent)]
 pub struct MxStoreService(pub(crate) StoreServiceConfig);
@@ -79,8 +90,6 @@ impl MxStoreService {
             Self::delete_file(Self::get_model_path(), &mx.0.filename);
             Self::get_store_service_map().remove(ns);
         }
-
-        
     }
 
     pub fn get_namespace(&self) -> String {
@@ -132,49 +141,76 @@ impl MxStoreService {
         self.0.plugin_map = Arc::new(objmap);
     }
 
-    pub(crate) fn get_plugin_installer() -> &'static mut Option<Box<FnPluginInstall>> {
+    // pub(crate) fn get_plugin_installer() -> &'static mut Option<Box<FnPluginInstall>> {
+    //     // 使用MaybeUninit延迟初始化
+    //     static mut PLUGIN_INSTALLER_MAP: MaybeUninit<Option<Box<FnPluginInstall>>> =
+    //         MaybeUninit::uninit();
+    //     // Once带锁保证只进行一次初始化
+    //     static INSTALLER_ONCE: Once = Once::new();
+
+    //     INSTALLER_ONCE.call_once(|| unsafe {
+    //         PLUGIN_INSTALLER_MAP.as_mut_ptr().write(None);
+    //     });
+
+    //     unsafe { &mut (*PLUGIN_INSTALLER_MAP.as_mut_ptr()) }
+    // }
+
+    // pub fn set_plugin_installer(func: FnPluginInstall) {
+    //     Self::get_plugin_installer().replace(Box::new(func));
+    // }
+
+    pub(crate) fn get_plugin_installer_(
+    ) -> &'static tokio::sync::Mutex<Option<Box<FnPluginInstall>>> {
         // 使用MaybeUninit延迟初始化
-        static mut PLUGIN_INSTALLER_MAP: MaybeUninit<Option<Box<FnPluginInstall>>> =
-            MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static INSTALLER_ONCE: Once = Once::new();
+        static X_PLUGIN_INSTALLER_MAP: OnceLock<tokio::sync::Mutex<Option<Box<FnPluginInstall>>>> =
+            OnceLock::new();
 
-        INSTALLER_ONCE.call_once(|| unsafe {
-            PLUGIN_INSTALLER_MAP.as_mut_ptr().write(None);
-        });
-
-        unsafe { &mut (*PLUGIN_INSTALLER_MAP.as_mut_ptr()) }
+        X_PLUGIN_INSTALLER_MAP.get_or_init(|| tokio::sync::Mutex::new(None))
     }
 
-    pub fn set_plugin_installer(func: FnPluginInstall) {
-        Self::get_plugin_installer().replace(Box::new(func));
+    pub async fn set_plugin_installer(func: FnPluginInstall) {
+        Self::get_plugin_installer_()
+            .lock()
+            .await
+            .replace(Box::new(func));
+    }
+
+    pub async fn invoke_plugin_installer(ns: &str, plc: &PluginConfig) -> Result<(), Error> {
+        match Self::get_plugin_installer_().lock().await.to_owned() {
+            Some(tfunc) => tfunc(ns, plc).await,
+            None => Err(anyhow!(
+                "error for get the installer func: not initialized."
+            )),
+        }
     }
 
     fn get_store_service_map() -> &'static mut HashMap<String, MxStoreService> {
         // 使用MaybeUninit延迟初始化
-        static mut SERVICE_MAP: MaybeUninit<HashMap<String, MxStoreService>> =
-            MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static STS_ONCE: Once = Once::new();
+        // static mut SERVICE_MAP: MaybeUninit<HashMap<String, MxStoreService>> =
+        //     MaybeUninit::uninit();
+        // // Once带锁保证只进行一次初始化
+        // static STS_ONCE: Once = Once::new();
 
-        STS_ONCE.call_once(|| unsafe {
-            SERVICE_MAP.as_mut_ptr().write(HashMap::new());
-        });
+        // STS_ONCE.call_once(|| unsafe {
+        //     SERVICE_MAP.as_mut_ptr().write(HashMap::new());
+        // });
 
-        unsafe { &mut (*SERVICE_MAP.as_mut_ptr()) }
+        // unsafe { &mut (*SERVICE_MAP.as_mut_ptr()) }
+
+        static SERVICE_MAP: OnceLock<SyncUnsafeCell<HashMap<String, MxStoreService>>> =
+            OnceLock::new();
+
+        unsafe {
+            let t = SERVICE_MAP.get_or_init(|| SyncUnsafeCell::new(HashMap::new()));
+            &mut *t.get()
+        }
     }
 
     fn get_store_service_metadata() -> &'static mut HashMap<String, String> {
         // 使用MaybeUninit延迟初始化
-        static mut METADATA_MAP: MaybeUninit<HashMap<String, String>> = MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static META_ONCE: Once = Once::new();
-
-        META_ONCE.call_once(|| unsafe {
-            METADATA_MAP.as_mut_ptr().write(HashMap::new());
-        });
-
-        unsafe { &mut (*METADATA_MAP.as_mut_ptr()) }
+        static METADATA_MAP: OnceLock<SyncUnsafeCell<HashMap<String, String>>> = OnceLock::new();
+        let st = METADATA_MAP.get_or_init(|| SyncUnsafeCell::new(HashMap::new()));
+        unsafe { &mut *st.get() }
     }
 
     pub fn set_metadata(key: &str, val: &str) {
@@ -259,6 +295,26 @@ impl MxStoreService {
             })
     }
 
+    pub fn get_app_path() -> String {
+        let crrpath = match std::env::current_exe() {
+            Ok(exefile) => match exefile.parent() {
+                Some(p) => p.canonicalize().unwrap().to_string_lossy().to_string(),
+                None => "".to_string(),
+            },
+            Err(_) => match std::env::current_dir() {
+                Ok(curpath) => curpath
+                    .join("assets")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string(),
+                Err(_) => "".to_string(),
+            },
+        };
+
+        crrpath
+    }
+
     pub fn get_assets_path() -> String {
         Self::get_store_service_metadata()
             .get("_assets_path")
@@ -290,19 +346,14 @@ impl MxStoreService {
 
     fn get_plugin_service_map() -> &'static mut HashMap<String, Box<dyn RxPluginService>> {
         // 使用MaybeUninit延迟初始化
-        static mut PLUGIN_SERVICE_MAP: MaybeUninit<HashMap<String, Box<dyn RxPluginService>>> =
-            MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static PLUGIN_ONCE: Once = Once::new();
-
-        PLUGIN_ONCE.call_once(|| unsafe {
-            PLUGIN_SERVICE_MAP.as_mut_ptr().write(HashMap::new());
-        });
-
-        unsafe { &mut (*PLUGIN_SERVICE_MAP.as_mut_ptr()) }
+        static PLUGIN_SERVICE_MAP: OnceLock<
+            SyncUnsafeCell<HashMap<String, Box<dyn RxPluginService>>>,
+        > = OnceLock::new();
+        let st = PLUGIN_SERVICE_MAP.get_or_init(|| SyncUnsafeCell::new(HashMap::new()));
+        unsafe { &mut *st.get() }
     }
 
-    pub fn get_plugin_service(ns: &str) -> Option<&dyn RxPluginService> {
+    pub fn get_plugin_service(ns: &str) -> Option<&'static dyn RxPluginService> {
         Self::get_plugin_service_map().get(ns).map(|f| f.as_ref())
     }
 
@@ -333,11 +384,21 @@ impl MxStoreService {
         }
     }
 
+    pub fn update_service_add_plugin_sync(
+        ns: String,
+        sts: Vec<PluginConfig>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send>> {
+        Box::pin(async move {
+            Self::update_service_add_plugin(&ns, &sts).await;
+            Ok(())
+        })
+    }
+
     pub async fn update_service_add_plugin(ns: &str, sts: &[PluginConfig]) {
         if let Some(fs) = Self::get_store_service_map().get_mut(ns) {
             for st in sts.iter().cloned() {
                 // install the default Plugin config, we will generate a plugin config file directly
-                log::debug!("Update Service add plugin: {ns}, {:?}", st);
+                log::debug!("Update Service add plugin: {ns}, {st:?}");
 
                 let mut mst = st.clone();
 
@@ -346,26 +407,21 @@ impl MxStoreService {
                     build_path(model_path.clone().join(ns), st.config.clone())
                 {
                     mst.config = build_config_path.to_string_lossy().to_string();
-                    if let Some(installer_func) = Self::get_plugin_installer() {
-                        if let Err(err) = installer_func(ns, &mst).await {
+
+                    if let Err(err) = Self::invoke_plugin_installer(ns, &mst).await {
+                        log::warn!("Could not install  plugin {}, error is {:?}", mst.name, err);
+                    };
+                    let nsuri = format!("{}://{}/{}", st.protocol, ns, st.name.clone());
+                    if let Some(pls) = Self::get_plugin_service(&nsuri) {
+                        if let Err(err) = pls.save_config(&mst) {
                             log::warn!(
-                                "Could not install  plugin {}, error is {:?}",
+                                "Could not touch the config for {}, error is {:?}",
                                 mst.name,
                                 err
                             );
-                        };
-                        let nsuri = format!("{}://{}/{}", st.protocol, ns, st.name.clone());
-                        if let Some(pls) = Self::get_plugin_service(&nsuri) {
-                            if let Err(err) = pls.save_config(&mst) {
-                                log::warn!(
-                                    "Could not touch the config for {}, error is {:?}",
-                                    mst.name,
-                                    err
-                                );
-                            }
-                        } else {
-                            log::warn!("Plugin {} was not installed properly.", mst.name);
                         }
+                    } else {
+                        log::warn!("Plugin {} was not installed properly.", mst.name);
                     }
                 } else {
                     log::warn!("Could not build the config path {}.", st.config.clone());
@@ -392,7 +448,7 @@ impl MxStoreService {
     pub fn update_service_delete_query(ns: &str, sts: &[String]) {
         if let Some(fs) = Self::get_store_service_map().get_mut(ns) {
             for st in sts {
-                log::info!("{st} to be deleted.");
+                // log::info!("{st} to be deleted.");
                 fs.remove_query(st);
             }
             fs.0.querys = fs.0.query_map.values().map(|f| f.to_owned()).collect();
@@ -403,7 +459,9 @@ impl MxStoreService {
         if let Some(fs) = Self::get_store_service_map().get_mut(ns) {
             for st in sts {
                 if let Some(pl) = fs.remove_plugin(st) {
-                    if let Ok(conf_path) = build_path_ns(Self::get_model_path(), ns, pl.config.clone()) {
+                    if let Ok(conf_path) =
+                        build_path_ns(Self::get_model_path(), ns, pl.config.clone())
+                    {
                         if let Err(err) = remove_file(conf_path) {
                             log::info!("Unable to remove the file {}, error {:?}.", pl.config, err);
                         }
@@ -431,7 +489,7 @@ impl MxStoreService {
         if let Err(err) = fs::remove_file(&filepath_) {
             log::warn!("Could not remove the folder {filepath_:?}. {err:?}");
         }
-    }    
+    }
 
     pub fn add_config(conf: &StoreServiceConfig) {
         let ns = conf.namespace.clone();
@@ -477,7 +535,7 @@ impl MxStoreService {
                 Self::add_config(&conf);
             }
             Err(err) => {
-                log::warn!("Could not load with error {:?}", err);
+                log::warn!("Could not load with error {err:?}");
             }
         }
     }
@@ -489,7 +547,7 @@ impl MxStoreService {
         let filepath = path.as_ref().join(conf.filename.clone());
         if let Some(parent) = filepath.parent() {
             if let Err(err) = create_dir_all(parent) {
-                log::info!("Error for create dir: {}", err);
+                log::info!("Error for create dir: {err}");
             }
         }
         save_config(&conf, filepath)?;
@@ -536,8 +594,13 @@ impl MxStoreService {
         FileStoreManager(self.0.clone())
     }
 
-    pub fn get_rbatis(&self) -> &RBatis {
-        get_multiple_rbatis(&self.0.db_url)
+    pub fn get_db_url(&self) -> String {
+        self.0.db_url.clone()
+    }
+
+    #[deprecated]
+    pub async fn get_rbatis_(&self) -> RBatis {
+        get_multiple_rbatis_async(&self.0.db_url).await
     }
 
     pub fn get_object(&self, name: &str) -> Option<StoreObject> {
@@ -565,7 +628,7 @@ impl MxStoreService {
         if let Some(public_key) = self.0.rsa_public_key.clone() {
             rsa_encrypt_with_public_key(text, &public_key).unwrap_or(text.to_owned())
         } else {
-            text.to_owned()
+            String::new()
         }
     }
 
@@ -573,11 +636,18 @@ impl MxStoreService {
         if let Some(priv_key) = self.0.rsa_private_key.clone() {
             rsa_decrypt_with_private_key(text, &priv_key).unwrap_or(text.to_owned())
         } else {
-            text.to_owned()
+            String::new()
         }
     }
-    
-        
+
+    pub fn sha256_with_rsa_sign(&self, text: &str) -> String {
+        if let Some(priv_key) = self.0.rsa_private_key.clone() {
+            sha256_with_rsa_sign(&text.as_bytes(), &priv_key)
+        } else {
+            String::new()
+        }
+    }
+
     pub fn aes_encode_text(&self, text: &str) -> String {
         if self.0.aes_solt.is_none() && self.0.aes_key.is_none() {
             text.to_owned()
@@ -587,15 +657,27 @@ impl MxStoreService {
             let solt = self.0.aes_solt.clone().unwrap_or_default();
             let key_text = self.0.aes_key.clone().unwrap_or_default();
             let key_ = key_text.as_bytes();
-            let iv_ = solt.as_bytes();
-            copy_to_slice(&mut iv, iv_);
-            copy_to_slice(&mut key, key_);
 
-            match crate::utils::crypto::aes256_cbc_encrypt(text.as_bytes(), &key, &iv) {
-                Ok(ret) => base64::engine::general_purpose::STANDARD.encode(ret),
-                Err(err) => {
-                    log::debug!("aes error {:?}", err);
-                    String::new()
+            if solt.trim().is_empty() {
+                copy_to_slice(&mut key, key_);
+                match crate::utils::crypto::aes256_ebc_encrypt(text.as_bytes(), &key) {
+                    Ok(ret) => base64::engine::general_purpose::STANDARD.encode(ret),
+                    Err(err) => {
+                        log::debug!("aes error {err:?}");
+                        String::new()
+                    }
+                }
+            } else {
+                let iv_ = solt.as_bytes();
+                copy_to_slice(&mut iv, iv_);
+                copy_to_slice(&mut key, key_);
+
+                match crate::utils::crypto::aes256_cbc_encrypt(text.as_bytes(), &key, &iv) {
+                    Ok(ret) => base64::engine::general_purpose::STANDARD.encode(ret),
+                    Err(err) => {
+                        log::debug!("aes error {err:?}");
+                        String::new()
+                    }
                 }
             }
         }
@@ -610,32 +692,82 @@ impl MxStoreService {
             let solt = self.0.aes_solt.clone().unwrap_or_default();
             let key_text = self.0.aes_key.clone().unwrap_or_default();
             let key_ = key_text.as_bytes();
-            let iv_ = solt.as_bytes();
-            copy_to_slice(&mut iv, iv_);
-            copy_to_slice(&mut key, key_);
 
-            match base64::engine::general_purpose::STANDARD.decode(text) {
-                Ok(tt) => match crate::utils::crypto::aes256_cbc_decrypt(&tt, &key, &iv) {
-                    Ok(ret) => String::from_utf8_lossy(&ret).to_string(),
+            if solt.trim().is_empty() {
+                copy_to_slice(&mut key, key_);
+
+                match base64::engine::general_purpose::STANDARD.decode(text) {
+                    Ok(tt) => match crate::utils::crypto::aes256_ecb_decrypt(&tt, &key) {
+                        Ok(ret) => String::from_utf8_lossy(&ret).to_string(),
+                        Err(err) => {
+                            log::debug!("aes error {err:?}");
+                            String::new()
+                        }
+                    },
                     Err(err) => {
-                        log::debug!("aes error {:?}", err);
+                        log::debug!("base64 error {err:?}");
                         String::new()
                     }
-                },
-                Err(err) => {
-                    log::debug!("base64 error {:?}", err);
-                    String::new()
+                }
+            } else {
+                let iv_ = solt.as_bytes();
+                copy_to_slice(&mut iv, iv_);
+                copy_to_slice(&mut key, key_);
+                match base64::engine::general_purpose::STANDARD.decode(text) {
+                    Ok(tt) => match crate::utils::crypto::aes256_cbc_decrypt(&tt, &key, &iv) {
+                        Ok(ret) => String::from_utf8_lossy(&ret).to_string(),
+                        Err(err) => {
+                            log::debug!("aes error {err:?}");
+                            String::new()
+                        }
+                    },
+                    Err(err) => {
+                        log::debug!("base64 error {err:?}");
+                        String::new()
+                    }
                 }
             }
         }
     }
 
     /**
-     * TODO: 实现直接调用Dbs的查询请求
+     * 实现直接调用Dbs的查询请求
      */
-    pub async fn execute_query(ns: &str, ctx: Arc<Mutex<InvocationContext>>, query: &str, args: &[Value]) -> Result<Vec<Value>, anyhow::Error> {
+    pub async fn execute_query(
+        ns: &str,
+        ctx: Arc<Mutex<InvocationContext>>,
+        query: &str,
+        args: &[Value],
+    ) -> Result<Vec<Value>, anyhow::Error> {
         // let ctx =  Arc::new(Mutex::new(InvocationContext::new()));
-        SchemaRegistry::get().invoke_direct_query(ns, ctx, query, args).await
+        
+        match SchemaRegistry::get()
+            .invoke_direct_query(ns, ctx.clone(), query, args)
+            .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
+    }
+
+    pub async fn manage_invoke(
+        uri: String,
+        ctx: Arc<Mutex<InvocationContext>>,
+        args: Vec<Value>,
+    ) -> Result<Option<Value>, anyhow::Error> {
+        match SchemaRegistry::get()
+            .manage_invoke(&uri, ctx.clone(), &args)
+            .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
     }
 
     pub async fn invoke_return_one(
@@ -643,9 +775,16 @@ impl MxStoreService {
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
     ) -> Result<Option<Value>, anyhow::Error> {
-        SchemaRegistry::get()
-            .invoke_return_option(&uri, ctx, &args)
+        match SchemaRegistry::get()
+            .invoke_return_option(&uri, ctx.clone(), &args)
             .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
     }
 
     pub async fn invoke_return_vec(
@@ -653,9 +792,16 @@ impl MxStoreService {
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
     ) -> Result<Vec<Value>, anyhow::Error> {
-        SchemaRegistry::get()
-            .invoke_return_vec(&uri, ctx, &args)
+        match SchemaRegistry::get()
+            .invoke_return_vec(&uri, ctx.clone(), &args)
             .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
     }
 
     pub async fn invoke_return_page(
@@ -663,9 +809,52 @@ impl MxStoreService {
         ctx: Arc<Mutex<InvocationContext>>,
         args: Vec<Value>,
     ) -> Result<Page<Value>, anyhow::Error> {
-        SchemaRegistry::get()
-            .invoke_return_page(&uri, ctx, &args)
+        match SchemaRegistry::get()
+            .invoke_return_page(&uri, ctx.clone(), &args)
             .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
+    }
+
+    pub async fn invoke_direct_query_v2(
+        uri: String,
+        ctx: Arc<Mutex<InvocationContext>>,
+        config: Value,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>, anyhow::Error> {
+        match SchemaRegistry::get()
+            .invoke_direct_query_v2(&uri, ctx.clone(), config, &args)
+            .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
+    }
+
+    pub async fn invoke_direct_query(
+        uri: String,
+        ctx: Arc<Mutex<InvocationContext>>,
+        config: String,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>, anyhow::Error> {
+        match SchemaRegistry::get()
+            .invoke_direct_query(&uri, ctx.clone(), &config, &args)
+            .await
+        {
+            Ok(t) => Ok(t),
+            Err(err) => {
+                ctx.lock().unwrap().set_failed();
+                Err(err)
+            }
+        }
     }
 
     pub fn check_rolebase_permission(
@@ -684,17 +873,132 @@ impl MxStoreService {
                     return mso.has_permission(uri, jwt, roles);
                 }
             } else if uri.schema == *"redis" {
-                return true;
+                return if bypass {
+                    true
+                } else {
+                    roles.contains(&"ROLE_COMMON_USER".to_owned())
+                };
             } else {
                 // this is a plugin
                 if let Some(pls) = MxStoreService::get_plugin_service(&uri.url_no_method()) {
+                    // log::info!("here is check plugin permission.");
                     return pls.has_permission(uri, jwt, roles, bypass);
+                    // log::warn!("Has Permission: {p}");
+                    // return p;
                 }
             }
         }
 
         false
     }
+
+    pub fn get_mcp_tools(&self) -> Result<Vec<Value>, anyhow::Error> {
+        let mut tools = vec![];
+        for st in self.get_objects() {
+            let mut mcps = st.get_mcp_tools(&self.get_namespace())?;
+            tools.append(&mut mcps);
+        }
+
+        for qt in self.get_querys() {
+            if qt.mcp_tool {
+                let mut mcps = qt.get_mcp_tools(&self.get_namespace())?;
+                tools.append(&mut mcps);
+            }
+        }
+
+        for plc in self.get_plugins() {
+            if plc.enable && plc.protocol != "mcp" {
+                let uri = format!("{}://{}/{}", plc.protocol, self.get_namespace(), plc.name);
+                if let Some(pls) = MxStoreService::get_plugin_service(&uri) {
+                    let mut mcps = pls.get_mcp_tools()?;
+                    tools.append(&mut mcps);
+                }
+            }
+        }
+        Ok(tools)
+    }
+
+    /**
+     * check the return type for InvokeURI
+     */
+    pub fn should_call_by_return(nsuri: String) -> Option<String> {
+        let ivuri = match InvokeUri::parse(&nsuri) {
+            Ok(t) => t,
+            Err(err) => {
+                log::warn!("could not parse the InvokeURI {nsuri} by error {err}");
+                return None;
+            }
+        };
+
+        if ivuri.schema == "object" {
+            if ivuri.method.starts_with("paged_") {
+                Some("paged".to_owned())
+            } else if ivuri.method.starts_with("query") {
+                Some("list".to_owned())
+            } else {
+                Some("option".to_owned())
+            }
+        } else if ivuri.schema == "query" {
+            if ivuri.method.starts_with("paged_") {
+                Some("paged".to_owned())
+            } else if ivuri.method.starts_with("search") {
+                Some("list".to_owned())
+            } else {
+                Some("option".to_owned())
+            }
+        } else {
+            match Self::get_plugin_service(&ivuri.url_no_method()) {
+                Some(st) => match st.get_method_metadata(&ivuri.method) {
+                    Some(mth) => {
+                        if mth.return_page {
+                            Some("paged".to_owned())
+                        } else if mth.return_vec {
+                            Some("list".to_owned())
+                        } else {
+                            Some("option".to_owned())
+                        }
+                    }
+                    None => Some("option".to_owned()),
+                },
+                None => None,
+            }
+        }
+    }
+}
+
+pub struct MxStoreServiceDelegate();
+
+impl Default for MxStoreServiceDelegate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MxStoreServiceDelegate {
+    pub fn new() -> Self {
+        Self()
+    }
+}
+
+impl MxStoreServiceProxy for MxStoreServiceDelegate {
+    fn get_config(&self, ns: &str) -> Value {
+        if let Some(tc) = MxStoreService::get(ns) {
+            json!(tc.get_config())
+        } else {
+            Value::Null
+        }
+    }
+}
+
+pub fn load_json_config<T>(path: impl AsRef<Path>) -> anyhow::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let mut contents = String::new();
+    reader.read_to_string(&mut contents)?;
+    Ok(serde_json::from_str(&contents)?)
 }
 
 pub fn load_config<T>(path: impl AsRef<Path>) -> anyhow::Result<T>
@@ -713,14 +1017,18 @@ where
     T: serde::ser::Serialize + ?Sized,
 {
     let path_ = path.as_ref();
-    log::debug!("Save Config: {}", path_.to_string_lossy());
+    // log::debug!("Save Config: {}. ", path_.to_string_lossy());
     if let Some(path_prt) = path_.parent() {
         if let Err(err) = create_dir_all(path_prt) {
-            log::debug!("could not create dir for {}, error {err}.", path_.to_string_lossy());
+            log::debug!(
+                "could not create dir for {}, error {err}.",
+                path_.to_string_lossy()
+            );
         }
     }
     let mut file = File::create(path)?;
     let content = toml::to_string_pretty(conf)?;
+    // log::debug!("write the value: {content}. ");
     file.write_all(content.as_bytes())?;
     Ok(())
 }
@@ -741,7 +1049,7 @@ impl RxHookInvoker for MxStoreService {
         args: Vec<Value>,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, Error>> + Send>> {
         let mut mut_args = args.clone();
-        log::debug!("Invoke pre hook for {}", uri.clone());
+        // log::debug!("Invoke pre hook for {}", uri.clone());
         ctx.lock().unwrap().insert("HOOK_HANDLE_URI", uri);
         Box::pin(async move {
             for hook in hooks.iter() {
@@ -753,6 +1061,7 @@ impl RxHookInvoker for MxStoreService {
                             }
                         }
                         Err(err) => {
+                            ctx.lock().unwrap().set_failed();
                             return Err(err);
                         }
                     }
@@ -781,6 +1090,7 @@ impl RxHookInvoker for MxStoreService {
                         }
                     }
                     Err(err) => {
+                        ctx.lock().unwrap().set_failed();
                         return Err(err);
                     }
                 }

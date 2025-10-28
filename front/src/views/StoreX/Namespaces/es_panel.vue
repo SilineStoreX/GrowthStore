@@ -75,8 +75,35 @@
                     <el-form-item label="描述" prop="rest_desc">
                         <el-input v-model="composeService.description"></el-input>
                     </el-form-item>
+                    <el-form-item label="MCP工具" prop="mcp_tool">
+                        <template #label>
+                          MCP工具
+                          <el-tooltip class="box-item" effect="dark" placement="top-start" content="启用后，该方法将公开为MCP的工具函数，以便让AI Agent进行调用。">
+                            <el-icon><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
+                        <el-switch v-model="composeService.mcp_tool"></el-switch>
+                    </el-form-item>                    
                     <el-form-item label="请求参数模板"  prop="request_body">
                         <el-input type="textarea" v-model="composeService.request_body" :rows="6" placeholder="如果模板被设置，则会根据模板来与传入的参数来进行转换产生最终的请求" />
+                    </el-form-item>
+                    <el-form-item label="返回验证"  prop="return_validate">
+                        <template #label>
+                          返回验证
+                          <el-tooltip class="box-item" effect="dark" placement="top-start" content="对ElasticSearch请求返回值进行验证，确保返回的结果是正确的。此处采用JSON Path规则描述。">
+                            <el-icon><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
+                        <el-input v-model="composeService.return_validate" placeholder="使用JSON Path提取成功与否并进行判断" style="width: 40%"></el-input>
+                        <el-form-item label="返回数据"  prop="return_data">
+                          <template #label>
+                            返回数据
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="获取ElasticSearch请求的返回值。此处采用JSON Path表达式提取数据。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-input v-model="composeService.return_data" placeholder="使用JSON Path提取数据" style="width: 100%"></el-input>
+                      </el-form-item>
                     </el-form-item>
                     <el-form-item label="脚本语言"  prop="lang">
                         <el-radio-group v-model="composeService.lang">
@@ -141,9 +168,8 @@
 <script lang="ts" setup name="elasticsearch">
 import { update, remove, metadata_get, config_get, config_save, lang_list, authorize_roles_get } from "@/http/modules/management";
 import { useRoute } from "vue-router";
-import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
 import { mergeProps, onMounted, ref, watch } from "vue";
-import { FormInstance } from "element-plus";
+import { ElMessageBox, FormInstance } from "element-plus";
 
 const props = defineProps<{ data: any }>();
 const emit = defineEmits(['update:data', 'update:visible'])
@@ -201,14 +227,13 @@ function handleUpdate() {
         emit("update:visible", false)
         emit("update:data", true)
       } else {
-        VxeUI.modal.message({ content: '保存失败', status: 'info' })
+        ElMessageBox.alert('保存失败', "提示", { type: 'warning' })
       }
     }).catch(me => {
-      VxeUI.modal.message({ content: '保存失败, ' + me.description, status: 'info' })        
+      ElMessageBox.alert('保存失败，' + me.description, "提示", { type: 'warning' })
     })
-
   }).catch(ex => {
-    VxeUI.modal.message({ content: '保存插件信息失败, ' + ex.description, status: 'info' })
+    ElMessageBox.alert('保存插件信息失败，' + ex.description, "提示", { type: 'warning' })
   })
 }
 
@@ -298,14 +323,6 @@ function onConfirm() {
   handleUpdate()
 }
 
-const submitEvent: VxeFormEvents.Submit = () => {
-  console.log("config: ", config_data.value)
-  VxeUI.modal.message({ content: '保存成功', status: 'success' })
-}
-
-const resetEvent: VxeFormEvents.Reset = () => {
-  VxeUI.modal.message({ content: '重置事件', status: 'info' })
-}
 
 onMounted(() => {
     if (props.data && props.data.protocol && props.data.name) {
@@ -319,8 +336,8 @@ onMounted(() => {
 </script>
   
 <style lang="scss" scoped>
+@use "index.scss";
 .el-select .el-input {
   width: 130px;
 }
-@import "index.scss";
 </style>

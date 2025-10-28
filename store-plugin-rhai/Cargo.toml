@@ -25,5 +25,8 @@ tokio.workspace = true
 rbatis.workspace = true
 reqwest.workspace = true
 fastdate.workspace = true
-rhai = { version = "1.18", features = ["internals", "serde", "sync", "metadata"] }
+urlencoding.workspace = true
+rhai = { version = "1.22", features = ["internals", "debugging", "serde", "sync", "metadata", "decimal", "std"] }
+##rhai-fs = "0.1"
 chimes-store-core = { workspace = true }
+chimes-store-utils = { workspace = true }

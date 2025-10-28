@@ -54,6 +54,22 @@
                             <el-input v-model="conf.max_redis_pool" />
                         </el-form-item>
                     </el-form-item>
+                    <el-form-item label="接口审计">
+                        <el-switch v-model="conf.api_audit" />
+                        <el-text class="mx-1"> 启用接口审计还需要任意一个命名空间下启用synctask插件，并配置一个名为queue-api-audit的处理任务</el-text>
+                    </el-form-item>
+                    <el-form-item label="字典">
+                        <el-input v-model="conf.dict_uri" style="width: calc(50%)"/>
+                        <el-text class="mx-1"> 启用字典功能可以存储服务或查询服务中使用字典转换功能</el-text>
+                    </el-form-item>
+                    <el-form-item label="范围区间">
+                        <el-input v-model="conf.range_uri" style="width: calc(50%)"/>
+                        <el-text class="mx-1"> 提供用于转换范围区间的URI</el-text>
+                    </el-form-item>
+                    <el-form-item label="基础日期/时间格式">
+                        <el-input v-model="conf.datetime_format" style="width: calc(50%)"/>
+                        <el-text class="mx-1"> 提供基本的日期/时间格式，这个格式通常跟数据库类型有关</el-text>
+                    </el-form-item>
                     <el-form-item label="AES加密密钥">
                         <el-input v-model="conf.aes_key" />
                     </el-form-item>
@@ -139,32 +155,32 @@
                     </el-table-column>
                     <el-table-column prop="object_name" label="对象名称" width="180" />
                     <el-table-column prop="name" label="引用名称" width="180" />
-                    <el-table-column prop="insert" label="新增" width="180">
+                    <el-table-column prop="insert" label="新增" width="150">
                         <template #default="scoped">
                             {{ scoped.row.object_type === 'VIEW' ? 'No': 'Yes' }}
                         </template>
                     </el-table-column>
-                    <el-table-column prop="update" label="修改" width="180">
+                    <el-table-column prop="update" label="修改" width="150">
                         <template #default="scoped">
                             {{ scoped.row.object_type === 'VIEW' ? 'No': 'Yes' }}
                         </template>
                     </el-table-column>                        
-                    <el-table-column prop="delete" label="删除" width="180">
+                    <el-table-column prop="delete" label="删除" width="150">
                         <template #default="scoped">
                             {{ scoped.row.object_type === 'VIEW' ? 'No': 'Yes' }}
                         </template>
                     </el-table-column>                        
-                    <el-table-column prop="get_one" label="获取" width="180">
+                    <el-table-column prop="get_one" label="获取" width="150">
                         <template #default="scoped">
                             {{ scoped.row.fields && scoped.row.fields.length > 0 ? 'Yes': 'No' }}
                         </template>
                     </el-table-column>                        
-                    <el-table-column prop="find_one" label="查找" width="180">
+                    <el-table-column prop="find_one" label="查找" width="150">
                         <template #default="scoped">
                             {{ scoped.row.fields && scoped.row.fields.length > 0 ? 'Yes': 'No' }}
                         </template>
                     </el-table-column>                        
-                    <el-table-column prop="find" label="查询" width="180">
+                    <el-table-column prop="find" label="查询" width="150">
                         <template #default="scoped">
                             {{ scoped.row.fields && scoped.row.fields.length > 0 ? 'Yes': 'No' }}
                         </template>
@@ -300,11 +316,20 @@
             <ObjectPanel v-if="show_panel === 'object'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <QueryPanel v-if="show_panel === 'query'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <ComposePanel v-if="show_panel === 'compose'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <PythonPanel v-if="show_panel === 'python'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <RestapiPanel v-if="show_panel === 'restapi'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <FileSystemPanel v-if="show_panel === 'filesystem'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <KafkaPanel v-if="show_panel === 'kafka'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <MqttPanel v-if="show_panel === 'mqtt'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <ElasticsearchPanel v-if="show_panel === 'elasticsearch'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <SyncTaskPanel v-if="show_panel === 'synctask'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />            
+            <DataGraphPanel v-if="show_panel === 'datagraph'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <RivermapPanel v-if="show_panel === 'rivermap'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <VoicePanel v-if="show_panel === 'voice'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <RAGPanel v-if="show_panel === 'rag'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <MCPPanel v-if="show_panel === 'mcp'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <RAgentPanel v-if="show_panel === 'ragent'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
+            <ImaginationPanel v-if="show_panel === 'imagination'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
             <PluginPanel v-if="show_panel === 'plugin'" :data="select_object" @update:visible="handleDrawerClosed" @update:data="onReloadService" />
         </el-drawer>
     </div>
@@ -320,11 +345,20 @@ import ObjectPanel from "./object_panel.vue"
 import QueryPanel from "./query_panel.vue"
 import PluginPanel from "./plugin_panel.vue"
 import ComposePanel from "./compose_panel.vue"
+import PythonPanel from "./python_panel.vue"
 import RestapiPanel from "./restapi_panel.vue"
+import FileSystemPanel from "./filesystem_panel.vue"
 import KafkaPanel from "./kafka_panel.vue"
 import MqttPanel from "./mqtt_panel.vue"
 import SyncTaskPanel from "./sync_panel.vue"
 import ElasticsearchPanel from  "./es_panel.vue"
+import DataGraphPanel from  "./datagraph_panel.vue"
+import RivermapPanel from  "./rivermap_panel.vue"
+import VoicePanel from  "./voice_panel.vue"
+import RAGPanel from  "./rag_panel.vue"
+import MCPPanel from  "./mcp_panel.vue"
+import ImaginationPanel from  "./imagination_panel.vue"
+import RAgentPanel from  "./ragent_panel.vue"
 import { onActivated, onUpdated } from "vue";
 import { ElMessage } from "element-plus";
 import { GlobalStore } from "@/stores";
@@ -407,11 +441,20 @@ function openTypicalDraw(name: string, raw: any) {
     var t_name = name
     if (name === 'plugin') {
         if (raw.protocol === 'compose' 
+                || raw.protocol === 'python'
                 || raw.protocol === 'restapi' 
+                || raw.protocol === 'filesystem'
+                || raw.protocol === 'imagination'
                 || raw.protocol === 'kafka' 
                 || raw.protocol === 'mqtt'
                 || raw.protocol === 'elasticsearch'
-                || raw.protocol === 'synctask') {
+                || raw.protocol === 'synctask'
+                || raw.protocol === 'rivermap'
+                || raw.protocol === 'voice'
+                || raw.protocol === 'rag'
+                || raw.protocol === 'mcp'
+                || raw.protocol === 'ragent'
+                || raw.protocol === 'datagraph') {
             t_name = raw.protocol
         }
     }
@@ -489,6 +532,6 @@ onUpdated(() => {
 </script>
 
 <style lang="scss" scoped>
-@import "index.scss";
+@use "index.scss";
 </style>
   

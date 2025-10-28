@@ -1,6 +1,6 @@
 use crate::{
     dbs::probe::{ColumnInfo, KeyColumnInfo, TableInfo},
-    utils::get_multiple_rbatis,
+    utils::get_multiple_rbatis_async,
 };
 
 use super::{sdk::MxProbeService, starter::MxStoreService};
@@ -13,8 +13,8 @@ impl MxProbeService for MxStoreService {
         &self,
         schema: &str,
     ) -> Result<Vec<crate::dbs::probe::TableInfo>, anyhow::Error> {
-        let rb = get_multiple_rbatis(&self.0.db_url);
-        TableInfo::load_tables(rb, schema).await
+        let rb = get_multiple_rbatis_async(&self.0.db_url).await;
+        TableInfo::load_tables(&rb, schema).await
     }
 
     /**
@@ -25,8 +25,8 @@ impl MxProbeService for MxStoreService {
         schema: &str,
         tbl: &str,
     ) -> Result<Option<crate::dbs::probe::TableInfo>, anyhow::Error> {
-        let rb = get_multiple_rbatis(&self.0.db_url);
-        TableInfo::find_one_table(rb, schema, tbl).await
+        let rb = get_multiple_rbatis_async(&self.0.db_url).await;
+        TableInfo::find_one_table(&rb, schema, tbl).await
     }
     /**
      * 列出所有的结构
@@ -36,11 +36,11 @@ impl MxProbeService for MxStoreService {
         schema: &str,
         tbl: &str,
     ) -> Result<Vec<crate::dbs::probe::ColumnInfo>, anyhow::Error> {
-        let rb = get_multiple_rbatis(&self.0.db_url);
-        match ColumnInfo::load_columns(rb, schema, tbl).await {
+        let rb = get_multiple_rbatis_async(&self.0.db_url).await;
+        match ColumnInfo::load_columns(&rb, schema, tbl).await {
             Ok(t) => Ok(t),
             Err(err) => {
-                log::info!("Error {}", err);
+                log::info!("Error {err}");
                 Err(err)
             }
         }
@@ -51,13 +51,14 @@ impl MxProbeService for MxStoreService {
         schema: &str,
         tbl: &str,
     ) -> Result<Vec<crate::dbs::probe::KeyColumnInfo>, anyhow::Error> {
-        let rb = get_multiple_rbatis(&self.0.db_url);
-        match KeyColumnInfo::load_table_pkeys(rb, schema, tbl).await {
+        let rb = get_multiple_rbatis_async(&self.0.db_url).await;
+        match KeyColumnInfo::load_table_pkeys(&rb, schema, tbl).await {
             Ok(t) => Ok(t),
             Err(err) => {
-                log::info!("Error {}", err);
+                log::info!("Error {err}");
                 Err(err)
             }
         }
     }
 }
+

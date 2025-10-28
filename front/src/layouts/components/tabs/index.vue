@@ -19,7 +19,7 @@
             <el-icon class="tabs-icon" v-show="item.icon">
               <component :is="item.icon"></component>
             </el-icon>
-            <span>{{ item.title }}</span>
+            <span>{{ resolveTitle(item) }}</span>
           </span>
           <template #dropdown>
             <el-dropdown-menu :data-item="item">
@@ -90,6 +90,17 @@ const initTabs = () => {
     }
   });
 };
+
+const resolveTitle = (item: any) => {
+  let t = decodeURI(item.path);
+  let url = new URL('http://localhost' + t);
+  let title = url.searchParams.get("_title");
+  if (title && title !== '') {
+    return item.title + '-' + title
+  } else {
+    return item.title
+  }
+}
 
 const removeTab = (fullPath: string) => {
   const name =

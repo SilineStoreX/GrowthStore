@@ -1,0 +1,43 @@
+.home {
+  height: calc(100vh - 160px);
+}
+
+.searchview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.percentbar {
+  padding: 20px;
+  display: flex;
+}
+
+.percentbar span {
+  padding-right: 20px;
+  line-height: 32px;
+}
+
+.button_func {
+  padding: 0px;
+  display: flex;
+  justify-content: right;
+  width: 400px;
+}
+
+.filesystem {
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 10px;
+  padding-right: 10px;
+  line-height: 32px;
+}
+
+.filesystem .title {
+  padding-right: 10px;
+}
+
+.filesystem div {
+  line-height: 32px;
+}

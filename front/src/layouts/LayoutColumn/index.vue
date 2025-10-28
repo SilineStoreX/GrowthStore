@@ -26,7 +26,7 @@
             <el-button type="primary" @click="onConfirm">确认</el-button>
           </div>
         </template>
-      </el-dialog>      
+      </el-dialog>
       <PageSplit :distribute="0.15" :lineThickness="6" :isVertical="true" @resizeLineStartMove="onresizeLineStartMove" @resizeLineMove="onResizeLineMove" @resizeLineEndMove="onresizeLineEndMove">
         <template v-slot:first>
             <el-scrollbar>
@@ -57,6 +57,7 @@
         <template v-slot:second>
           <el-container>
             <Tabs />
+            <el-backtop target=".el-main" :visibility-height="100" :right="100" :bottom="100" />
             <el-main>
                 <Main />
             </el-main>
@@ -71,7 +72,6 @@
 <script lang="ts" setup>
 import Main from "../components/Main/index.vue";
 import Header from "../components/Header/index.vue";
-import subMenu from "../components/Menu/subMenu.vue";
 import Tabs from "../components/tabs/index.vue";
 import { fetchNamespaces, config_create } from "@/http/modules/management";
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
@@ -104,9 +104,9 @@ let observer = null;
   
 const handleResize = () => {
   if (computedContainer.value && computedContainer.value.$el) {
-    const width = computedContainer.value.$el.offsetWidth;
+    // const width = computedContainer.value.$el.offsetWidth;
     const height = computedContainer.value.$el.offsetHeight;
-    console.log(`Size: width=${width}, height=${height}`);
+    // console.log(`Size: width=${width}, height=${height}`);
     treeViewHeight.value = height - 40;
   }
 };
@@ -156,6 +156,20 @@ const user_conf_menu_item = ref<any>({
   children: [user_login_menu_item.value]
 })
 
+const tasks_menu_test_item = ref<any>({
+  id: 'global:scheduler_test',
+  label: '长时间任务测试',
+  icon: 'User',
+  children: []
+})
+
+const tasks_menu_item = ref<any>({
+  id: 'global:schedulers',
+  label: '定时任务及长时间任务',
+  icon: 'Clock',
+  children: [tasks_menu_test_item.value]
+})
+
 const tool_jsonpath_menu_item = ref<any>({
   id: 'global:jsonpath',
   label: 'JSONPath测试',
@@ -184,11 +198,18 @@ const rhai_test_menu_item = ref<any>({
   children: []
 })
 
+const readlogs_menu_item = ref<any>({
+  id: 'global:logs',
+  label: '日志',
+  icon: 'Memo',
+  children: []
+})
+
 const user_tool_menu_item = ref<any>({
   id: 'global:tools',
   label: '常用测试工具',
   icon: 'Tools',
-  children: [tool_jsonpath_menu_item.value, tera_template_menu_item.value, connection_test_menu_item.value, rhai_test_menu_item.value]
+  children: [tool_jsonpath_menu_item.value, tera_template_menu_item.value, connection_test_menu_item.value, rhai_test_menu_item.value, readlogs_menu_item.value]
 })
 
 
@@ -210,7 +231,12 @@ function nodeChanged(node: any) {
     router.push(`/storex/authorization?id=${node.id}`)
   } else if (node.id === 'global:login') {
     router.push(`/storex/login?id=${node.id}`)
+  } else if (node.id === 'global:schedulers') {
+    router.push(`/storex/schedulers?id=${node.id}`)
+  } else if (node.id === 'global:scheduler_test') {
+    router.push(`/storex/scheduler-test?id=${node.id}`)
   } else if (node.id === 'global:jsonpath') {
+    
     router.push(`/storex/tools/jsonpath?id=${node.id}`)
   } else if (node.id === 'global:tera') {
     router.push(`/storex/tools/tera?id=${node.id}`)
@@ -218,16 +244,22 @@ function nodeChanged(node: any) {
     router.push(`/storex/tools/connection?id=${node.id}`)
   } else if (node.id === 'global:rhai') {
     router.push(`/storex/tools/rhai?id=${node.id}`)
+  } else if (node.id === 'global:logs') {
+    router.push(`/storex/tools/logs?id=${node.id}`)
   } else if (node.id === 'global:tools') {
     return
   } else if (node.id.indexOf(':') >= 0) {
     var suff = node.id.substring(node.id.indexOf(":") + 1)
     console.log(node.id, suff)
-    if (suff === '_redis') {
+    if (suff.startsWith('_redis:')) {
       router.push("/storex/redis?ns=" + node.id.substring(0, node.id.indexOf(":")))
-    } else if (suff === '_es') {
-      router.push("/storex/elasticsearch?ns=" + node.id.substring(0, node.id.indexOf(":")))
-    } else if (suff === '_config') {
+    } else if (suff.startsWith('_es:')) {
+      router.push("/storex/elasticsearch?ns=" + node.id.substring(0, node.id.indexOf(":")) + '&name=' + node.id.substring(node.id.lastIndexOf(":") + 1))
+    } else if (suff.startsWith('_fs:')) {
+      router.push("/storex/filesystem?ns=" + node.id.substring(0, node.id.indexOf(":")) + '&name=' + node.id.substring(node.id.lastIndexOf(":") + 1))
+    } else if (suff.startsWith('_growthai:')) {
+      router.push("/storex/growthai?ns=" + node.id.substring(0, node.id.indexOf(":")) + '&name=' + node.id.substring(node.id.lastIndexOf(":") + 1))
+    } else if (suff.startsWith('_config')) {
       router.push("/storex/namespaces?ns=" + node.id.substring(0, node.id.indexOf(":")))
     } else {
       router.push("/storex/invoker?ns=" + node.id)
@@ -245,7 +277,7 @@ function nodeExpanded(node: any) {
 
 function fetchNamespacesTree() {
   fetchNamespaces().then(res => {
-    projects.value = [user_conf_menu_item.value, user_tool_menu_item.value, ...res.data]
+    projects.value = [user_conf_menu_item.value, user_tool_menu_item.value, tasks_menu_item.value, ...res.data]
   }).catch(ex => {})
 }
 
@@ -311,10 +343,14 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import "index.scss";
+@use "index.scss";
 </style>
 
 <style lang="scss">
+.el-container {
+  height: 100%;
+  overflow: auto;
+}
 .column {
   .el-menu-item {
     &.is-active {

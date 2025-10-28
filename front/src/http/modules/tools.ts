@@ -47,3 +47,19 @@ export const common_test = (script: string, cmd: string, data: any) => {
   })
 };
 
+
+export const hmacsha_test = (data: any) => {
+  return createAxios({
+    url: `/management/tools/hmacsha_test`,
+    method: 'POST',
+    data
+  })
+};
+
+export const encrypt_test = (data: any) => {
+  return createAxios({
+    url: `/management/tools/encrypt_test`,
+    method: 'POST',
+    data
+  })
+};

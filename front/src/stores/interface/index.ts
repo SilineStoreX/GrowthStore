@@ -2,6 +2,7 @@
 export interface GlobalState {
   token: string;
   api_token: string;
+  chat_conversation_id: string,
   userInfo: userInfo;
   language: string;
   namespaceTree: number;

@@ -1,0 +1,251 @@
+-- public.chunk_embedding definition
+
+-- Drop table
+
+-- DROP TABLE public.chunk_embedding;
+
+-- Should enable pgVector first if we are using pgVector as vectordb
+
+
+CREATE TABLE public.chunk_embedding (
+	chunk_id varchar(40) NOT NULL,
+	text_embedding public.vector NULL,
+	CONSTRAINT chunk_embedding_pk PRIMARY KEY (chunk_id)
+);
+
+
+-- public.documentsets definition
+
+-- Drop table
+
+-- DROP TABLE public.documentsets;
+
+CREATE TABLE public.documentsets (
+	id varchar(40) NOT NULL,
+	knowledge_id varchar(40) NULL,
+	"name" varchar(256) NULL,
+	fullpath varchar(256) NULL,
+	description text NULL,
+	processor varchar(100) NULL,
+	chunk_num int8 NULL,
+	token_num int8 NULL,
+	status int4 NULL,
+	enabled bool NULL,
+	create_by varchar(128) NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	CONSTRAINT documentsets_pkey PRIMARY KEY (id)
+);
+
+
+-- public.memory_embedding definition
+
+-- Drop table
+
+-- DROP TABLE public.memory_embedding;
+
+CREATE TABLE public.memory_embedding (
+	mem_id int8 NOT NULL,
+	text_embedding public.vector NULL,
+	CONSTRAINT memory_embedding_pk PRIMARY KEY (mem_id)
+);
+
+
+-- public.prompt_embedding definition
+
+-- Drop table
+
+-- DROP TABLE public.prompt_embedding;
+
+CREATE TABLE public.prompt_embedding (
+	prompt_id int8 NOT NULL,
+	text_embedding public.vector NULL,
+	CONSTRAINT prompt_embedding_pkey PRIMARY KEY (prompt_id)
+);
+
+
+-- public.chunksets definition
+
+-- Drop table
+
+-- DROP TABLE public.chunksets;
+
+CREATE TABLE public.chunksets (
+	id varchar(40) NOT NULL,
+	knowledge_id varchar(40) NULL,
+	doc_id varchar(40) NULL,
+	chunk_no int4 NULL,
+	chunk_type varchar(60) NULL,
+	chunk_text text NULL,
+	chunk_ref varchar(40) NULL,
+	token_num int8 NULL,
+	create_by varchar(128) NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	chunk_status int4 NULL,
+	CONSTRAINT chunksets_pkey PRIMARY KEY (id)
+);
+
+
+-- public.filesystem_metadata definition
+
+-- Drop table
+
+-- DROP TABLE public.filesystem_metadata;
+
+CREATE TABLE public.filesystem_metadata (
+	id varchar(128) NOT NULL,
+	"namespace" varchar(128) DEFAULT NULL::character varying NULL,
+	"name" varchar(100) DEFAULT NULL::character varying NULL,
+	service_name varchar(128) DEFAULT NULL::character varying NULL,
+	fullpath varchar(400) DEFAULT NULL::character varying NULL,
+	filename varchar(200) DEFAULT NULL::character varying NULL,
+	extname varchar(100) DEFAULT NULL::character varying NULL,
+	content_type varchar(120) DEFAULT NULL::character varying NULL,
+	isfolder bool NULL,
+	file_size int8 NULL,
+	readonly bool NULL,
+	hash varchar(260) DEFAULT NULL::character varying NULL,
+	"content" text NULL,
+	processed bool NULL,
+	access_time int8 NULL,
+	modify_time int8 NULL,
+	create_time int8 NULL,
+	last_update timestamptz NULL,
+	"document" bool NULL,
+	CONSTRAINT filesystem_metadata_pkey PRIMARY KEY (id)
+);
+
+
+-- public.image_embedding definition
+
+-- Drop table
+
+-- DROP TABLE public.image_embedding;
+
+CREATE TABLE public.image_embedding (
+	id bigserial NOT NULL,
+	file_id varchar(128) NULL,
+	fullpath varchar(400) NULL,
+	filename varchar(200) NULL,
+	extname varchar(100) NULL,
+	content_type varchar(120) NULL,
+	x numeric(10, 8) NULL,
+	y numeric(10, 8) NULL,
+	width numeric(10, 8) NULL,
+	height numeric(10, 8) NULL,
+	"label" varchar(400) NULL,
+	embedding public.vector NULL,
+	update_time timestamptz NULL,
+	CONSTRAINT image_embedding_pkey PRIMARY KEY (id)
+);
+
+
+-- public.job_state_info definition
+
+-- Drop table
+
+-- DROP TABLE public.job_state_info;
+
+CREATE TABLE public.job_state_info (
+	id bigserial NOT NULL,
+	"uuid" varchar(128) DEFAULT NULL::character varying NULL,
+	parent_uuid varchar(128) DEFAULT NULL::character varying NULL,
+	description varchar(400) DEFAULT NULL::character varying NULL,
+	invoke_uri varchar(128) DEFAULT NULL::character varying NULL,
+	params text NULL,
+	sched_type int4 NULL,
+	sched_express varchar(40) DEFAULT NULL::character varying NULL,
+	states varchar(40) DEFAULT NULL::character varying NULL,
+	execute_time timestamp NULL,
+	elapsed int4 NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	CONSTRAINT job_state_info_pkey PRIMARY KEY (id)
+);
+
+
+-- public.knowledgebases definition
+
+-- Drop table
+
+-- DROP TABLE public.knowledgebases;
+
+CREATE TABLE public.knowledgebases (
+	id varchar(40) NOT NULL,
+	avatar varchar(256) NULL,
+	"name" varchar(120) NULL,
+	"language" varchar(32) NULL,
+	description text NULL,
+	doc_num int8 NULL,
+	token_num int8 NULL,
+	chunk_num int8 NULL,
+	similarity_threshold float8 NULL,
+	vector_similarity_weight float8 NULL,
+	parser_id varchar(40) NULL,
+	parse_config json NULL,
+	pagerank int8 NULL,
+	status int4 NULL,
+	"permission" varchar(20) NULL,
+	create_by varchar(128) NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	CONSTRAINT knowledgebases_pkey PRIMARY KEY (id)
+);
+
+
+-- public.memories definition
+
+-- Drop table
+
+-- DROP TABLE public.memories;
+
+CREATE TABLE public.memories (
+	id bigserial NOT NULL,
+	session_id varchar(40) NULL,
+	"role" varchar(40) NULL,
+	"content" text NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	username varchar(60) NULL,
+	CONSTRAINT memories_pkey PRIMARY KEY (id)
+);
+
+
+-- public.prompt_templates definition
+
+-- Drop table
+
+-- DROP TABLE public.prompt_templates;
+
+CREATE TABLE public.prompt_templates (
+	id bigserial NOT NULL,
+	"type" varchar(40) NULL,
+	"role" varchar(40) NULL,
+	description text NULL,
+	context_holder varchar(100) NULL,
+	history_holder varchar(100) NULL,
+	query_holder varchar(100) NULL,
+	similarity numeric(20, 10) NULL,
+	prompt_template text NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	"name" varchar(40) NULL,
+	status int4 NULL,
+	CONSTRAINT prompt_templates_pkey PRIMARY KEY (id)
+);
+
+
+-- public.chunksets foreign keys
+
+-- public.filesystem_metadata foreign keys
+
+-- public.image_embedding foreign keys
+
+-- public.job_state_info foreign keys
+
+-- public.knowledgebases foreign keys
+
+-- public.memories foreign keys
+
+-- public.prompt_templates foreign keys

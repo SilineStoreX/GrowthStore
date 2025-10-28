@@ -12,5 +12,5 @@
   )
 );
 
-// 使用 @use 'xxx.scss' as *; 代替 @import 'xxx.scss';。因为 sass 团队说他们最终会删除 @import 语法。
+// 使用 @use 'xxx.scss' as *; 代替 @use 'xxx.scss';。因为 sass 团队说他们最终会删除 @use 语法。
 @use "element-plus/theme-chalk/src/index.scss" as *;

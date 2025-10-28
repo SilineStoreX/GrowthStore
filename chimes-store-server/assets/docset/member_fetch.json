@@ -1,0 +1,11 @@
+{
+    "doc_id": "{{ obj.message_id }}",
+    "content": "在{{ obj.create_date }}时，{{ obj.initial_user_id }}{{ obj.event_type }}{{ obj.action_done }}",
+    "summary": "{{ obj.action_done }}",
+    "qandas": [{
+        "question": "谁完成动作{{ obj.event_type }}?",
+        "answer": "{{obj.initial_user_id}}{{ obj.action_done }}"
+    }],
+    "sub_contents": [],
+    "variables": []
+}

@@ -1,4 +1,8 @@
-use std::{mem::MaybeUninit, pin::Pin, future::Future, slice::Iter, sync::Once};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Mutex, OnceLock},
+};
 
 use anyhow::{anyhow, Result};
 use chimes_store_core::config::PluginConfig;
@@ -7,12 +11,10 @@ use salvo::Router;
 
 type FnGetProtocolName = unsafe extern "Rust" fn() -> &'static str;
 type FnPluginRouteRegister = unsafe extern "Rust" fn() -> Vec<Router>;
-// type FnPluginInit = unsafe extern "Rust" fn(ns: &str, conf: &PluginConfig);
 type FnPluginInit = unsafe extern "Rust" fn(
     ns: &str,
     conf: &PluginConfig,
 ) -> Pin<Box<dyn Future<Output = ()> + Send>>;
-
 type FnExtensionInit = unsafe extern "Rust" fn();
 
 #[derive(Clone)]
@@ -42,15 +44,19 @@ impl PluginRountine {
 
     pub async fn plugin_init(&self, ns: &str, plc: &PluginConfig) -> Result<()> {
         if let Some(plugin_init_func) = self.fn_plugin_init {
-            log::info!("call plugin_init for {ns}");
-            unsafe { plugin_init_func(ns, plc).await; }
+            log::debug!("call plugin_init for {ns}");
+            unsafe {
+                plugin_init_func(ns, plc).await;
+            }
         }
         Ok(())
     }
 
     pub fn extension_init(&self) -> Result<()> {
         if let Some(extension_init_func) = self.fn_extension_init {
-            unsafe { extension_init_func(); }
+            unsafe {
+                extension_init_func();
+            }
         }
         Ok(())
     }
@@ -58,62 +64,56 @@ impl PluginRountine {
 
 #[allow(dead_code)]
 pub struct PluginRegistry {
-    libs: Vec<Library>,
-    registry: Vec<PluginRountine>,
+    libs: Mutex<Vec<Library>>,
+    registry: Mutex<Vec<PluginRountine>>,
 }
 
 impl PluginRegistry {
-    pub fn get_mut() -> &'static mut PluginRegistry {
-        // 使用MaybeUninit延迟初始化
-        static mut PLUGIN_REGISTRY_CONF: MaybeUninit<PluginRegistry> = MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static PLUGIN_REGISTRY_ONCE: Once = Once::new();
-
-        PLUGIN_REGISTRY_ONCE.call_once(|| unsafe {
-            PLUGIN_REGISTRY_CONF.as_mut_ptr().write(PluginRegistry {
-                libs: vec![],
-                registry: vec![],
-            });
-        });
-        unsafe { &mut (*PLUGIN_REGISTRY_CONF.as_mut_ptr()) }
-    }
-
     pub fn get() -> &'static PluginRegistry {
-        Self::get_mut()
+        // 使用MaybeUninit延迟初始化
+        static PLUGIN_REGISTRY_CONF: OnceLock<PluginRegistry> = OnceLock::new();
+
+        PLUGIN_REGISTRY_CONF.get_or_init(|| PluginRegistry {
+            libs: Mutex::new(vec![]),
+            registry: Mutex::new(vec![]),
+        })
     }
 
     #[allow(dead_code)]
-    pub fn register(&'static mut self, lib: Library, pl: PluginRountine) -> &'static mut Self {
-        self.libs.push(lib);
-        self.registry.push(pl);
+    pub fn register(&'static self, lib: Library, pl: PluginRountine) -> &'static Self {
+        self.libs.lock().unwrap().push(lib);
+        self.registry.lock().unwrap().push(pl);
         self
     }
 
-    pub fn register_static(&'static mut self, pl: PluginRountine) -> &'static mut Self {
-        self.registry.push(pl);
+    pub fn register_static(&'static self, pl: PluginRountine) -> &'static Self {
+        self.registry.lock().unwrap().push(pl);
         self
-    }    
+    }
 
-    pub fn iter(&'static mut self) -> Iter<PluginRountine> {
-        self.registry.iter()
+    pub fn iter(&'static self) -> Vec<PluginRountine> {
+        self.registry.lock().unwrap().clone()
     }
 
     pub fn install<F>(&'static self, fun: &mut F)
     where
         F: FnMut(PluginRountine),
     {
-        for pl in self.registry.iter().cloned() {
+        for pl in self.registry.lock().unwrap().iter().cloned() {
             fun(pl);
         }
     }
 }
+
+#[cfg(not(feature = "plugin_rlib"))]
+static LOADED_PLUGIN_ID: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(1);
 
 /**
  * load the plugin
  * 通常，这个加载会在程序启动的时间加载，这个时间还没有初始他logger
  * 所以，这里直接使用println!来打印出错信息，而无法使用log::error!
  */
-#[cfg(not(feature="plugin_rlib"))]
+#[cfg(not(feature = "plugin_rlib"))]
 pub fn load_plugin(path: &str) -> Result<(Library, PluginRountine)> {
     unsafe {
         let lib = match libloading::Library::new(path) {
@@ -151,6 +151,7 @@ pub fn load_plugin(path: &str) -> Result<(Library, PluginRountine)> {
         Ok((
             lib,
             PluginRountine {
+                sort: LOADED_PLUGIN_ID.fetch_add(1, std::sync::atomic::Ordering::AcqRel),
                 fn_get_protocol_name: get_plugin_name,
                 fn_plugin_route_regiter: plugin_router_register,
                 fn_plugin_anonymous_route_regiter: plugin_anonymous_router_register,
@@ -161,17 +162,17 @@ pub fn load_plugin(path: &str) -> Result<(Library, PluginRountine)> {
     }
 }
 
-#[cfg(not(feature="plugin_rlib"))]
+#[cfg(not(feature = "plugin_rlib"))]
 pub fn static_load_plugin() -> Vec<PluginRountine> {
     vec![]
 }
 
-#[cfg(feature="plugin_rlib")]
+#[cfg(feature = "plugin_rlib")]
 pub fn load_plugin(_path: &str) -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature="plugin_rlib")]
+#[cfg(feature = "plugin_rlib")]
 pub fn static_load_plugin() -> Vec<PluginRountine> {
     let rhai = PluginRountine {
         sort: 0,
@@ -185,42 +186,217 @@ pub fn static_load_plugin() -> Vec<PluginRountine> {
         sort: 1,
         fn_get_protocol_name: Some(store_plugin_compose::get_plugin_name),
         fn_plugin_route_regiter: Some(store_plugin_compose::plugin_router_register),
-        fn_plugin_anonymous_route_regiter: Some(store_plugin_compose::plugin_anonymous_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_compose::plugin_anonymous_router_register,
+        ),
         fn_plugin_init: Some(store_plugin_compose::plugin_init),
         fn_extension_init: None,
     };
 
     let restapi = PluginRountine {
-        sort: 2,
+        sort: 3,
         fn_get_protocol_name: Some(store_plugin_restapi::get_plugin_name),
         fn_plugin_route_regiter: Some(store_plugin_restapi::plugin_router_register),
-        fn_plugin_anonymous_route_regiter: Some(store_plugin_restapi::plugin_anonymous_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_restapi::plugin_anonymous_router_register,
+        ),
         fn_plugin_init: Some(store_plugin_restapi::plugin_init),
         fn_extension_init: None,
     };
 
-    let mqtt = PluginRountine {
+    #[cfg(feature = "python")]
+    let python = PluginRountine {
+        sort: 2,
+        fn_get_protocol_name: Some(store_plugin_python::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_python::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_python::plugin_anonymous_router_register,
+        ),
+        fn_plugin_init: Some(store_plugin_python::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "filesystem")]
+    let filesystem = PluginRountine {
+        sort: 4,
+        fn_get_protocol_name: Some(store_plugin_filesystem::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_filesystem::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_filesystem::plugin_anonymous_router_register,
+        ),
+        fn_plugin_init: Some(store_plugin_filesystem::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "imagination")]
+    let imagination = PluginRountine {
         sort: 3,
+        fn_get_protocol_name: Some(store_plugin_imagination::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_imagination::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_imagination::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "mqtt")]
+    let mqtt = PluginRountine {
+        sort: 10,
         fn_get_protocol_name: Some(store_plugin_mqtt::get_plugin_name),
         fn_plugin_route_regiter: Some(store_plugin_mqtt::plugin_router_register),
-        fn_plugin_anonymous_route_regiter: Some(store_plugin_mqtt::plugin_anonymous_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_mqtt::plugin_anonymous_router_register,
+        ),
         fn_plugin_init: Some(store_plugin_mqtt::plugin_init),
         fn_extension_init: None,
     };
 
+    #[cfg(feature = "kafka")]
     let kafka = PluginRountine {
-        sort: 4,
+        sort: 11,
         fn_get_protocol_name: Some(store_plugin_kafka::get_plugin_name),
         fn_plugin_route_regiter: Some(store_plugin_kafka::plugin_router_register),
-        fn_plugin_anonymous_route_regiter: Some(store_plugin_kafka::plugin_anonymous_router_register),
+        fn_plugin_anonymous_route_regiter: Some(
+            store_plugin_kafka::plugin_anonymous_router_register,
+        ),
         fn_plugin_init: Some(store_plugin_kafka::plugin_init),
         fn_extension_init: None,
     };
 
-    let mut plugins = vec![rhai, compose, restapi, kafka, mqtt];
+    #[cfg(feature = "es")]
+    let elasticsearch = PluginRountine {
+        sort: 12,
+        fn_get_protocol_name: Some(store_plugin_es::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_es::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_es::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "rivermap")]
+    let rivermap = PluginRountine {
+        sort: 20,
+        fn_get_protocol_name: Some(store_plugin_rivermap::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_rivermap::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_rivermap::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "rivermap")]
+    let datagraph = PluginRountine {
+        sort: 21,
+        fn_get_protocol_name: Some(store_plugin_datagraph::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_datagraph::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_datagraph::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "synctask")]
+    let synctask = PluginRountine {
+        sort: 8,
+        fn_get_protocol_name: Some(store_plugin_synctask::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_synctask::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_synctask::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "voice")]
+    let voice = PluginRountine {
+        sort: 31,
+        fn_get_protocol_name: Some(store_plugin_voice::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_voice::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_voice::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "rag")]
+    let rag = PluginRountine {
+        sort: 40,
+        fn_get_protocol_name: Some(store_plugin_rag::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_rag::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_rag::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "mcp")]
+    let mcp = PluginRountine {
+        sort: 9,
+        fn_get_protocol_name: Some(store_plugin_mcp::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_mcp::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_mcp::plugin_init),
+        fn_extension_init: None,
+    };
+
+    #[cfg(feature = "ragent")]
+    let ragent = PluginRountine {
+        sort: 41,
+        fn_get_protocol_name: Some(store_plugin_ragent::get_plugin_name),
+        fn_plugin_route_regiter: Some(store_plugin_ragent::plugin_router_register),
+        fn_plugin_anonymous_route_regiter: None,
+        fn_plugin_init: Some(store_plugin_ragent::plugin_init),
+        fn_extension_init: None,
+    };
+
+    // #[cfg(feature = "deno")]
+    // let deno = PluginRountine {
+    //     sort: 0,
+    //     fn_get_protocol_name: Some(store_plugin_deno::get_plugin_name),
+    //     fn_plugin_route_regiter: None,
+    //     fn_plugin_anonymous_route_regiter: None,
+    //     fn_plugin_init: Some(store_plugin_deno::plugin_init),
+    //     fn_extension_init: Some(store_plugin_deno::extension_init),
+    // };
+
+    let mut plugins = vec![rhai, compose, restapi];
+
+    #[cfg(feature = "python")]
+    plugins.push(python);
+
+    #[cfg(feature = "filesystem")]
+    plugins.push(filesystem);
+
+    #[cfg(feature = "imagination")]
+    plugins.push(imagination);
+
+    #[cfg(feature = "mqtt")]
+    plugins.push(mqtt);
+
+    #[cfg(feature = "kafka")]
+    plugins.push(kafka);
+
+    #[cfg(feature = "es")]
+    plugins.push(elasticsearch);
+
+    #[cfg(feature = "rivermap")]
+    plugins.push(rivermap);
+
+    #[cfg(feature = "rivermap")]
+    plugins.push(datagraph);
+
+    #[cfg(feature = "synctask")]
+    plugins.push(synctask);
+
+    #[cfg(feature = "voice")]
+    plugins.push(voice);
+
+    #[cfg(feature = "rag")]
+    plugins.push(rag);
+
+    #[cfg(feature = "mcp")]
+    plugins.push(mcp);
+
+    #[cfg(feature = "ragent")]
+    plugins.push(ragent);
+
+    // #[cfg(feature = "deno")]
+    // plugins.push(deno);
 
     plugins.sort_by(|a, b| a.sort.cmp(&b.sort));
-    
+
     plugins
 }
-

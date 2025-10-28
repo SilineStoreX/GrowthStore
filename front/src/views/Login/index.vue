@@ -3,6 +3,29 @@
     <contact-us :visible="showContactUsDialog" title="注册联系人信息" :hook="currentHook" @update:visible="handleDialogVisibleChange"></contact-us>
     <license :visible="showLicenseDialog" title="许可协议（Apache）" src="/SERVICE-LICENSE-APACHE" :hook="currentHook" @update:visible="handleDialogVisibleChange"></license>
     <license :visible="showAggreeDialog" title="服务条款" src="/SERVICE-AGGREEMENT" :hook="currentHook" @update:visible="handleDialogVisibleChange"></license>
+    <el-dialog
+      v-model="showmore_dlg"
+      :title="'关于' + version_info.display_name + ' v' + version_info.version"
+      width="600"
+      align-center
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"      
+      class="lic-dialog"
+      @close="hideAboutMore">
+      <div class="aboutcontent">
+        <div class="about">{{ version_info.about }}</div>
+        <div class="about"><span class="title">版本 </span> {{ version_info.version }}</div>
+        <div class="about"><span class="title">CPU架构 </span> {{ version_info.arch }}，<span class="title">核心数量 </span> {{ version_info.cpu_cores }}</div>
+        <div class="about"><span class="title">系统家族 </span> {{ version_info.family }}</div>
+        <div class="about"><span class="title">操作系统 </span> {{ version_info.os_long_version }} 内核({{ version_info.kernel_long_version }})</div>
+        <div class="about"><span class="title">作者 </span> {{ version_info.author }}</div>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="hideAboutMore">确定</el-button>
+        </div>
+      </template>
+    </el-dialog>    
     <div class="login-left">
       <div class="affix">
         <span class="app_title">
@@ -44,8 +67,9 @@
         </div>
         <div class="bottaffix">
           <el-checkbox v-model="aggreed"/><span class="aggr"> 我同意<a href="#" class="aggreement" @click="onShowServiceAggr">服务条款</a>&<a href="#" class="app_license" @click="onShowLicense">许可协议(Apache)</a></span>
-        </div>  
-      </div>    
+          <div class="version" @click="showAboutMore" style="cursor: pointer;">版本号：v{{ version_info.version }} {{ version_info.os_long_version && version_info.os_long_version !== '' ? '@' + version_info.os_long_version : ''}}</div>
+        </div>
+      </div>
     </div>
     <div class="login-right">
       
@@ -61,7 +85,6 @@ import { ElMessage, ElNotification } from "element-plus";
 import { ElMessageBox } from 'element-plus'
 import { useRouter } from "vue-router";
 import { getTimeState } from "@/utils/utils";
-import { rsa_encrypt } from "@/utils/encryption";
 import { GlobalStore } from "@/stores";
 import ContactUs from "./contact.vue"
 import License from "./license.vue"
@@ -69,6 +92,8 @@ import { MenuStore } from "@/stores/modules/menu";
 import { initDynamicRouter } from "@/routers/modules/dynamicRouter";
 import type { FormInstance, FormRules } from "element-plus";
 import { GITEE_URL } from "@/config/config";
+import { fetch_auth_config, rsa_encrypt_text } from "@/components/chimescoresec/chimescoresec"
+import { version_info_get } from "@/http/modules/performance";
 
 const globalStore = GlobalStore();
 const menuStore = MenuStore();
@@ -87,9 +112,23 @@ const showContactUsDialog = ref(false);
 const showLicenseDialog = ref(false);
 const showAggreeDialog = ref(false);
 const aggreed = ref(false);
+const version_info = ref<any>({ version: "1.1.0" })
+const showmore_dlg = ref<boolean>(false)
+
+function showAboutMore() {
+  showmore_dlg.value = true
+}
+
+function hideAboutMore() {
+  showmore_dlg.value = false
+}
 
 onMounted(() => {
   // 监听enter事件（调用登录）
+  fetch_auth_config().then(res => {
+    console.log(res)
+  })
+  versionGet()
   document.addEventListener("keydown", onKeyDown);
 });
 
@@ -113,7 +152,7 @@ const onLogin = (formEl: FormInstance | undefined) => {
     try {
       let sign_in = {
         username: loginForm.username,
-        password: "rsa:" + rsa_encrypt(loginForm.password)
+        password: "rsa:" +  rsa_encrypt_text(loginForm.password), // rsa_encrypt(loginForm.password)
       }
       const data = await loginApi(sign_in);
       console.log(data)
@@ -165,8 +204,31 @@ const handleDialogVisibleChange = (t: boolean) => {
 const onGitee = () => {
   window.open(GITEE_URL);
 };
+
+const versionGet = () => {
+  version_info_get().then(res => {
+    if (res.status === 200 || res.status === 0) {
+      version_info.value = res.data
+    }
+  }).catch(ex => {
+    console.log(ex)
+  })
+}
 </script>
 
 <style lang="scss" scoped>
-@import "index.scss";
+@use "index.scss";
+.version {
+  padding: 5px;
+  font-size: 12px;
+}
+.aboutcontent {
+  padding: 20px;
+}
+.aboutcontent .about {
+  line-height: 30px;
+}
+.aboutcontent .about .title {
+  font-weight: 600;
+}
 </style>

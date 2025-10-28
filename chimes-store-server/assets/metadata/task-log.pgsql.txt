@@ -1,0 +1,19 @@
+-- silineaiws.task_logs definition
+
+-- Drop table
+
+-- DROP TABLE silineaiws.task_logs;
+
+CREATE TABLE task_logs (
+	id bigserial NOT NULL,
+	task_id varchar(160) NULL,
+	node_id varchar(120) NULL,
+	task_name varchar(200) NULL,
+	log_level varchar(40) NULL,
+	subject varchar(400) NULL,
+	description text NULL,
+	success bool NULL,
+	create_time timestamptz NULL,
+	update_time timestamptz NULL,
+	CONSTRAINT task_logs_pkey PRIMARY KEY (id)
+);

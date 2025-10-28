@@ -1,0 +1,44 @@
+-- rivermap.chimes_api_audit definition
+
+CREATE TABLE `chimes_api_audit` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `span_id` varchar(40) DEFAULT NULL,
+  `parent_id` varchar(40) DEFAULT NULL,
+  `uri` varchar(200) DEFAULT NULL,
+  `request_url` varchar(400) DEFAULT NULL,
+  `namespace` varchar(200) DEFAULT NULL,
+  `method` varchar(120) DEFAULT NULL,
+  `protocol` varchar(40) DEFAULT NULL,
+  `remote_addr` varchar(200) DEFAULT NULL,
+  `elapse` bigint DEFAULT NULL,
+  `start_time` bigint DEFAULT NULL,
+  `end_time` bigint DEFAULT NULL,
+  `error` tinyint(1) DEFAULT NULL,
+  `message` text,
+  `ref_name` varchar(120) DEFAULT NULL,
+  `ref_detail` varchar(200) DEFAULT NULL,
+  `payload` text,
+  `username` varchar(200) DEFAULT NULL,
+  `user_id` varchar(60) DEFAULT NULL,
+  `domain` varchar(60) DEFAULT NULL,
+  `create_time` datetime(6) DEFAULT NULL,
+  `update_time` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- rivermap.chimes_api_secret definition
+
+CREATE TABLE `chimes_api_secret` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `app_id` varchar(100) DEFAULT NULL,
+  `app_secret` varchar(100) DEFAULT NULL,
+  `username` varchar(40) DEFAULT NULL,
+  `userid` varchar(40) DEFAULT NULL,
+  `orgname` varchar(100) DEFAULT NULL,
+  `encryption` tinyint(1) DEFAULT NULL,
+  `token` varchar(200) DEFAULT NULL,
+  `create_time` datetime(6) DEFAULT NULL,
+  `update_time` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

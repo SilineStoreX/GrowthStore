@@ -1,0 +1,35 @@
+[package]
+name = "store-plugin-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[lib]
+# crate-type = ["dylib"]
+crate-type = ["rlib"]
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+libloading.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+jsonpath-rust.workspace = true
+futures-lite.workspace = true
+tokio.workspace = true
+rbatis.workspace = true
+reqwest.workspace = true
+fastdate.workspace = true
+urlencoding.workspace = true
+encoding_rs.workspace = true
+chimes-store-core = { workspace = true }
+chimes-store-utils = { workspace = true }
+salvo.workspace = true
+chrono.workspace = true

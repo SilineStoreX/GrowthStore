@@ -1,0 +1,20 @@
+{
+    "doc_id": "{{ obj.uid }}",
+    "content": "{{ obj.full_name }}是{{ obj.company_name }}的{{ obj.company_title }},{% if obj.major_biz %}主要业务是{{ obj.major_biz }},{% endif%}{{ obj.full_name }}{% if not obj.commeric_name %}不{% endif %}是{{ obj.commeric_name | default(value='商会') }}的{{ obj.commeric_role | default(value='成员') }}{% if not obj.commeric_name %}{% if obj.join_type == '意向会员' or obj.join_type == '特邀嘉宾' %}{{ obj.join_type }}, 由{{ obj.referrer }}推荐{% endif %}{% endif %}。",
+    "summary": "{{ obj.full_name }}的基本信息",
+    "qandas": [{
+        "question": "{{obj.full_name}}是哪个公司的?",
+        "answer": "{{obj.full_name}}是{{ obj.company_name }}的{{ obj.company_title }}。"
+    },{
+        "question": "{{obj.full_name}}在公司的职位或抬头是什么?",
+        "answer": "{{obj.full_name}}的抬头是{{ obj.company_title }}，在{{ obj.company_name }}任职。"
+    },{
+        "question": "{{obj.full_name}}有没有加入商会?",
+        "answer": "{{obj.full_name}}{% if not obj.commeric_name %}没有{% endif %}加入{{ obj.commeric_name | default(value='商会') }}{% if obj.commeric_name %}，在商会的身份是{{ obj.commeric_name }}{% endif %}。"
+    },{
+        "question": "{{obj.full_name}}的{{obj.company_name }}的主要业务是什么?",
+        "answer": "{{obj.full_name}}的{{obj.company_name }}的主要业务是{{ obj.major_biz | default('没有提供') }。"
+    }],
+    "sub_contents": [],
+    "variables": []
+}

@@ -8,22 +8,27 @@ use chimes_store_core::service::sdk::{
     InvokeUri, MethodDescription, RxHookInvoker, RxPluginService,
 };
 use chimes_store_core::service::starter::{load_config, MxStoreService};
-use chimes_store_core::utils::GlobalConfig;
+use chimes_store_core::utils::global_data::i64_from_str;
+use chimes_store_core::utils::{get_multiple_rbatis_async, GlobalConfig};
+use rbatis::executor::Executor;
 use rbatis::Page;
 use salvo::oapi::{
-    schema, Content, Object, OpenApi, Operation, PathItem, RefOr, RequestBody, Response, Schema,
-    ToArray,
+    schema, Array, Content, Object, OpenApi, Operation, PathItem, RefOr, RequestBody, Response,
+    Schema,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::{self, Stdio};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use super::template::json_path_get;
+
+pub const ACQUIRE_TIMEOUT: u64 = 30;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ComposeServiceInfo {
@@ -39,6 +44,11 @@ pub struct ComposeServiceInfo {
 
     #[serde(default)]
     pub schedule_on: bool,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "i64_from_str")]
+    pub interval_second: Option<i64>,
+
     pub cron_express: Option<String>,
     pub schedule_simulate: Option<String>,
     pub script: String,
@@ -46,18 +56,38 @@ pub struct ComposeServiceInfo {
 
     #[serde(default)]
     pub enable_synctask: bool,
-    pub task_id: Option<String>,
 
     #[serde(default)]
-    pub execute_delete: bool,      // 执行删除动作，如果为true，所有接收到的都都是删除操作 
-    pub check_delete: Option<String>,  // 检查删除标识，JSONPath表示，检查成功，表示该记录应该执行删除操作
+    pub avoid_reentry: bool, // 防止重入，即在调用前需要对其进行加锁，这个会
 
+    #[serde(default)]
+    pub mcp_tool: bool,
+    pub mcp_schema: Option<String>,
+    pub rest_desc: Option<String>,
+    pub response_schema: Option<String>,
+
+    pub task_id: Option<String>,
+
+    pub prepare_connection: Option<String>,
+
+    #[serde(default)]
+    pub execute_delete: bool, // 执行删除动作，如果为true，所有接收到的都都是删除操作
+    pub check_delete: Option<String>, // 检查删除标识，JSONPath表示，检查成功，表示该记录应该执行删除操作
 
     #[serde(default)]
     pub perm_roles: Vec<String>,
 
     #[serde(default)]
     pub bypass_permission: bool, // 允许匿名访问，只有在允许匿名访问的时候，才能通过passoff调用
+
+    #[serde(default)]
+    pub verify_param_sign: bool, // 是否启用接口验签
+
+    #[serde(default)]
+    pub encryption_body: bool,   // 是否对请求的Body进行加解密
+
+    #[serde(default)]
+    pub validate_params: bool,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hooks: Vec<MethodHook>,
@@ -78,7 +108,7 @@ fn to_api_result_schema(t: RefOr<Schema>, array: bool) -> schema::Schema {
         Object::new().schema_type(schema::BasicType::String),
     );
     if array {
-        apiresult = apiresult.property("data", t.to_array());
+        apiresult = apiresult.property("data", Array::new().items(t));
     } else {
         apiresult = apiresult.property("data", t);
     }
@@ -86,7 +116,7 @@ fn to_api_result_schema(t: RefOr<Schema>, array: bool) -> schema::Schema {
         "timestamp",
         Object::new().schema_type(schema::BasicType::Integer),
     );
-    schema::Schema::Object(apiresult)
+    schema::Schema::Object(Box::new(apiresult))
 }
 
 fn to_api_result_page_schema(t: RefOr<Schema>) -> schema::Schema {
@@ -107,8 +137,11 @@ fn to_api_result_page_schema(t: RefOr<Schema>) -> schema::Schema {
         "do_count",
         Object::new().schema_type(schema::BasicType::Integer),
     );
-    apiresult = apiresult.property("records", t.to_array());
-    to_api_result_schema(RefOr::Type(schema::Schema::Object(apiresult)), false)
+    apiresult = apiresult.property("records", Array::new().items(t));
+    to_api_result_schema(
+        RefOr::Type(schema::Schema::Object(Box::new(apiresult))),
+        false,
+    )
 }
 
 fn to_upload_file_schema() -> schema::Schema {
@@ -173,23 +206,42 @@ fn to_upload_file_schema() -> schema::Schema {
             .schema_type(schema::BasicType::Object)
             .description("自定义数据，由前端传入，通常为对应的业务数据"),
     );
-    schema::Schema::Object(apiresult)
+    schema::Schema::Object(Box::new(apiresult))
 }
 
 impl ComposeServiceInfo {
+    
+    fn to_schema_operation(&self) -> Operation {
+        let mut ins_op = Operation::new();
+        ins_op = ins_op.description("获取该方法的请求参数与返回值的JSONSchema表示。");
+        let mut resp = Response::new("返回该方法的JSONSchema。");
+        resp = resp.add_content(
+            "application/json",
+            Content::new(to_api_result_schema(RefOr::Type(
+                schema::Schema::Object(Box::new(Object::new())),
+            ), false)),
+        );
+        ins_op = ins_op.add_response("200", RefOr::Type(resp));
+        ins_op
+    }
+
     pub(crate) fn to_operation(&self) -> Operation {
         let mut ins_op = Operation::new();
-        if self.fileupload {
-            ins_op = ins_op.request_body(
-                RequestBody::new()
-                    .add_content("application/json", RefOr::Type(to_upload_file_schema())),
-            );
+
+        let param_schema = if let Some(mcpschema) = self.mcp_schema.clone() {
+            if let Ok(schema) = serde_json::from_str::<Object>(&mcpschema) {
+                schema::Schema::Object(Box::new(schema))
+            } else {
+                schema::Schema::Object(Box::new(Object::new()))
+            }
         } else {
-            ins_op = ins_op.request_body(
-                RequestBody::new()
-                    .add_content("application/json", RefOr::Type(Schema::Object(Object::new()))),
-            );
-        }
+            schema::Schema::Object(Box::new(Object::new()))
+        };
+
+        ins_op = ins_op.request_body(
+            RequestBody::new().add_content("application/json", RefOr::Type(param_schema)),
+        );
+
         ins_op = ins_op.summary(self.desc.clone().unwrap_or_default());
 
         let mut description = "方法在执行的时候会根据URL中所传递的Query参数，组装成第一个参数（根据参数名转成JSON Object），从Request Body接收第二个参数（必须为JSON对象），脚本须按这个规则来处理对应的参数。".to_owned();
@@ -218,9 +270,9 @@ impl ComposeServiceInfo {
 
         resp = resp.add_content(
             "application/json",
-            Content::new(to_api_result_page_schema(RefOr::Type(schema::Schema::Object(
-                Object::new(),
-            )))),
+            Content::new(to_api_result_page_schema(RefOr::Type(
+                schema::Schema::Object(Box::new(Object::new())),
+            ))),
         );
         ins_op = ins_op.add_response("200", RefOr::Type(resp));
         ins_op
@@ -242,7 +294,7 @@ impl ComposePluginConfig {
             .clone()
             .into_iter()
             .filter(|p| p.name == *name)
-            .last()
+            .next_back()
     }
 }
 
@@ -252,6 +304,8 @@ pub struct ComposePluginService {
     conf: PluginConfig,
     compose: Mutex<Option<ComposePluginConfig>>,
     service_map: HashMap<String, ComposeServiceInfo>,
+    lock_map: HashMap<String, Arc<tokio::sync::Mutex<String>>>,
+    script_nss: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl ComposePluginService {
@@ -260,15 +314,22 @@ impl ComposePluginService {
         let t = match load_config(conf.config.clone()) {
             Ok(r) => r,
             Err(err) => {
-                log::debug!("Could not load the config file: {:?}", err);
+                log::debug!("Could not load the config file: {err:?}");
                 Some(ComposePluginConfig::default())
             }
         };
 
         let mut map = HashMap::new();
+        let mut lockmap = HashMap::new();
 
         if let Some(tcplc) = t.clone() {
             tcplc.services.into_iter().for_each(|f| {
+                if f.avoid_reentry {
+                    lockmap.insert(
+                        f.name.clone(),
+                        Arc::new(tokio::sync::Mutex::new(f.name.clone())),
+                    );
+                }
                 map.insert(f.name.clone(), f);
             });
         }
@@ -278,11 +339,99 @@ impl ComposePluginService {
             conf: conf.to_owned(),
             compose: Mutex::new(t),
             service_map: map,
+            lock_map: lockmap,
+            script_nss: Mutex::new(HashMap::new()),
         })
     }
 
     pub fn get_named_service(&self, name: &str) -> Option<ComposeServiceInfo> {
         self.service_map.get(name).cloned()
+    }
+
+    pub fn get_script_namespaces(&self, name: &str) -> Vec<String> {
+        match self.script_nss.lock().unwrap().entry(name.to_owned()) {
+            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                occupied_entry.get().clone()
+            }
+            std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                if let Some(namedsvc) = self.get_named_service(name) {
+                    if let Some(lang) = ExtensionRegistry::get_extension(&namedsvc.lang) {
+                        if let Some(func_nss) = lang.fn_eval_script_namespace {
+                            if let Ok(nss) = func_nss(&namedsvc.script) {
+                                vacant_entry.insert(nss.clone());
+                                nss
+                            } else {
+                                vec![]
+                            }
+                        } else {
+                            vec![]
+                        }
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                }
+            }
+        }
+    }
+
+    fn try_accquire_lock(
+        &self,
+        svcname: &str,
+    ) -> Result<Option<Arc<tokio::sync::Mutex<String>>>, anyhow::Error> {
+        if let Some(lock) = self.lock_map.get(svcname) {
+            Ok(Some(lock.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn do_prepare_connection(
+        nss: &[String],
+        plc: &ComposeServiceInfo,
+        ctx: &Arc<Mutex<InvocationContext>>,
+    ) -> Result<(), anyhow::Error> {
+        for ns in nss {
+            let dburl = if let Some(mss) = MxStoreService::get(ns) {
+                mss.get_db_url()
+            } else {
+                String::new()
+            };
+
+            if !dburl.is_empty() {
+                if plc.prepare_connection == Some("transaction".to_owned()) {
+                    let tx_opt = ctx.lock().unwrap().get_tx_executor_sync(ns);
+                    if tx_opt.is_none() {
+                        let rb_ = get_multiple_rbatis_async(&dburl).await;
+                        let tcon = rb_
+                            .try_acquire_timeout(Duration::from_secs(ACQUIRE_TIMEOUT))
+                            .await?;
+                        let con_tx = tcon.begin().await?;
+                        let txc = Arc::new(con_tx);
+                        // let con = rb_.acquire_begin().await?;
+                        // let txc = Arc::new(con);
+                        ctx.lock().unwrap().set_tx_executor_sync(ns, txc);
+                        // log::warn!("Prepared Transaction Connection");
+                    }
+                } else if plc.prepare_connection == Some("connection".to_owned()) {
+                    let cnn_opt = ctx.lock().unwrap().get_rbatis_connection(ns);
+                    if cnn_opt.is_none() {
+                        let rb_ = get_multiple_rbatis_async(&dburl).await;
+                        let con = rb_
+                            .try_acquire_timeout(Duration::from_secs(ACQUIRE_TIMEOUT))
+                            .await?;
+                        let xcon: Arc<dyn Executor> = Arc::new(con);
+                        ctx.lock().unwrap().set_rbatis_connection(ns, xcon);
+                        // log::warn!("Prepared Base Connection");
+                    }
+                } else {
+                    log::warn!("Auto Connection. So no need to create the connection at start.");
+                }
+            }
+        }
+
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -294,6 +443,53 @@ impl ComposePluginService {
         self.service_map.values().cloned().collect()
     }
 
+    fn to_mcp_tool(&self) -> Vec<Value> {
+        let mut tools = vec![];
+        let tconf = self.compose.lock().unwrap().clone();
+        if let Some(restconf) = tconf {
+            let conf_name = self.conf.name.clone();
+            for svc in restconf.services.iter() {
+                if svc.mcp_tool {
+                    let ns_ = self.namespace.clone().replace(".", "_");
+                    let uri = format!("compose://{}/{}#{}", &self.namespace, &conf_name, svc.name);
+                    let ret_type = svc.return_type.clone();
+                    let func_name = format!("compose_{}_{}_{}", ns_, &conf_name, svc.name.clone());
+                    if let Some(schema_desc) = svc.mcp_schema.clone() {
+                        if let Ok(param) = serde_json::from_str::<Object>(&schema_desc) {
+                            let val = json!({
+                                "name": func_name,
+                                "invoke_uri": uri,
+                                "return_type": ret_type,
+                                "description": svc.rest_desc.clone().unwrap_or_default(),
+                                "parameters": param
+                            });
+                            tools.push(val);
+                        } else {
+                            let val = json!({
+                                "name": func_name,
+                                "invoke_uri": uri,
+                                "return_type": ret_type,
+                                "description": svc.rest_desc.clone().unwrap_or_default(),
+                                "parameters": json!({"type": "object", "properties": {}})
+                            });
+                            tools.push(val);
+                        }
+                    } else {
+                        let val = json!({
+                            "name": func_name,
+                            "invoke_uri": uri,
+                            "return_type": ret_type,
+                            "description": svc.rest_desc.clone().unwrap_or_default(),
+                            "parameters": json!({"type": "object", "properties": {}})
+                        });
+                        tools.push(val);
+                    }
+                }
+            }
+        }
+        tools
+    }
+
     fn to_openapi_doc(&self, ns: &str) -> OpenApi {
         let mut openapi = OpenApi::new(self.conf.name.clone(), "0.1.0");
 
@@ -302,6 +498,13 @@ impl ComposePluginService {
         if let Some(composeconf) = tconf {
             for svc in composeconf.services.clone() {
                 if svc.rest_api {
+                    let schpath = format!(
+                            "/api/compose/{}/{}/{}/schema",
+                            ns,
+                            self.conf.name.clone(),
+                            svc.name
+                    );
+
                     let path = if svc.fileupload {
                         format!(
                             "/api/compose/{}/{}/{}/upload",
@@ -333,6 +536,7 @@ impl ComposePluginService {
                     };
 
                     let opt = svc.to_operation();
+                    openapi = openapi.add_path(schpath, PathItem::new(salvo::oapi::PathItemType::Get, svc.to_schema_operation()));
                     if svc.fileupload {
                         openapi = openapi.add_path(
                             path.clone(),
@@ -375,28 +579,35 @@ impl ComposePluginService {
                             );
                         }
                     }
+
+                    if let Some(mcpschema) = svc.mcp_schema.clone() {
+                        if let Ok(schema) = serde_json::from_str::<Object>(&mcpschema) {
+                            openapi = openapi
+                                .add_schema("params", schema::Schema::Object(Box::new(schema)));
+                        }
+                    }
                 }
             }
         }
         openapi
     }
 
-
     fn do_add_synctask_queue(css: ComposeServiceInfo, rt: Value) -> Result<(), anyhow::Error> {
         if let Some(task_id) = css.task_id.clone() {
-            let state_action = css.execute_delete || if let Some(chk) = css.check_delete.clone() {
-                json_path_get(&rt, &chk).is_some()
-            } else {
-                false
-            };
+            let state_action = css.execute_delete
+                || if let Some(chk) = css.check_delete.clone() {
+                    json_path_get(&rt, &chk).is_some()
+                } else {
+                    false
+                };
 
-            let state = if state_action {
-                2
-            } else {
-                1
-            };
+            let state = if state_action { 2 } else { 1 };
 
-            if let Err(err) = SyncTaskQueue::get_mut().push_task(&task_id, &rt, state) {
+            let taskname = Some(css.name);
+
+            if let Err(err) =
+                SyncTaskQueue::get_mut().push_task(&task_id, &taskname, &css.desc, &rt, state)
+            {
                 log::info!("could not add the value into SyncTaskQueue {err}");
             }
         }
@@ -405,6 +616,42 @@ impl ComposePluginService {
 }
 
 impl RxPluginService for ComposePluginService {
+
+    fn should_verify_params(&self, uri: &InvokeUri) -> bool {
+        if let Some(named_service) = self.get_named_service(&uri.method) {
+            named_service.validate_params
+        } else {
+            false
+        }
+    }
+
+    fn should_decrypt_body(&self, uri: &InvokeUri) -> bool {
+        if let Some(named_service) = self.get_named_service(&uri.method) {
+            named_service.encryption_body
+        } else {
+            false
+        }
+    }
+
+    /**
+     * 是否需要校验参数签名
+     * 参数签名采用
+     */
+    fn should_verify_sign(&self, 
+        uri: &InvokeUri,
+        jwt: &Option<JwtUserClaims>) -> bool {
+        if let Some(named_service) = self.get_named_service(&uri.method) {
+            if named_service.verify_param_sign {
+                if let Some(jwtst) = jwt {
+                    return jwtst.domain.contains("@");   // domain中包含有@符号代表当前访问者是使用AppId/AppSecret方式进行访问
+                } else {
+                    return true; // 必须校验，即一定会失败
+                }
+            }
+        }
+        false
+    }
+
     fn invoke_return_option(
         &self,
         uri: InvokeUri,
@@ -414,73 +661,116 @@ impl RxPluginService for ComposePluginService {
         // Compose
         let full_uri = uri.url();
         let st_uri = uri.clone();
-        let named_service = self.get_named_service(&st_uri.method);
-        Box::pin(async move {
-            if let Some(plc) = named_service {
-                if plc.return_type != *"List" && plc.return_type != *"Page" {
-                    if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
-                        if let Some(eval_func) = lang.fn_return_option_script {
-                            let mix_args = MxStoreService::invoke_pre_hook_(
-                                full_uri.clone(),
-                                plc.hooks.clone(),
-                                ctx.clone(),
-                                args.clone(),
-                            )
-                            .await?;
+        // let ns_ = uri.namespace.clone();
+        let nss_ = self.get_script_namespaces(&st_uri.method);
+        // log::warn!("nss_: {:?}", nss_);
+        let mst_args = args.clone();
+        // let mst_args = if args.len() == 1 {
+        //     vec![args[0].clone(), args[0].clone()]
+        // } else if args.len() == 2 {
+        //     if args[0].is_null() {
+        //         vec![args[1].clone(), args[1].clone()]
+        //     } else {
+        //         match args[0].clone() {
+        //             Value::Object(t) => if t.is_empty() {
+        //                 vec![args[1].clone(), args[1].clone()]
+        //             } else {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             },
+        //             _ => {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     args.clone()
+        // };
 
-                            match eval_func(&plc.script, ctx.clone(), &mix_args) {
-                                Ok(ret) => {
-                                    if plc.enable_synctask {
-                                        // add into Queue only
-                                        if let Some(retval) = ret.clone() {
-                                            Self::do_add_synctask_queue(plc.clone(), retval)?;
+        if let Err(err) = self.verify_params(&st_uri, args.clone()) {
+            return Box::pin(async move {
+                Err(err)
+            });
+        }
+
+        let named_service = self.get_named_service(&st_uri.method);
+        if let Ok(lock) = self.try_accquire_lock(&st_uri.method) {
+            Box::pin(async move {
+                if let Some(plc) = named_service {
+                    if plc.return_type != *"List" && plc.return_type != *"Page" {
+                        let _guard = match &lock {
+                            Some(tlock) => Some(tlock.lock().await),
+                            None => None,
+                        };
+
+                        Self::do_prepare_connection(&nss_, &plc, &ctx).await?;
+                        if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
+                            if let Some(eval_func) = lang.fn_return_option_script {
+                                let mix_args = MxStoreService::invoke_pre_hook_(
+                                    full_uri.clone(),
+                                    plc.hooks.clone(),
+                                    ctx.clone(),
+                                    mst_args.clone(),
+                                )
+                                .await?;
+
+                                match eval_func(&plc.script, ctx.clone(), &mix_args) {
+                                    Ok(ret) => {
+                                        if plc.enable_synctask {
+                                            // add into Queue only
+                                            if let Some(retval) = ret.clone() {
+                                                Self::do_add_synctask_queue(plc.clone(), retval)?;
+                                            }
+                                        }
+                                        if plc.hooks.is_empty() {
+                                            return Ok(ret);
+                                        } else {
+                                            ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                            return match ctx
+                                                .lock()
+                                                .unwrap()
+                                                .get::<Option<Value>>("RETURN_VALUE")
+                                            {
+                                                Ok(mt) => Ok(mt.to_owned()),
+                                                Err(_) => Ok(ret),
+                                            };
                                         }
                                     }
-                                    if plc.hooks.is_empty() {
-                                        return Ok(ret);
-                                    } else {
-                                        ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
-                                        return match ctx
-                                            .lock()
-                                            .unwrap()
-                                            .get::<Option<Value>>("RETURN_VALUE")
-                                        {
-                                            Ok(mt) => Ok(mt.to_owned()),
-                                            Err(_) => Ok(ret),
-                                        };
+                                    Err(err) => {
+                                        if !plc.hooks.is_empty() {
+                                            ctx.lock()
+                                                .unwrap()
+                                                .insert("EXCEPTION", err.to_string());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                        }
+                                        return Err(err);
                                     }
-                                }
-                                Err(err) => {
-                                    if !plc.hooks.is_empty() {
-                                        ctx.lock().unwrap().insert("EXCEPTION", err.to_string());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
-                                    }
-                                    return Err(err);
                                 }
                             }
+                        } else if plc.enable_synctask {
+                            // add into Queue only
+                            Self::do_add_synctask_queue(plc.clone(), args[0].clone())?;
+                            return Ok(None);
                         }
-                    } else if plc.enable_synctask {
-                        // add into Queue only
-                        Self::do_add_synctask_queue(plc.clone(), args[0].clone())?;
-                        return Ok(None);
                     }
                 }
-            }
-            Err(anyhow!("Not Found {:?}", st_uri.url()))
-        })
+                Err(anyhow!("Not Found {:?}", st_uri.url()))
+            })
+        } else {
+            Box::pin(async move { Err(anyhow!("Not Found -- {:?}", st_uri.url())) })
+        }
     }
 
     fn invoke_return_vec(
@@ -491,62 +781,107 @@ impl RxPluginService for ComposePluginService {
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, anyhow::Error>> + Send>> {
         let full_uri = uri.url();
         let st_uri = uri.clone();
+        // let ns_ = uri.namespace.clone();
+        let nss_ = self.get_script_namespaces(&st_uri.method);
         let named_service = self.get_named_service(&st_uri.method);
-        Box::pin(async move {
-            if let Some(plc) = named_service {
-                if plc.return_type == *"List" {
-                    if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
-                        if let Some(eval_func) = lang.fn_return_vec_script {
-                            let mix_args = MxStoreService::invoke_pre_hook_(
-                                full_uri.clone(),
-                                plc.hooks.clone(),
-                                ctx.clone(),
-                                args.clone(),
-                            )
-                            .await?;
-                            match eval_func(&plc.script, ctx.clone(), &mix_args) {
-                                Ok(ret) => {
-                                    if plc.hooks.is_empty() {
-                                        return Ok(ret);
-                                    } else {
-                                        ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
-                                        return match ctx
-                                            .lock()
-                                            .unwrap()
-                                            .get::<Vec<Value>>("RETURN_VALUE")
-                                        {
-                                            Ok(mt) => Ok(mt.to_owned()),
-                                            Err(_) => Ok(ret),
-                                        };
+        let mst_args = args.clone();
+        // let mst_args = if args.len() == 1 {
+        //     vec![args[0].clone(), args[0].clone()]
+        // } else if args.len() == 2 {
+        //     if args[0].is_null() {
+        //         vec![args[1].clone(), args[1].clone()]
+        //     } else {
+        //         match args[0].clone() {
+        //             Value::Object(t) => if t.is_empty() {
+        //                 vec![args[1].clone(), args[1].clone()]
+        //             } else {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             },
+        //             _ => {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     args.clone()
+        // };
+
+        if let Err(err) = self.verify_params(&st_uri, args.clone()) {
+            return Box::pin(async move {
+                Err(err)
+            });
+        }
+
+        if let Ok(lock) = self.try_accquire_lock(&st_uri.method) {
+            
+            Box::pin(async move {
+                if let Some(plc) = named_service {
+                    if plc.return_type == *"List" {
+                        let _guard = match &lock {
+                            Some(tlock) => Some(tlock.lock().await),
+                            None => None,
+                        };
+                        Self::do_prepare_connection(&nss_, &plc, &ctx).await?;
+                        if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
+                            if let Some(eval_func) = lang.fn_return_vec_script {
+                                let mix_args = MxStoreService::invoke_pre_hook_(
+                                    full_uri.clone(),
+                                    plc.hooks.clone(),
+                                    ctx.clone(),
+                                    mst_args.clone(),
+                                )
+                                .await?;
+                                match eval_func(&plc.script, ctx.clone(), &mix_args) {
+                                    Ok(ret) => {
+                                        if plc.hooks.is_empty() {
+                                            log::info!(
+                                                "here to return the value directly: {ret:?}"
+                                            );
+                                            return Ok(ret);
+                                        } else {
+                                            ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                            return match ctx
+                                                .lock()
+                                                .unwrap()
+                                                .get::<Vec<Value>>("RETURN_VALUE")
+                                            {
+                                                Ok(mt) => Ok(mt.to_owned()),
+                                                Err(_) => Ok(ret),
+                                            };
+                                        }
                                     }
-                                }
-                                Err(err) => {
-                                    if !plc.hooks.is_empty() {
-                                        ctx.lock().unwrap().insert("EXCEPTION", err.to_string());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
+                                    Err(err) => {
+                                        if !plc.hooks.is_empty() {
+                                            ctx.lock()
+                                                .unwrap()
+                                                .insert("EXCEPTION", err.to_string());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                        }
+                                        return Err(err);
                                     }
-                                    return Err(err);
                                 }
                             }
                         }
                     }
                 }
-            }
-            Err(anyhow!("Not Found {:?}", st_uri.url()))
-        })
+                Err(anyhow!("Not Found {:?}", st_uri.url()))
+            })
+        } else {
+            Box::pin(async move { Err(anyhow!("Could not get lock for {:?}", st_uri.url())) })
+        }
     }
 
     fn invoke_return_page(
@@ -557,69 +892,112 @@ impl RxPluginService for ComposePluginService {
     ) -> Pin<Box<dyn Future<Output = Result<Page<Value>, anyhow::Error>> + Send>> {
         let full_uri = uri.url();
         let st_uri = uri.clone();
+        // let ns_ = uri.namespace.clone();
+        let nss_ = self.get_script_namespaces(&st_uri.method);
         let named_service = self.get_named_service(&st_uri.method);
-        Box::pin(async move {
-            if let Some(plc) = named_service {
-                if plc.return_type == *"Page" {
-                    if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
-                        if let Some(eval_func) = lang.fn_return_page_script {
-                            let mix_args = MxStoreService::invoke_pre_hook_(
-                                full_uri.clone(),
-                                plc.hooks.clone(),
-                                ctx.clone(),
-                                args.clone(),
-                            )
-                            .await?;
-                            match eval_func(&plc.script, ctx.clone(), &mix_args) {
-                                Ok(ret) => {
-                                    if plc.hooks.is_empty() {
-                                        return Ok(ret);
-                                    } else {
-                                        ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
-                                        return match ctx
-                                            .lock()
-                                            .unwrap()
-                                            .get::<Page<Value>>("RETURN_VALUE")
-                                        {
-                                            Ok(mt) => Ok(mt.to_owned()),
-                                            Err(_) => Ok(ret),
-                                        };
+        let mst_args = args.clone();
+
+        // let mst_args = if args.len() == 1 {
+        //     vec![args[0].clone(), args[0].clone()]
+        // } else if args.len() == 2 {
+        //     if args[0].is_null() {
+        //         vec![args[1].clone(), args[1].clone()]
+        //     } else {
+        //         match args[0].clone() {
+        //             Value::Object(t) => if t.is_empty() {
+        //                 vec![args[1].clone(), args[1].clone()]
+        //             } else {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             },
+        //             _ => {
+        //                 vec![args[0].clone(), args[1].clone()]
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     args.clone()
+        // };
+
+        if let Err(err) = self.verify_params(&st_uri, args.clone()) {
+            return Box::pin(async move {
+                Err(err)
+            });
+        }
+
+        if let Ok(lock) = self.try_accquire_lock(&st_uri.method) {
+            Box::pin(async move {
+                if let Some(plc) = named_service {
+                    if plc.return_type == *"Page" {
+                        let _guard = match &lock {
+                            Some(tlock) => Some(tlock.lock().await),
+                            None => None,
+                        };
+
+                        Self::do_prepare_connection(&nss_, &plc, &ctx).await?;
+                        if let Some(lang) = ExtensionRegistry::get_extension(&plc.lang) {
+                            if let Some(eval_func) = lang.fn_return_page_script {
+                                let mix_args = MxStoreService::invoke_pre_hook_(
+                                    full_uri.clone(),
+                                    plc.hooks.clone(),
+                                    ctx.clone(),
+                                    mst_args.clone(),
+                                )
+                                .await?;
+                                match eval_func(&plc.script, ctx.clone(), &mix_args) {
+                                    Ok(ret) => {
+                                        if plc.hooks.is_empty() {
+                                            return Ok(ret);
+                                        } else {
+                                            ctx.lock().unwrap().insert("RETURN_VALUE", ret.clone());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                            return match ctx
+                                                .lock()
+                                                .unwrap()
+                                                .get::<Page<Value>>("RETURN_VALUE")
+                                            {
+                                                Ok(mt) => Ok(mt.to_owned()),
+                                                Err(_) => Ok(ret),
+                                            };
+                                        }
                                     }
-                                }
-                                Err(err) => {
-                                    if !plc.hooks.is_empty() {
-                                        ctx.lock().unwrap().insert("EXCEPTION", err.to_string());
-                                        MxStoreService::invoke_post_hook_(
-                                            full_uri.clone(),
-                                            plc.hooks.clone(),
-                                            ctx.clone(),
-                                            mix_args,
-                                        )
-                                        .await?;
+                                    Err(err) => {
+                                        if !plc.hooks.is_empty() {
+                                            ctx.lock()
+                                                .unwrap()
+                                                .insert("EXCEPTION", err.to_string());
+                                            MxStoreService::invoke_post_hook_(
+                                                full_uri.clone(),
+                                                plc.hooks.clone(),
+                                                ctx.clone(),
+                                                mix_args,
+                                            )
+                                            .await?;
+                                        }
+                                        return Err(err);
                                     }
-                                    return Err(err);
                                 }
                             }
                         }
                     }
                 }
-            }
-            Err(anyhow!("Not Found {:?}", st_uri.url()))
-        })
+                Err(anyhow!("Not Found {:?}", st_uri.url()))
+            })
+        } else {
+            Box::pin(async move { Err(anyhow!("Could not get lock for {:?}", st_uri.url())) })
+        }
     }
 
     fn get_config(&self) -> Option<Value> {
         match serde_json::to_value(self.compose.lock().unwrap().clone()) {
             Ok(t) => Some(t),
             Err(err) => {
-                log::debug!("Convert to json with error: {:?}", err);
+                log::debug!("Convert to json with error: {err:?}");
                 None
             }
         }
@@ -633,7 +1011,7 @@ impl RxPluginService for ComposePluginService {
                 Ok(())
             }
             Err(err) => {
-                log::warn!("Parse JSON value to config with error: {:?}", err);
+                log::warn!("Parse JSON value to config with error: {err:?}");
                 Err(anyhow!(err))
             }
         }
@@ -672,6 +1050,38 @@ impl RxPluginService for ComposePluginService {
         desc
     }
 
+    fn get_method_metadata(
+        &self,
+        name: &str,
+    ) -> Option<chimes_store_core::service::sdk::MethodDescription> {
+        if let Some(compse) = self.compose.lock().unwrap().clone() {
+            compse
+                .services
+                .clone()
+                .iter()
+                .filter(|p| p.name == name)
+                .map(|svc| MethodDescription {
+                    uri: format!(
+                        "{}://{}/{}",
+                        self.conf.protocol.clone(),
+                        self.namespace.clone(),
+                        self.conf.name
+                    ),
+                    name: svc.name.clone(),
+                    func: None,
+                    params_vec: true,
+                    params1: vec![],
+                    params2: None,
+                    response: vec![],
+                    return_page: svc.return_type == *"Page",
+                    return_vec: svc.return_type == *"List",
+                })
+                .last()
+        } else {
+            None
+        }
+    }
+
     fn get_openapi(&self, ns: &str) -> Box<dyn std::any::Any> {
         Box::new(self.to_openapi_doc(ns))
     }
@@ -698,7 +1108,7 @@ impl RxPluginService for ComposePluginService {
                         .perm_roles
                         .clone()
                         .into_iter()
-                        .any(|f| roles.contains(&f))
+                        .any(|f| f.is_empty() || roles.contains(&f))
                     {
                         return true;
                     }
@@ -707,9 +1117,59 @@ impl RxPluginService for ComposePluginService {
         }
         false
     }
+
+    fn get_mcp_tools(&self) -> Result<Vec<Value>, anyhow::Error> {
+        Ok(self.to_mcp_tool())
+    }
+
+    fn get_invoke_param_schema(&self, invk: &InvokeUri) -> Option<Value> {
+        if let Some(ts) = self.get_named_service(&invk.method) {
+            let resp = ts.mcp_schema.map(|s| serde_json::from_str::<Value>(&s).map(|t| Some(t)).unwrap_or(None)).unwrap_or(None);
+            if let Some(val) = &resp {
+                if let Some(Value::String(refval)) = val.get("$ref") {
+                    if let Ok(ivkref) = InvokeUri::parse(&refval) {
+                        if let Some(mx) = MxStoreService::get(&ivkref.namespace) {
+                            if let Some(st) = mx.get_object(&ivkref.object) {
+                                if let Ok(sch) = st.to_validate_schema(&mx.get_config(), false, false) {
+                                    return serde_json::to_value(sch).map(Some).unwrap_or(None);
+                                }
+                            }
+                        }
+                    } 
+                }
+            }
+            
+            return resp;
+            // ts.mcp_schema.map(|s| serde_json::from_str(&s).map(|t| Some(t)).unwrap_or(None)).unwrap_or(None)
+        } else {
+            None
+        }
+    }
+
+    fn get_response_schema(&self, invk: &InvokeUri) -> Option<Value> {
+        if let Some(ts) = self.get_named_service(&invk.method) {
+            let resp = ts.response_schema.map(|s| serde_json::from_str::<Value>(&s).map(|t| Some(t)).unwrap_or(None)).unwrap_or(None);
+            if let Some(val) = &resp {
+                if let Some(Value::String(refval)) = val.get("$ref") {
+                    if let Ok(ivkref) = InvokeUri::parse(&refval) {
+                        if let Some(mx) = MxStoreService::get(&ivkref.namespace) {
+                            if let Some(st) = mx.get_object(&ivkref.object) {
+                                if let Ok(sch) = st.to_validate_schema(&mx.get_config(), false, false) {
+                                    return serde_json::to_value(sch).map(Some).unwrap_or(None);
+                                }
+                            }
+                        }
+                    } 
+                }
+            }
+            return resp;
+        } else {
+            None
+        }
+    }
 }
 
-pub fn invoke_shell_script(cs: &str) {
+pub fn invoke_shell_script(cs: &str) -> Result<(), anyhow::Error> {
     let lines = cs
         .lines()
         .map(|f| f.to_owned())
@@ -741,14 +1201,17 @@ pub fn invoke_shell_script(cs: &str) {
                         Some(enc) => enc.decode(&output.stdout),
                         None => encoding_rs::UTF_8.decode(&output.stdout),
                     };
-                log::debug!("{}", text.to_string());
+                log::debug!("{text}");
+                Ok(())
             }
             Err(err) => {
-                log::warn!("Could not wait to execute the shell script {:?}", err);
+                log::warn!("Could not wait to execute the shell script {err:?}");
+                Err(anyhow!("{err}"))
             }
         },
         Err(err) => {
-            log::warn!("Could not execute the shell script {:?}", err);
+            log::warn!("Could not execute the shell script {err:?}");
+            Err(anyhow!("{err}"))
         }
     }
 }

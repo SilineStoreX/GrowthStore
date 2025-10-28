@@ -5,8 +5,8 @@ use chimes_store_core::{
     service::script::{ExtensionRegistry, LangExtensions},
 };
 use engine::{
-    eval_file_return_one, eval_file_return_page, eval_file_return_vec, eval_script_return_one,
-    eval_script_return_page, eval_script_return_vec, init_engin,
+    eval_file_return_one, eval_file_return_page, eval_file_return_vec, eval_script_namespaces,
+    eval_script_return_one, eval_script_return_page, eval_script_return_vec, init_engin,
 };
 
 mod engine;
@@ -18,7 +18,6 @@ mod engine;
  * 在Plugin中，无法使用主程序中定义的全局变量
  * 函数是一样的，但因为导出的方式不同  
  */
-
 pub fn get_plugin_name() -> &'static str {
     "rhai"
 }
@@ -41,6 +40,7 @@ pub fn plugin_init(_ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output 
 pub fn extension_init() {
     init_engin();
     let lang = LangExtensions::new("rhai", "RhaiScript")
+        .with_eval_script_namespaces_fn(eval_script_namespaces)
         .with_return_option_script_fn(eval_script_return_one)
         .with_return_option_file_fn(eval_file_return_one)
         .with_return_vec_script_fn(eval_script_return_vec)

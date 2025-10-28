@@ -14,8 +14,7 @@ mod proc;
  * 在Plugin中，无法使用主程序中定义的全局变量
  * 函数是一样的，但因为导出的方式不同  
  */
-
-pub  fn get_plugin_name() -> &'static str {
+pub fn get_plugin_name() -> &'static str {
     "weixin"
 }
 
@@ -39,8 +38,7 @@ pub fn plugin_init(ns: &str, conf: &PluginConfig) {
         }
         Err(err) => {
             log::warn!(
-                "Plugin weixin was not be apply to {ns}. The config of this plugin was not be parsed. The error is {:?}", 
-                err
+                "Plugin weixin was not be apply to {ns}. The config of this plugin was not be parsed. The error is {err:?}"
             );
         }
     }

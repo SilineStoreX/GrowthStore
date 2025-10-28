@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use regex::{Regex, Replacer, Captures};
+use regex::{Captures, Regex, Replacer};
 
 lazy_static! {
     static ref RE_SPLIT_1: Regex = Regex::new(r"([a-z0-9])([A-Z])").unwrap();
@@ -24,28 +24,28 @@ lazy_static! {
 /// ```
 #[allow(dead_code)]
 pub fn title_case(input: &str) -> String {
-  let mut result = String::new();
-  for ma in RE_TOKENS.find_iter(input) {
-      let token = ma.as_str();
-      let index = ma.start();
-      let index2 = index + token.len();
-      if
-      // Ignore already capitalized words.
-      !RE_MANUAL_CASE.is_match(token).unwrap() &&
+    let mut result = String::new();
+    for ma in RE_TOKENS.find_iter(input) {
+        let token = ma.as_str();
+        let index = ma.start();
+        let index2 = index + token.len();
+        if
+        // Ignore already capitalized words.
+        !RE_MANUAL_CASE.is_match(token).unwrap() &&
           // Ignore small words except at beginning or end.
           (!RE_SMALL_WORDS.is_match(token).unwrap() || index == 0 || index2 == input.len()) &&
           // Ignore URLs
-          (input.chars().nth(index2).map_or(true, |v| v != ':') ||
-              input.chars().nth(index2 + 1).map_or(false, |v| RE_WHITESPACE.is_match(v.to_string().as_str())))
-      {
-          let new_token =
-              RE_ALPHANUMERIC.replace(token, |v: &Captures| v[0].to_uppercase().to_string());
-          result.push_str(new_token.as_ref())
-      } else {
-          result.push_str(token)
-      }
-  }
-  result
+          ((input.chars().nth(index2) != Some(':')) ||
+              input.chars().nth(index2 + 1).is_some_and(|v| RE_WHITESPACE.is_match(v.to_string().as_str())))
+        {
+            let new_token =
+                RE_ALPHANUMERIC.replace(token, |v: &Captures| v[0].to_uppercase().to_string());
+            result.push_str(new_token.as_ref())
+        } else {
+            result.push_str(token)
+        }
+    }
+    result
 }
 
 type Fransform = dyn Fn(&str, usize) -> String;
@@ -104,7 +104,6 @@ impl Default for Options {
 /// assert_eq!(change_case("camel2019", options), "camel 2019");
 /// assert_eq!(change_case("camel2019", Options::default()), "camel2019");
 /// ```
-
 pub fn change_case(input: &str, options: Options) -> String {
     let result = replace(
         input,
@@ -200,7 +199,7 @@ fn transform_pascal_case(input: &str, index: usize) -> String {
     if index > 0 {
         let first_char = first.chars().next().unwrap();
         if first_char.is_ascii_digit() {
-            first = format!("_{}", first)
+            first = format!("_{first}")
         }
     }
     format!("{}{}", first, lower_case(last))

@@ -54,50 +54,6 @@
                     </el-form>
                 </div>
             </el-collapse-item>
-            <el-collapse-item v-if="authconf.enable_api_secure" title="交换Token" name="exchange" class="opblock-post">
-              <template #title>
-                <div class="opblock-summary-block">
-                  <span class="opblock-summary-method"><el-icon><Avatar /></el-icon></span>
-                </div>
-                <div class="opblock-summary-path-description-wrapper">
-                  <span class="opblock-summary-path">
-                    <a class="nostyle">
-                      <span>使用AppId/AppSecret交换Token</span>
-                    </a>
-                  </span>
-                  <div class="opblock-summary-description"> </div>
-                </div>
-              </template>
-                <div class="form">
-                    <el-form ref="loginFormRef" :rules="rules" :model="loginForm">
-                        <el-form-item prop="app_id">
-                            <el-input v-model.trim="loginForm.app_id" placeholder="AppId" />
-                        </el-form-item>
-                        <el-form-item prop="app_secret">
-                            <el-input
-                                type="password"
-                                show-password
-                                v-model.trim="loginForm.app_secret"
-                                placeholder="App Secret"
-                            />
-                        </el-form-item>
-                        <el-form-item prop="encryption" label="是否加密">
-                            <el-switch
-                                v-model.trim="loginForm.encryption"
-                                placeholder="是否加密"
-                            />
-                        </el-form-item>
-                        <el-form-item>
-                            <el-button
-                                type="primary"
-                                @click="onExchange(loginFormRef)"
-                                :loading="loading"
-                                >交换Token</el-button
-                            >
-                        </el-form-item>                        
-                    </el-form>
-                </div>
-            </el-collapse-item>
             <el-collapse-item title="获取当前登录用户信息" name="info" class="opblock-get">
                 <template #title>
                   <div class="opblock-summary-block">
@@ -255,6 +211,44 @@
                     >
                 </div>
             </el-collapse-item>
+            <el-collapse-item v-if="authconf.enable_api_secure" title="获取Access-Token" name="access-token" class="opblock-post">
+                <template #title>
+                  <div class="opblock-summary-block">
+                    <span class="opblock-summary-method"><el-icon><Edit /></el-icon></span>
+                  </div>
+                  <div class="opblock-summary-path-description-wrapper">
+                    <span class="opblock-summary-path">
+                      <a class="nostyle">
+                        <span>获取Access-Token</span>
+                      </a>
+                    </span>
+                    <div class="opblock-summary-description">使用appId/AppSecret来获取Access-Token</div>
+                  </div>
+                </template>              
+                <div class="form">
+                    <div class="summary">获取Access-Token的方法是使用hmac-sha256算法，并以AppSecret为Key进行加密，以此得到获取Access-Token的报文。需要注意的是要保证客户端（API调用方）的时间必须与服务器端的时间保持一致，且双方都采用UTC的时间。如下所示：</div>
+                    <MdPreview editorId="accesstoken" :modelValue="accesstoken_code" /> 
+                    <el-form ref="accessTokenFormRef" :rules="accesstokenrules" :model="accessTokenForm">                  
+                        <el-form-item prop="appid">
+                            <el-input v-model.trim="accessTokenForm.appid" placeholder="AppId" />
+                        </el-form-item>
+                        <el-form-item prop="app_secret">
+                            <el-input
+                                v-model.trim="accessTokenForm.app_secret"
+                                placeholder="Secret"
+                            />
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button
+                                type="primary"
+                                @click="onGetAccessToken(accessTokenFormRef)"
+                                :loading="loading"
+                                >获取Access-Token</el-button
+                            >
+                        </el-form-item>
+                    </el-form>
+                </div>
+            </el-collapse-item>
         </el-collapse>
       </div>
       <div class="login-right">
@@ -293,7 +287,8 @@
   import { get_javascript_axio_code_md, get_java_code_md, get_curl_code_md, get_javascript_packaged_code_md, get_rhai_code_md } from "@/utils/codetemplate";
   import { MdPreview, MdCatalog } from 'md-editor-v3';
   import 'md-editor-v3/lib/preview.css';
-  import { rsa_encrypt } from '@/utils/encryption';
+  import { hmac_sha256 } from '@/utils/encryption';
+import { timestamp } from '@vueuse/core';
 
   const authconf = ref<any>({})
   
@@ -309,6 +304,7 @@
   const javascript_code = ref('');
   const java_code = ref('');
   const curl_code = ref('');
+  const accesstoken_code = ref('```javascript\nimport CryptoJS from \'crypto-js\';\nfunction hmac_sha256(secret, text) {\n\tconst hash = CryptoJS.HmacSHA256(text, secret);\n\treturn  hash.toString(CryptoJS.enc.Hex);\n}\nlet utcts = new Date().getTime()\nlet text = "appid=" + accessTokenForm.appid + "&secret=" + accessTokenForm.app_secret + "&timestamp=" + utcts;\nlet code = hmac_sha256(accessTokenForm.app_secret, text);\nlet codeform = {\n\tappid: accessTokenForm.appid,\n\tcode: code,\n\ttimestamp: utcts,\n}\nconst data = await call_api("/api/auth/access_token", "POST", codeform);\n```');
   const rhai_code = ref('')
   const packed_code = ref('');
   const logout_code = ref('### 退出登录可以直接在前端清除Token\n```javascript\nglobalStore.setApiToken(null);\n```')
@@ -323,7 +319,9 @@
   const loginFormRef = ref();
   const loginForm = reactive<any>({ username: "", credential: "", captcha_id: "", captcha_code: "" });
   const changePwdFormRef = ref();
+  const accessTokenFormRef = ref();
   const changePwdForm = reactive<any>({ username: "", credential: "", new_credential: "", captcha_id: "", captcha_code: "" });  
+  const accessTokenForm = reactive<any>({ appid: "", app_secret: "", timestamp: new Date().getTime() });  
   const auth_org = ref(false);
 
   const refresh_auth_org = () => {
@@ -342,6 +340,10 @@
     username: [{ required: true, message: "Please input Account" }],
     credential: [{ required: true, message: "Please input old Password" }],
     new_credential: [{ required: true, message: "Please input new Password" }],    
+  });
+  const accesstokenrules = reactive<FormRules>({
+    appid: [{ required: true, message: "Please input AppId" }],
+    app_secret: [{ required: true, message: "Please input AppSecret" }],
   });
   const loading = ref(false);
   const demoCodeUrl = ref<string>();
@@ -376,7 +378,7 @@
       if (!valid) return;
       loading.value = true;
       try {
-        console.log('call api')
+        console.log('call api', loginForm)
         call_api_docuemnt("/api/auth/login", { method: "POST" }, loginForm);
         const data = await call_api("/api/auth/login", "POST", loginForm);
         console.log(data)
@@ -414,6 +416,34 @@
     });
   };
 
+  const onGetAccessToken = (formEl: FormInstance | undefined) => {
+    if (!formEl) return;
+    formEl.validate(async (valid: boolean, _invalidFields?: any) => {
+      if (!valid) return;
+      loading.value = true;
+      try {
+        let utcts = new Date().getTime()
+        let text = "appid=" + accessTokenForm.appid + "&secret=" + accessTokenForm.app_secret + "&timestamp=" + utcts;
+        let code = hmac_sha256(accessTokenForm.app_secret, text);
+        let codeform = {
+          appid: accessTokenForm.appid,
+          code: code,
+          timestamp: utcts,
+        }
+        call_api_docuemnt("/api/auth/access_token", { method: "POST" }, codeform);
+        const data = await call_api("/api/auth/access_token", "POST", codeform);
+        console.log(data)
+        jsonbody.value = data
+        if (data.status !== 200) {
+          ElMessage.error(data.message);
+          return;
+        }
+      } finally {
+        loading.value = false;
+      }
+    });
+  };
+
   const onGetUserInfo = () => {
     call_api_docuemnt("/api/auth/info", { method: "GET" }, {});
     call_api("/api/auth/info", "GET", {}).then(res => {
@@ -430,36 +460,6 @@
     }).catch(ex => {
         ElMessage.error(JSON.stringify(ex));
     })
-  };
-
-  const onExchange = (formEl: FormInstance | undefined) => {
-    if (!formEl) return;
-    formEl.validate(async (valid: boolean, _invalidFields?: any) => {
-      if (!valid) return;
-      loading.value = true;
-      try {
-        console.log('call api')
-        let lt = { ...loginForm }
-        
-        if (loginForm.encryption) {
-          lt.app_secret = rsa_encrypt(loginForm.app_secret + '##' + new Date().getTime());
-        }
-
-        console.log('T: ', lt);
-        call_api_docuemnt("/api/auth/exchange", { method: "POST" }, lt);
-        const data = await call_api("/api/auth/exchange", "POST", lt);
-        console.log(data)
-        jsonbody.value = data
-        if (data.status !== 200) {
-          ElMessage.error(data.message);
-          return;
-        }
-  
-        globalStore.setApiToken(data.data.token);
-      } finally {
-        loading.value = false;
-      }
-    });
   };
 
   const onUserLogout = () => {
@@ -508,6 +508,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

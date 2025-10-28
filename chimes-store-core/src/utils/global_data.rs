@@ -4,15 +4,20 @@ use base64::display::Base64Display;
 use base64::prelude::*;
 use chrono::offset::Local;
 use chrono::{DateTime, NaiveDateTime};
-use crypto::digest::Digest;
-use crypto::md5;
+
+use clap::CommandFactory;
+use clap::Parser;
 use lazy_static::lazy_static;
-use rand::thread_rng;
+// use rand::rng;
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
-use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
+use rsa::Pkcs1v15Encrypt;
+use rsa::{RsaPrivateKey, RsaPublicKey};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
+use std::net::IpAddr;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -25,6 +30,21 @@ pub struct ValuePaire {
 
 lazy_static! {
     pub static ref APP_DATA: Mutex<HashMap<String, ValuePaire>> = Mutex::new(HashMap::new());
+}
+
+#[derive(Parser, Debug, Clone)]
+#[command(author, version, about)]
+pub struct GrowthArgs {
+    #[arg(long, short, value_name = "FILE")]
+    config: Option<PathBuf>,
+    #[arg(long, short)]
+    ip: Option<IpAddr>,
+    #[arg(long, short)]
+    port: Option<u16>,
+}
+
+pub fn get_version() -> Option<String> {
+    GrowthArgs::command().get_version().map(|t| t.to_string())
 }
 
 /**
@@ -94,9 +114,7 @@ pub fn global_app_data_remove(key: &String) {
 pub fn global_app_data_get(key: &String) -> Option<String> {
     let dt = APP_DATA.lock().unwrap();
     let cp = dt.get(key);
-    if cp.is_none() {
-        None
-    } else {
+    if let Some(cp_) = cp {
         let mpt = cp.unwrap();
         if mpt.expired > 0 {
             let tm = get_local_timestamp();
@@ -106,7 +124,9 @@ pub fn global_app_data_get(key: &String) -> Option<String> {
                 return None;
             }
         }
-        Some(cp.unwrap().value.clone())
+        Some(cp_.value.clone())
+    } else {
+        None
     }
 }
 
@@ -120,38 +140,30 @@ pub fn rsa_decrypt_by_private_key(token: &String) -> Option<String> {
         .rsa_password_private_key
         .unwrap_or_default();
 
-    let bs = match BASE64_STANDARD.decode(private_key) {
-        Ok(rs) => rs,
-        Err(_) => {
-            vec![]
-        }
-    };
+    let bs = BASE64_STANDARD.decode(private_key).unwrap_or_default();
 
     let priv_key = match RsaPrivateKey::from_pkcs8_der(&bs) {
         Ok(r) => Some(r),
         Err(err) => {
-            log::warn!("Decode the Private Key with an error {}", err);
+            log::warn!("Decode the Private Key with an error {err}");
             None
         }
     };
 
     match priv_key {
         Some(pkey) => {
-            let basedecode = match BASE64_STANDARD.decode(token) {
-                Ok(ts) => ts,
-                Err(_) => vec![],
-            };
-            let dcode = pkey.decrypt(PaddingScheme::PKCS1v15Encrypt, &basedecode);
+            let basedecode = BASE64_STANDARD.decode(token).unwrap_or_default();
+            let dcode = pkey.decrypt(Pkcs1v15Encrypt, &basedecode);
             match dcode {
                 Ok(rs) => match String::from_utf8(rs) {
                     Ok(text) => Some(text),
                     Err(err) => {
-                        log::warn!("Convert to utf8 with an error {}", err);
+                        log::warn!("Convert to utf8 with an error {err}");
                         None
                     }
                 },
                 Err(err) => {
-                    log::warn!("Decode the token with an error {}", err.to_string());
+                    log::warn!("Decode the token with an error {err}");
                     None
                 }
             }
@@ -170,32 +182,29 @@ pub fn rsa_encrypt_by_public_key(token: &String) -> Option<String> {
         .rsa_password_public_key
         .unwrap_or_default();
 
-    let bs = match BASE64_STANDARD.decode(public_key) {
-        Ok(rs) => rs,
-        Err(_) => {
-            vec![]
-        }
-    };
+    let bs = BASE64_STANDARD.decode(public_key).unwrap_or_default();
 
     let pub_key = match RsaPublicKey::from_public_key_der(&bs) {
         Ok(r) => Some(r),
         Err(err) => {
-            log::warn!("Decode the Private Key with an error {}", err);
+            log::warn!("Decode the Private Key with an error {err}");
             None
         }
     };
 
     match pub_key {
         Some(pkey) => {
-            let mut rng = thread_rng();
-            let encoded = pkey.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, token.as_bytes());
+            // let mut rng = rng();
+            let mut rng = rsa::rand_core::OsRng::default();
+
+            let encoded = pkey.encrypt(&mut rng, Pkcs1v15Encrypt, token.as_bytes());
             match encoded {
                 Ok(rs) => {
                     let encodebase = Base64Display::new(&rs, &BASE64_STANDARD).to_string(); // .decode(rs);
                     Some(encodebase)
                 }
                 Err(err) => {
-                    log::warn!("Decode the token with an error {}", err.to_string());
+                    log::warn!("Decode the token with an error {err}");
                     None
                 }
             }
@@ -206,38 +215,30 @@ pub fn rsa_encrypt_by_public_key(token: &String) -> Option<String> {
 
 #[allow(dead_code)]
 pub fn rsa_decrypt_with_private_key(token: &str, private_key: &str) -> Option<String> {
-    let bs = match BASE64_STANDARD.decode(private_key) {
-        Ok(rs) => rs,
-        Err(_) => {
-            vec![]
-        }
-    };
+    let bs = BASE64_STANDARD.decode(private_key).unwrap_or_default();
 
     let priv_key = match RsaPrivateKey::from_pkcs8_der(&bs) {
         Ok(r) => Some(r),
         Err(err) => {
-            log::warn!("Decode the Private Key with an error {}", err);
+            log::warn!("Decode the Private Key with an error {err}");
             None
         }
     };
 
     match priv_key {
         Some(pkey) => {
-            let basedecode = match BASE64_STANDARD.decode(token) {
-                Ok(ts) => ts,
-                Err(_) => vec![],
-            };
-            let dcode = pkey.decrypt(PaddingScheme::PKCS1v15Encrypt, &basedecode);
+            let basedecode = BASE64_STANDARD.decode(token).unwrap_or_default();
+            let dcode = pkey.decrypt(Pkcs1v15Encrypt, &basedecode);
             match dcode {
                 Ok(rs) => match String::from_utf8(rs) {
                     Ok(text) => Some(text),
                     Err(err) => {
-                        log::warn!("Convert to utf8 with an error {}", err);
+                        log::warn!("Convert to utf8 with an error {err}");
                         None
                     }
                 },
                 Err(err) => {
-                    log::warn!("Decode the token with an error {}", err.to_string());
+                    log::warn!("Decode the token with an error {err}");
                     None
                 }
             }
@@ -248,33 +249,29 @@ pub fn rsa_decrypt_with_private_key(token: &str, private_key: &str) -> Option<St
 
 #[allow(dead_code)]
 pub fn rsa_encrypt_with_public_key(token: &str, public_key: &str) -> Option<String> {
-    let bs = match BASE64_STANDARD.decode(public_key) {
-        Ok(rs) => rs,
-        Err(_) => {
-            vec![]
-        }
-    };
+    let bs = BASE64_STANDARD.decode(public_key).unwrap_or_default();
 
     let pub_key = match RsaPublicKey::from_public_key_der(&bs) {
         Ok(r) => Some(r),
         Err(err) => {
-            log::warn!("Decode the Private Key with an error {}", err);
+            log::warn!("Decode the Private Key with an error {err}");
             None
         }
     };
 
     match pub_key {
         Some(pkey) => {
-            let mut rng = thread_rng();
+            // let mut rng = rng();
+            let mut rng = rsa::rand_core::OsRng::default();
             log::warn!("Token: {token}");
-            let encoded = pkey.encrypt(&mut rng, PaddingScheme::PKCS1v15Encrypt, token.as_bytes());
+            let encoded = pkey.encrypt(&mut rng, Pkcs1v15Encrypt, token.as_bytes());
             match encoded {
                 Ok(rs) => {
                     let encodebase = Base64Display::new(&rs, &BASE64_STANDARD).to_string(); // .decode(rs);
                     Some(encodebase)
                 }
                 Err(err) => {
-                    log::warn!("Decode the token with an error {}", err.to_string());
+                    log::warn!("Decode the token with an error {err}");
                     None
                 }
             }
@@ -342,11 +339,28 @@ where
     D: Deserializer<'de>,
 {
     Ok(match StrOrI64::deserialize(deserializer)? {
-        StrOrI64::String(v) => match v.parse::<i64>() {
-            Ok(st) => Some(st),
-            Err(_) => None,
-        },
+        StrOrI64::String(v) => v.parse::<i64>().ok(),
         StrOrI64::I64(v) => Some(v),
+        StrOrI64::None => None,
+    })
+}
+
+#[allow(dead_code)]
+pub fn u8_from_str<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(match StrOrI64::deserialize(deserializer)? {
+        StrOrI64::String(v) => {
+            if v.is_empty() {
+                None
+            } else {
+                let bytes = v.as_bytes();
+                let ft = bytes[0];
+                Some(ft)
+            }
+        }
+        StrOrI64::I64(v) => Some(v as u8),
         StrOrI64::None => None,
     })
 }
@@ -400,7 +414,7 @@ where
             StrOrBool::String(v) => match v.parse::<bool>() {
                 Ok(tf) => Some(tf),
                 Err(err) => {
-                    log::warn!("Parse erroor {}", err);
+                    log::warn!("Parse erroor {err}");
                     None
                 }
             },
@@ -409,7 +423,38 @@ where
             StrOrBool::None => Some(false),
         },
         Err(err) => {
-            log::warn!("Deserializer erroor {}", err);
+            log::warn!("Deserializer erroor {err}");
+            None
+        }
+    })
+}
+
+#[allow(dead_code)]
+pub fn value_from_str<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned,
+{
+    Ok(match serde_json::Value::deserialize(deserializer) {
+        Ok(t) => match t {
+            Value::String(text) => match serde_json::from_str::<T>(&text) {
+                Ok(mt) => Some(mt),
+                Err(err) => {
+                    log::warn!("To descerializer the text: {text}");
+                    log::warn!("Deserializer the value to T error {err}");
+                    None
+                }
+            },
+            _ => match serde_json::from_value::<T>(t) {
+                Ok(mt) => Some(mt),
+                Err(err) => {
+                    log::warn!("Deserializer the value to T error {err}");
+                    None
+                }
+            },
+        },
+        Err(err) => {
+            log::warn!("Deserializer erroor {err}");
             None
         }
     })
@@ -603,14 +648,4 @@ pub fn copy_value_compared_replaced(
         }
     }
     Value::Object(des_val)
-}
-
-
-/**
- * 对字符串执行MD5
- */
-pub fn md5text(text: &str) -> String {
-    let mut md5 = md5::Md5::new();
-    md5.input_str(text);
-    md5.result_str()
 }

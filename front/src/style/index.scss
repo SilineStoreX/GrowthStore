@@ -10,4 +10,8 @@ body,
   #nprogress .bar {
     background: var(--el-color-primary) !important;
   }
+
+  .el-collapse-item__title {
+    display: flex;
+  }
 }

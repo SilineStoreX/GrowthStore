@@ -16,6 +16,7 @@ export const GlobalStore = defineStore({
     token: "",
     api_token: "",
     namespaceTree: 0,
+    chat_conversation_id: "",
     tabsMenuList: [],
     themeConfig: {
       // 布局-- 横向:'column' | 纵向:'row'
@@ -43,6 +44,9 @@ export const GlobalStore = defineStore({
     },
     setApiToken(token: string) {
       this.api_token = token;
+    },
+    setChatConversationId(chatId: string) {
+      this.chat_conversation_id = chatId
     },
     addTabs(tabItem: TabsMenuProps) {
       if (this.tabsMenuList.every((item) => item.path !== tabItem.path)) {

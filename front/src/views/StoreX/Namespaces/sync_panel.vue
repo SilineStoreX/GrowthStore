@@ -32,6 +32,7 @@
                             <el-table-column prop="var_name" label="变量名称" width="160px"/>
                             <el-table-column prop="var_type" label="类型"  width="120px"/>
                             <el-table-column prop="var_value" label="当前值"  />
+                            <el-table-column prop="var_write" label="更新方式"  />
                             <el-table-column label="操作" width="100px">
                                 <template #default="scoped">
                                     <el-button type="primary" icon="Edit" circle @click="handleModifyVariable(scoped.row)" />
@@ -71,6 +72,9 @@
                           </el-tooltip>
                         </template>                      
                         <el-switch v-model="composeService.no_source" />
+                    </el-form-item>
+                    <el-form-item v-if="!composeService.no_source" label="间隔秒数" prop="interval_second">
+                      <el-input v-model="composeService.interval_second" placeholder="每次间隔指定秒数执行，该值有效时，忽略CRON表达式" />
                     </el-form-item>
                     <el-form-item v-if="!composeService.no_source" label="CRON表达式" prop="cron_express">
                         <el-input v-model="composeService.cron_express">
@@ -188,9 +192,8 @@
   <script lang="ts" setup name="config">
   import { update, remove, metadata_get, config_get, config_save, lang_list, authorize_roles_get } from "@/http/modules/management";
   import { useRoute } from "vue-router";
-  import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
   import { mergeProps, onMounted, ref, watch } from "vue";
-  import { FormInstance } from "element-plus";
+  import { ElMessageBox, FormInstance } from "element-plus";
   import AddHook from "./add_hook.vue"
   import AddVariable from "./add_variable.vue"
   import { vue3CronPlus } from 'vue3-cron-plus'
@@ -270,14 +273,14 @@
           emit("update:visible", false)
           emit("update:data", true)
         } else {
-          VxeUI.modal.message({ content: '保存失败', status: 'info' })
+          ElMessageBox.alert('保存失败', "提示", { type: 'warning' })
         }
       }).catch(me => {
-        VxeUI.modal.message({ content: '保存失败, ' + me.description, status: 'info' })        
+        ElMessageBox.alert('保存失败，' + me.description, "提示", { type: 'warning' })   
       })
 
     }).catch(ex => {
-      VxeUI.modal.message({ content: '保存插件信息失败, ' + ex.description, status: 'info' })
+      ElMessageBox.alert('保存插件信息失败，' + ex.description, "提示", { type: 'warning' })
     })
   }
 
@@ -449,15 +452,6 @@
     rest_conf.value = cps
   }
 
-  const submitEvent: VxeFormEvents.Submit = () => {
-    console.log("config: ", config_data.value)
-    VxeUI.modal.message({ content: '保存成功', status: 'success' })
-  }
-
-  const resetEvent: VxeFormEvents.Reset = () => {
-    VxeUI.modal.message({ content: '重置事件', status: 'info' })
-  }
-  
   onMounted(() => {
       if (props.data && props.data.protocol && props.data.name) {
         var ns = route.query.ns as string
@@ -470,12 +464,12 @@
   </script>
   
   <style lang="scss" scoped>
+  @use "index.scss";
   .el-select .el-input {
     width: 130px;
   }
   :deep(.vue3-cron-plus-container) .language {
     display: none;
   }
-  @import "index.scss";
   </style>
   

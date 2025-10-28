@@ -4,14 +4,15 @@ use std::{
     time::Duration,
 };
 
+use super::{invoker::InvocationContext, registry::SchemaRegistry, sdk::InvokeUri};
+use crate::{config::auth::JwtUserClaims, pin_spawnthread, utils::get_local_timestamp_micros};
 use anyhow::anyhow;
+use chimes_store_utils::algorithm::snowflake_id;
 use itertools::Itertools;
 use salvo::{hyper::Uri, routing::PathParams};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use substring::Substring;
-
-use super::{invoker::InvocationContext, registry::SchemaRegistry, sdk::InvokeUri};
-use crate::utils::get_local_timestamp_micros;
 
 pub trait PerformanceQueue {
     fn add_invoke_counter(&mut self, ict: &InvokeCounter);
@@ -96,15 +97,47 @@ unsafe impl Send for InvokePerformanceInfo {}
 
 unsafe impl Sync for InvokePerformanceInfo {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InvokeCounter {
+    pub span_id: Option<String>,
+    pub parent_span: Option<String>,
     pub uri: InvokeUri,
+    pub request_url: Option<String>,
     pub remote_addr: Option<String>,
     pub elapse: u64,
     pub start_time: u64,
     pub end_time: u64,
     pub error: bool,
     pub msg: Option<String>,
+    pub ref_name: Option<String>,
+    pub ref_detail: Option<String>,
+    pub payload: Option<Value>,
+    pub username: Option<String>,
+    pub user_id: Option<String>,
+    pub domain: Option<String>,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct InvokeAuditInfo {
+    pub span_id: Option<String>,
+    pub parent_id: Option<String>,
+    pub uri: Option<String>,
+    pub request_url: Option<String>,
+    pub namespace: Option<String>,
+    pub method: Option<String>,
+    pub protocol: Option<String>,
+    pub remote_addr: Option<String>,
+    pub elapse: u64,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub error: bool,
+    pub message: Option<String>,
+    pub ref_name: Option<String>,
+    pub ref_detail: Option<String>,
+    pub payload: Option<String>,
+    pub username: Option<String>,
+    pub user_id: Option<String>,
+    pub domain: Option<String>,
 }
 
 unsafe impl Send for InvokeCounter {}
@@ -112,7 +145,7 @@ unsafe impl Send for InvokeCounter {}
 unsafe impl Sync for InvokeCounter {}
 
 impl InvokeCounter {
-    pub fn from_uri(uri: &Uri, pathps: &PathParams) -> Self {
+    pub fn from_uri(uri: &Uri, pathps: &PathParams, span: Option<String>) -> Self {
         let (key_, last_) = match pathps.last() {
             Some((key, val)) => (key.to_owned(), val.to_owned()),
             None => ("".to_owned(), "".to_owned()),
@@ -126,6 +159,7 @@ impl InvokeCounter {
                 object: uri.path().to_owned(),
                 method: "".to_owned(),
                 query: uri.query().map(|f| f.to_owned()),
+                query_pairs: None,
             },
         };
 
@@ -134,36 +168,86 @@ impl InvokeCounter {
             let q = ivk_uri.object.clone();
             if q.ends_with(&last_) {
                 let mut nstr = q.substring(0, q.len() - last_.len()).to_string();
-                nstr.push_str(&format!(":{}", key_));
+                nstr.push_str(&format!(":{key_}"));
                 ivk_uri.object = nstr;
             }
         }
 
+        // here to try to parse the namespace for HTTP(S) URL
+        if ivk_uri.schema == "http".to_string() || ivk_uri.schema == "https" {
+            let objpath = ivk_uri.object.clone();
+            let pathspl = objpath.split("/").collect_vec();
+            if pathspl.len() > 3 {
+                if pathspl[0] == "api" {
+                    ivk_uri.namespace = pathspl[2].to_string();
+                }
+            }
+        }
+
         Self {
+            parent_span: span,
+            span_id: Some(format!("REQ{}", snowflake_id())),
             uri: ivk_uri,
             elapse: 0,
+            request_url: Some(uri.to_string()),
             start_time: get_local_timestamp_micros(),
             end_time: 0,
             error: false,
             msg: None,
             remote_addr: None,
+            ref_detail: None,
+            ref_name: None,
+            payload: None,
+            username: None,
+            user_id: None,
+            domain: None,
         }
     }
 
-    pub fn new(uri: &InvokeUri) -> Self {
+    pub fn new(uri: &InvokeUri, ctx: Arc<Mutex<InvocationContext>>, payload: &[Value]) -> Self {
+        let (parent_sp, userid, username, domain) = if let Ok(ctxgrt) = ctx.lock() {
+            (ctxgrt.get_span_id(), ctxgrt.get_current_userid(), ctxgrt.get_current_user(), ctxgrt.get_domain())
+        } else {
+            (None, None, None, None)
+        };
+
         Self {
+            parent_span: parent_sp,
+            span_id: Some(format!("IVK{}", snowflake_id())),
             uri: uri.clone(),
             elapse: 0,
+            request_url: None,
             start_time: get_local_timestamp_micros(),
             end_time: 0,
             error: false,
             msg: None,
             remote_addr: None,
+            payload: Some(Value::Array(payload.to_vec())),
+            username: username,
+            user_id: userid,
+            ref_detail: None,
+            ref_name: None,
+            domain: domain,
         }
     }
 
     pub fn with_remote_addr(mut self, addr: &str) -> Self {
         self.remote_addr = Some(addr.to_owned());
+        self
+    }
+
+    pub fn with_user(mut self, jwt: &Option<JwtUserClaims>) -> Self {
+        if let Some(jwtus) = jwt {
+            self.username = Some(jwtus.username.clone());
+            self.user_id = Some(jwtus.userid.clone());
+            self.domain = Some(jwtus.domain.clone());
+        }
+        
+        self
+    }
+
+    pub fn with_payload(mut self, payload: Option<Value>) -> Self {
+        self.payload = payload;
         self
     }
 
@@ -183,9 +267,17 @@ impl InvokeCounter {
         self
     }
 
+    pub fn set_payload(&mut self, payload: &[Value]) {
+        self.payload = Some(Value::Array(payload.to_vec()));
+    }
+
     pub fn to_performance_info(&self) -> InvokePerformanceInfo {
         InvokePerformanceInfo {
-            full_url: self.uri.url(),
+            full_url: if self.request_url.is_none() {
+                self.uri.url()
+            } else {
+                self.request_url.clone().unwrap_or_default()
+            },
             remote_addr: self.remote_addr.clone().unwrap_or_default(),
             namespace: self.uri.namespace.clone(),
             protocol: self.uri.schema.clone(),
@@ -196,6 +288,33 @@ impl InvokeCounter {
             elapse: self.elapse,
             error: self.error,
             msg: self.msg.clone(),
+        }
+    }
+
+    pub fn to_audit_info(&self) -> InvokeAuditInfo {
+        InvokeAuditInfo {
+            span_id: self.span_id.clone(),
+            parent_id: self.parent_span.clone(),
+            uri: Some(self.uri.url()),
+            request_url: self.request_url.clone(),
+            remote_addr: self.remote_addr.clone(),
+            namespace: Some(self.uri.namespace.clone()),
+            protocol: Some(self.uri.schema.clone()),
+            ref_name: Some(self.uri.object.clone()),
+            method: Some(self.uri.method.clone()),
+            start_time: self.start_time,
+            end_time: self.end_time,
+            elapse: self.elapse,
+            error: self.error,
+            username: self.username.clone(),
+            user_id: self.user_id.clone(),
+            domain: self.domain.clone(),
+            message: self.msg.clone(),
+            payload: self
+                .payload
+                .clone()
+                .and_then(|s| serde_json::to_string(&s).map(Some).unwrap_or(None)),
+            ..Default::default()
         }
     }
 }
@@ -309,7 +428,8 @@ impl PerformanceQueueHolder {
             return;
         }
 
-        tokio::spawn(async move {
+        // pin_spawnthread!()
+        pin_spawnthread!(async move {
             self.running
                 .store(true, std::sync::atomic::Ordering::Release);
 

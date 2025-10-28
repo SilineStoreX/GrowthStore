@@ -21,8 +21,11 @@
               </template>
             </el-input>
         </el-form-item>
-        <el-form-item label="关联用户">
-            <el-input v-model="hook.username" style="width: 600px" />
+        <el-form-item label="用户名">
+            <el-input v-model="hook.username" style="width: 160px" />
+            <el-form-item label="用户Id">
+              <el-input v-model="hook.userid" style="width: 160px" />
+            </el-form-item>
         </el-form-item>
         <el-form-item label="所属组织">
             <el-input v-model="hook.orgname" style="width: 600px" />
@@ -30,8 +33,9 @@
         <el-form-item label="加密验证">
             <el-switch v-model="hook.encryption"/>
         </el-form-item>
-        <el-form-item label="长期有效JwtToken">
-            <el-input type="textarea" v-model="hook.token" :rows="6" style="width: 600px" placeholder="点击Generate Token生成长期有效的JwtToken"/>
+        <el-form-item label="Token">
+            <el-input type="textarea" v-model="hook.token" :rows="3" style="width: 600px" placeholder="点击Generate Token生成长期有效的JwtToken"/>
+            <el-text>可通过请求头Authorization(Bearer xxx)或URL Query (_token=xxx)传递</el-text>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -48,7 +52,7 @@
   
   <script lang="ts" setup name="config">
   import { lang_list, update } from "@/http/modules/management";
-  import { random_string, rsa_encrypt } from "@/utils/encryption";
+  import { md5_hash, number_to_string, random_string, rsa_encrypt } from "@/utils/encryption";
   import { useRoute } from "vue-router";
   import { call_api } from "@/http/modules/common";
   import { mergeProps, onMounted, ref, watch } from "vue";
@@ -87,22 +91,16 @@ import { ElMessageBox } from "element-plus";
   async function onGenerateToken() {
     emit('update:hook', props.hook)
     var secret = props.hook.app_secret
-    if (props.hook.encryption) {
-      secret = rsa_encrypt(secret + "##" + (new Date()).getTime())
-    }
+    secret = (new Date()).getTime()
+   
 
     let gewt = {
       app_id: props.hook.app_id,
       app_secret: secret
     }
 
-    const data = await call_api("/api/auth/exchange", "GET", gewt);
-    console.log('resp', data)
-    if (data.status === 404) {
-      ElMessageBox.alert("没有找到对应的AppId和AppSecret，如果你确认是刚刚添加的新的AppId，请先保存‘用户与认证配置’，然后再来生成Token。")
-    } else {
-      props.hook.token = data.data.token
-    }
+    let token = number_to_string(secret) + random_string(36);
+    props.hook.token = "growth-" + token;
   }
 
   function generate_appid(len: number) {

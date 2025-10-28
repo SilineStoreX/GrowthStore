@@ -1,18 +1,23 @@
 use anyhow::anyhow;
-use chimes_store_core::config::auth::JwtUserClaims;
 use chimes_store_core::config::PluginConfig;
-use chimes_store_core::pin_submit;
+use chimes_store_core::pin_spawnthread;
 use chimes_store_core::service::invoker::InvocationContext;
 use chimes_store_core::service::queue::SyncTaskQueue;
 use chimes_store_core::service::script::ExtensionRegistry;
 use chimes_store_core::service::sdk::{InvokeUri, MethodDescription, RxPluginService};
 use chimes_store_core::service::starter::load_config;
 use chimes_store_core::utils::global_data::i64_from_str;
-use kafka::client::{Compression, FetchOffset, GroupOffsetStorage, KafkaClient, RequiredAcks, DEFAULT_CONNECTION_IDLE_TIMEOUT_MILLIS};
+use kafka::client::{
+    Compression, FetchOffset, GroupOffsetStorage, KafkaClient, RequiredAcks,
+    DEFAULT_CONNECTION_IDLE_TIMEOUT_MILLIS,
+};
 use kafka::consumer::Consumer;
 use kafka::producer::{AsBytes, Producer, Record};
 use rbatis::Page;
-use salvo::oapi::{Content, Object, OpenApi, Operation, PathItem, RefOr, RequestBody, Response, Schema, BasicType, ToArray};
+use salvo::oapi::{
+    Array, BasicType, Content, Object, OpenApi, Operation, PathItem, RefOr, RequestBody, Response,
+    Schema,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::future::Future;
@@ -27,24 +32,15 @@ use super::template::json_path_get;
 
 fn to_api_result_schema(t: RefOr<Schema>, array: bool) -> Schema {
     let mut apiresult = Object::new();
-    apiresult = apiresult.property(
-        "status",
-        Object::new().schema_type(BasicType::Integer),
-    );
-    apiresult = apiresult.property(
-        "message",
-        Object::new().schema_type(BasicType::String),
-    );
+    apiresult = apiresult.property("status", Object::new().schema_type(BasicType::Integer));
+    apiresult = apiresult.property("message", Object::new().schema_type(BasicType::String));
     if array {
-        apiresult = apiresult.property("data", t.to_array());
+        apiresult = apiresult.property("data", Array::new().items(t));
     } else {
         apiresult = apiresult.property("data", t);
     }
-    apiresult = apiresult.property(
-        "timestamp",
-        Object::new().schema_type(BasicType::Integer),
-    );
-    Schema::Object(apiresult)
+    apiresult = apiresult.property("timestamp", Object::new().schema_type(BasicType::Integer));
+    Schema::Object(Box::new(apiresult))
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -56,7 +52,7 @@ pub struct KafkaSubscribeInfo {
     pub produce: bool, // 同时，支持Produce，当该值为true时，才可以调用publish方法
 
     #[serde(default)]
-    pub consume: bool, // 同时，支持Consume，当该值为true时，才会加入到consume队列    
+    pub consume: bool, // 同时，支持Consume，当该值为true时，才会加入到consume队列
 
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
@@ -65,14 +61,14 @@ pub struct KafkaSubscribeInfo {
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub required_acks: Option<i64>,
-    
+
     #[serde(default)]
     pub enable_synctask: bool,
     pub task_id: Option<String>,
 
     #[serde(default)]
-    pub execute_delete: bool,      // 执行删除动作，如果为true，所有接收到的都都是删除操作 
-    pub check_delete: Option<String>,  // 检查删除标识，JSONPath表示，检查成功，表示该记录应该执行删除操作
+    pub execute_delete: bool, // 执行删除动作，如果为true，所有接收到的都都是删除操作
+    pub check_delete: Option<String>, // 检查删除标识，JSONPath表示，检查成功，表示该记录应该执行删除操作
 
     pub description: Option<String>,
 
@@ -80,14 +76,13 @@ pub struct KafkaSubscribeInfo {
     pub script: Option<String>,
 }
 
-
 impl KafkaSubscribeInfo {
     pub(crate) fn to_operation(&self, array: bool) -> Operation {
         let mut ins_op = Operation::new();
-        ins_op = ins_op.request_body(
-            RequestBody::new()
-                .add_content("application/json", RefOr::Type(Schema::Object(Object::new()))),
-        );
+        ins_op = ins_op.request_body(RequestBody::new().add_content(
+            "application/json",
+            RefOr::Type(Schema::Object(Box::new(Object::new()))),
+        ));
         ins_op = ins_op.summary(self.description.clone().unwrap_or_default());
 
         let mut description = "使用定义的Kafka连接来发送Kafka消息".to_string();
@@ -95,14 +90,13 @@ impl KafkaSubscribeInfo {
         description.push_str("Query传递少量Kafka Procedure参数. 而topic则是通过URI传递（注意：如topic包含‘/’，需要将其用‘+’替代）\n");
         description.push_str("Body: 主要是传递payload数组\n");
 
-
         ins_op = ins_op.description(description);
 
         let mut resp = Response::new("返回ApiResult结构的JSON对象。".to_owned());
         resp = resp.add_content(
             "application/json",
             Content::new(to_api_result_schema(
-                RefOr::Type(Schema::Object(Object::new())),
+                RefOr::Type(Schema::Object(Box::new(Object::new()))),
                 array,
             )),
         );
@@ -111,40 +105,39 @@ impl KafkaSubscribeInfo {
     }
 }
 
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct KafkaPluginConfig {
     pub brokers: Option<String>,
-    
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub keep_alive: Option<i64>,
-    
+
     pub group: Option<String>,
-    
+
     #[serde(default)]
     pub validate_crc: bool,
-    
+
     #[serde(default)]
     pub commit_consumer: bool,
     pub fallback_offset: Option<String>,
 
     pub compression: Option<String>,
-    
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub max_bytes_per_partition: Option<i64>,
-    
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub max_wait_time: Option<i64>,
-    
+
     pub offset_storage: Option<String>,
-    
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub connection_idle_timeout: Option<i64>,
-    
+
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub retry_max_bytes_limit: Option<i64>,
@@ -166,13 +159,16 @@ pub struct KafkaPluginConfig {
 
 impl KafkaPluginConfig {
     fn get_service(&self, topic: &str) -> Option<KafkaSubscribeInfo> {
-        self.services.clone().into_iter().find(|f| f.topic == *topic)
+        self.services
+            .clone()
+            .into_iter()
+            .find(|f| f.topic == *topic)
     }
 }
 
 #[allow(dead_code)]
 pub struct KafkaPluginService {
-    namespace: String,    
+    namespace: String,
     conf: PluginConfig,
     kafka: Mutex<Option<KafkaPluginConfig>>,
     client: Mutex<Option<KafkaClient>>,
@@ -201,7 +197,10 @@ impl DerefMut for Trimmed {
     }
 }
 
-fn send_batch(producer: Arc<Mutex<Option<Producer>>>, batch: &[Record<'_, (), Trimmed>]) -> Result<(), anyhow::Error> {
+fn send_batch(
+    producer: Arc<Mutex<Option<Producer>>>,
+    batch: &[Record<'_, (), Trimmed>],
+) -> Result<(), anyhow::Error> {
     if let Ok(mut grant_producer) = producer.lock() {
         match grant_producer.as_mut() {
             Some(prod) => {
@@ -218,17 +217,15 @@ fn send_batch(producer: Arc<Mutex<Option<Producer>>>, batch: &[Record<'_, (), Tr
                             }
                         }
                         Ok(())
-                    },
+                    }
                     Err(err) => {
                         drop(grant_producer);
                         log::info!("error on send {err}");
                         Err(anyhow!("{:?}", err))
                     }
                 }
-            },
-            None => {
-                Ok(())
             }
+            None => Ok(()),
         }
     } else {
         Err(anyhow!("could not locked the mutex."))
@@ -236,14 +233,21 @@ fn send_batch(producer: Arc<Mutex<Option<Producer>>>, batch: &[Record<'_, (), Tr
 }
 
 impl KafkaPluginService {
-
     #[allow(dead_code)]
-    pub fn handle_topic_process(kafka: &KafkaSubscribeInfo, _topic: &str, payload: &Value) -> Result<(), anyhow::Error>{
+    pub fn handle_topic_process(
+        kafka: &KafkaSubscribeInfo,
+        _topic: &str,
+        payload: &Value,
+    ) -> Result<(), anyhow::Error> {
         let mut rt = None;
         if let Some(lang) = kafka.lang.clone() {
             if let Some(scripter) = ExtensionRegistry::get_extension(&lang) {
                 if let Some(eval) = scripter.fn_return_option_script {
-                    rt = eval(&kafka.script.clone().unwrap_or_default(), Arc::new(Mutex::new(InvocationContext::new())), &[payload.to_owned()])?;
+                    rt = eval(
+                        &kafka.script.clone().unwrap_or_default(),
+                        Arc::new(Mutex::new(InvocationContext::new())),
+                        &[payload.to_owned()],
+                    )?;
                 }
             }
         }
@@ -251,19 +255,22 @@ impl KafkaPluginService {
         if kafka.enable_synctask {
             if let Some(val) = rt {
                 if let Some(task_id) = kafka.task_id.clone() {
-                    let state_action = kafka.execute_delete || if let Some(chk) = kafka.check_delete.clone() {
-                        json_path_get(&val, &chk).is_some()
-                    } else {
-                        false
-                    };
+                    let state_action = kafka.execute_delete
+                        || if let Some(chk) = kafka.check_delete.clone() {
+                            json_path_get(&val, &chk).is_some()
+                        } else {
+                            false
+                        };
 
-                    let state = if state_action {
-                        2
-                    } else {
-                        1
-                    };
-
-                    if let Err(err) = SyncTaskQueue::get_mut().push_task(&task_id, &val, state) {
+                    let state = if state_action { 2 } else { 1 };
+                    let taskname = format!("Consume Kafka topic {}", kafka.topic);
+                    if let Err(err) = SyncTaskQueue::get_mut().push_task(
+                        &task_id,
+                        &Some(taskname),
+                        &kafka.description,
+                        &val,
+                        state,
+                    ) {
                         log::info!("could not add the value into SyncTaskQueue {err}");
                     }
                 }
@@ -278,7 +285,7 @@ impl KafkaPluginService {
         let t = match load_config(conf.config.clone()) {
             Ok(r) => r,
             Err(err) => {
-                log::debug!("Could not load the config file: {:?}", err);
+                log::debug!("Could not load the config file: {err:?}");
                 Some(KafkaPluginConfig::default())
             }
         };
@@ -295,16 +302,27 @@ impl KafkaPluginService {
 
     fn create_client(&self) -> KafkaClient {
         let kafka = self.kafka.lock().unwrap().clone().unwrap();
-        let hosts = kafka.brokers.unwrap_or_default().split(';').map(|f| f.to_owned()).collect::<Vec<String>>();
+        let hosts = kafka
+            .brokers
+            .unwrap_or_default()
+            .split(';')
+            .map(|f| f.to_owned())
+            .collect::<Vec<String>>();
         let mut client = KafkaClient::new(hosts);
         client.set_fetch_crc_validation(kafka.validate_crc);
-        
-        client.set_connection_idle_timeout(Duration::from_millis(kafka.connection_idle_timeout.unwrap_or(DEFAULT_CONNECTION_IDLE_TIMEOUT_MILLIS as i64) as u64));
+
+        client.set_connection_idle_timeout(Duration::from_millis(
+            kafka
+                .connection_idle_timeout
+                .unwrap_or(DEFAULT_CONNECTION_IDLE_TIMEOUT_MILLIS as i64) as u64,
+        ));
         if let Some(max_bytes_per_partition) = kafka.max_bytes_per_partition {
             client.set_fetch_max_bytes_per_partition(max_bytes_per_partition as i32);
         }
 
-        if let Err(err) = client.set_fetch_max_wait_time(Duration::from_millis(kafka.max_wait_time.unwrap_or(30) as u64)) {
+        if let Err(err) = client.set_fetch_max_wait_time(Duration::from_millis(
+            kafka.max_wait_time.unwrap_or(30) as u64,
+        )) {
             log::debug!("error to set fetch max wait time {err}");
         }
 
@@ -324,7 +342,7 @@ impl KafkaPluginService {
             let group_offset_storage = match group_offset.to_lowercase().as_str() {
                 "kafka" => Some(GroupOffsetStorage::Kafka),
                 "zookeeper" => Some(GroupOffsetStorage::Zookeeper),
-                _ => None
+                _ => None,
             };
             client.set_group_offset_storage(group_offset_storage);
         }
@@ -341,45 +359,42 @@ impl KafkaPluginService {
     }
 
     pub fn start(&mut self) -> Result<(), anyhow::Error> {
-        
-
-
         let running = self.running.clone();
         let mut client = self.create_client();
         let kafka: KafkaPluginConfig = self.kafka.lock().unwrap().clone().unwrap();
 
         // std::thread::spawn(move || {
-        pin_submit!(async move {
-
-
+        pin_spawnthread!(async move {
             if let Err(err) = client.load_metadata_all() {
                 log::info!("load all metadata failed {err}");
             }
-    
+
             let mut builder = Consumer::from_client(client);
 
-    
             if let Some(limit) = kafka.retry_max_bytes_limit {
                 builder = builder.with_retry_max_bytes_limit(limit as i32);
             }
-    
+
             if let Some(fallback_offset) = kafka.fallback_offset.clone() {
                 let fb_offset = match fallback_offset.to_lowercase().as_str() {
                     "latest" => FetchOffset::Latest,
                     "earliest" => FetchOffset::Earliest,
-                    _ => FetchOffset::ByTime(fallback_offset.parse::<i64>().unwrap_or_default())
+                    _ => FetchOffset::ByTime(fallback_offset.parse::<i64>().unwrap_or_default()),
                 };
-    
+
                 builder = builder.with_fallback_offset(fb_offset);
             }
-    
+
             if let Some(grp) = kafka.group.clone() {
                 builder = builder.with_group(grp);
             }
-    
+
             for topic in kafka.services.iter().filter(|f| f.consume).cloned() {
                 if let Some(patts) = topic.partitions {
-                    let mut pat = patts.split(',').map(|f| f.parse::<i32>().unwrap_or(0)).collect::<Vec<i32>>();
+                    let mut pat = patts
+                        .split(',')
+                        .map(|f| f.parse::<i32>().unwrap_or(0))
+                        .collect::<Vec<i32>>();
                     pat.sort();
                     pat.dedup();
                     builder = builder.with_topic_partitions(topic.topic, &pat);
@@ -387,11 +402,11 @@ impl KafkaPluginService {
                     builder = builder.with_topic(topic.topic);
                 }
             }
-    
+
             let mut consumer = match builder.create() {
                 Ok(rc) => rc,
                 Err(err) => {
-                    log::info!("could not create the consumer by this client. {err}");
+                    log::error!("could not create the consumer by this client. {err}");
                     return;
                 }
             };
@@ -401,7 +416,6 @@ impl KafkaPluginService {
             }
 
             loop {
-                
                 {
                     let still_running = running.load(std::sync::atomic::Ordering::Acquire);
                     if !still_running {
@@ -423,10 +437,14 @@ impl KafkaPluginService {
                                     // m.value
                                     match serde_json::from_slice::<Value>(m.value) {
                                         Ok(payload) => {
-                                            if let Err(err) = Self::handle_topic_process(&subs, topic, &payload) {
-                                                log::error!("process script for {} with error {err}", topic);
+                                            if let Err(err) =
+                                                Self::handle_topic_process(&subs, topic, &payload)
+                                            {
+                                                log::error!(
+                                                    "process script for {topic} with error {err}"
+                                                );
                                             }
-                                        },
+                                        }
                                         Err(err) => {
                                             log::error!("serde from slice with error. {err}. len of slice is {}", m.value.len());
                                         }
@@ -441,9 +459,9 @@ impl KafkaPluginService {
                                 log::error!("commit consume with error {err}");
                             }
                         }
-                    },
+                    }
                     Err(err) => {
-                       log::info!("received messages failed. {err}");
+                        log::info!("received messages failed. {err}");
                     }
                 }
             }
@@ -455,7 +473,8 @@ impl KafkaPluginService {
     pub fn stop(&mut self) {
         // self.client.as_mut().unwrap().disconnect(None);
         // self.receiver.unwrap().close();
-        self.running.store(false, std::sync::atomic::Ordering::Release);
+        self.running
+            .store(false, std::sync::atomic::Ordering::Release);
     }
 
     #[allow(dead_code)]
@@ -468,20 +487,23 @@ impl KafkaPluginService {
             let subs = match kafka.get_service(topic) {
                 Some(t) => {
                     if !t.produce {
-                        return Err(anyhow!("No producer for {} defained.", topic));
+                        return Err(anyhow!("No producer for {} defined.", topic));
                     }
                     t
-                },
+                }
                 None => {
-                    return Err(anyhow!("No producer for {} defained.", topic));
+                    return Err(anyhow!("No producer for {} defined.", topic));
                 }
             };
 
-            let required_acks = subs.required_acks.map(|f| match f {
-                1 => RequiredAcks::One,
-                2 => RequiredAcks::All,
-                _ => RequiredAcks::None
-            }).unwrap_or(RequiredAcks::None);
+            let required_acks = subs
+                .required_acks
+                .map(|f| match f {
+                    1 => RequiredAcks::One,
+                    2 => RequiredAcks::All,
+                    _ => RequiredAcks::None,
+                })
+                .unwrap_or(RequiredAcks::None);
 
             let mut client = self.create_client();
             if let Err(err) = client.load_metadata_all() {
@@ -489,7 +511,7 @@ impl KafkaPluginService {
             }
 
             let mut builder = Producer::from_client(client).with_required_acks(required_acks);
-            
+
             if let Some(ack_timeout) = subs.ack_timeout {
                 builder = builder.with_ack_timeout(Duration::from_millis(ack_timeout as u64));
             }
@@ -498,11 +520,14 @@ impl KafkaPluginService {
             self.producer.lock().unwrap().replace(prod);
         } else {
             drop(pro);
-        }        
+        }
 
-        let rec_stash: Vec<Record<'_, (), Trimmed>> = payloads.iter()
-                .map(|f| Record::from_value(topic, Trimmed(serde_json::to_string(f).unwrap_or_default())))
-                .collect();
+        let rec_stash: Vec<Record<'_, (), Trimmed>> = payloads
+            .iter()
+            .map(|f| {
+                Record::from_value(topic, Trimmed(serde_json::to_string(f).unwrap_or_default()))
+            })
+            .collect();
 
         if !rec_stash.is_empty() {
             send_batch(self.producer.clone(), &rec_stash)?;
@@ -515,11 +540,7 @@ impl KafkaPluginService {
         let mut openapi = OpenApi::new(self.conf.name.clone(), "0.1.0");
         let tconf = self.kafka.lock().unwrap().clone();
         if let Some(restconf) = tconf {
-            for tsvc in restconf
-                .services
-                .iter()
-                .cloned()
-            {
+            for tsvc in restconf.services.iter().cloned() {
                 let topic = tsvc.topic.clone().replace('/', "+");
                 let opt = tsvc.to_operation(false);
                 let one_path = format!(
@@ -535,7 +556,7 @@ impl KafkaPluginService {
             }
         }
         openapi
-    }    
+    }
 }
 
 unsafe impl Send for KafkaPluginService {}
@@ -544,6 +565,7 @@ unsafe impl Sync for KafkaPluginService {}
 
 impl Drop for KafkaPluginService {
     fn drop(&mut self) {
+        log::error!("KafkaPluginService call stop to exit the thread.");
         self.stop();
     }
 }
@@ -558,18 +580,9 @@ impl RxPluginService for KafkaPluginService {
         let topic = uri.method.replace('+', "/");
         log::info!("topic: {topic}");
         match self.publish(&topic, &args) {
-            Ok(_) => {
-                Box::pin(async move {
-                    Ok(None) 
-                })
-            },
-            Err(err) => {
-                Box::pin(async move {
-                    Err(err)
-                })                
-            }
+            Ok(_) => Box::pin(async move { Ok(None) }),
+            Err(err) => Box::pin(async move { Err(err) }),
         }
-        
     }
 
     fn invoke_return_vec(
@@ -594,7 +607,7 @@ impl RxPluginService for KafkaPluginService {
         match serde_json::to_value(self.kafka.lock().unwrap().clone()) {
             Ok(t) => Some(t),
             Err(err) => {
-                log::debug!("Convert to json with error: {:?}", err);
+                log::debug!("Convert to json with error: {err:?}");
                 None
             }
         }
@@ -607,7 +620,7 @@ impl RxPluginService for KafkaPluginService {
                 Ok(())
             }
             Err(err) => {
-                log::info!("Parse JSON value to config with error: {:?}", err);
+                log::info!("Parse JSON value to config with error: {err:?}");
                 Err(anyhow!(err))
             }
         }
@@ -615,10 +628,7 @@ impl RxPluginService for KafkaPluginService {
 
     fn save_config(&self, conf: &PluginConfig) -> Result<(), anyhow::Error> {
         let path: PathBuf = conf.config.clone().into();
-        chimes_store_core::service::starter::save_config(
-            &self.kafka.lock().unwrap().clone(),
-            path,
-        )
+        chimes_store_core::service::starter::save_config(&self.kafka.lock().unwrap().clone(), path)
     }
 
     fn get_metadata(&self) -> Vec<chimes_store_core::service::sdk::MethodDescription> {
@@ -642,15 +652,5 @@ impl RxPluginService for KafkaPluginService {
 
     fn get_openapi(&self, ns: &str) -> Box<dyn std::any::Any> {
         Box::new(self.to_openapi_doc(ns))
-    }
-
-    fn has_permission(
-        &self,
-        _uri: &InvokeUri,
-        _jwt: &JwtUserClaims,
-        _roles: &[String],
-        _bypass: bool,
-    ) -> bool {
-        true
     }
 }

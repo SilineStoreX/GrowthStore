@@ -112,7 +112,7 @@ import { MenuStore } from "@/stores/modules/menu";
 import { LayoutType } from "@/stores/interface";
 import { useRoute, useRouter } from "vue-router";
 import { LOGIN_URL } from "@/config/config";
-import { nextTick } from "process";
+import { fetch_auth_config, rsa_encrypt_text } from "@/components/chimescoresec/chimescoresec"
 
 const { toggle, isFullscreen } = useFullscreen();
 const i18n = useI18n();
@@ -134,6 +134,9 @@ const breadcrumbList = computed(
 const screenWidth = ref(0);
 
 onMounted(() => {
+  fetch_auth_config().then(res => {
+    console.log('auth config initialized.')
+  })
   handleI18n(language.value || getBrowserLang());
   window.addEventListener("resize", lintenWindow, false);
 });
@@ -211,9 +214,9 @@ const onConfirm = () => {
   if (cpwd.new_password == cpwd.password) {
     ElMessage.warning({message: "输入的新密码与原密码相同，请重新输入!"})
     return;
-  }  
+  }
 
-  modifyPassword({ username: userInfo.value.username, password: cpwd.password, new_password: cpwd.new_password }).then(res => {
+  modifyPassword({ username: userInfo.value.username, password: 'rsa:' + rsa_encrypt_text(cpwd.password), new_password: 'rsa:' + rsa_encrypt_text(cpwd.new_password) }).then(res => {
     if (res.status === 0 || res.status === 200) {
       ElMessage.success({message: "密码修改成功! 请重新登录。"})
       onDialogClosed()
@@ -230,5 +233,5 @@ const onConfirm = () => {
 </script>
 
 <style lang="scss" scoped>
-@import "index.scss";
+@use "index.scss";
 </style>

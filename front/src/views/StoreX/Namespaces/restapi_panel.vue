@@ -85,19 +85,28 @@
                         </el-form-item>
                     </el-form-item>
                     <el-form-item label="接口传递Token方式">
-                        <el-radio-group v-model="rest_conf.token_pass_style" style="width: 40%">
+                        <el-radio-group v-model="rest_conf.token_pass_style" style="width: 100%">
                           <el-radio-button label="Cookie" value="Cookie" />
                           <el-radio-button label="Header" value="Header" />
                           <el-radio-button label="Query" value="Query" />
-                        </el-radio-group>                    
-                        <el-form-item label="Token标识">
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="Token标识">
+                        <template #label>
+                          Token标识
+                          <el-tooltip class="box-item" effect="dark" placement="top-start" content="用于向后续接口调用传递Access-Token的标识名称">
+                            <el-icon><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
+                        <el-input v-model="rest_conf.token_identifier"  style="width: 40%"/>
+                        <el-form-item label="组成模板">
                           <template #label>
-                            Token标识
-                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="用于向后续接口调用传递Access-Token的标识名称">
+                            组成模板
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="有些获取到的Token并不是直接向后传递，需要加入一些处理，如Bearer前缀">
                               <el-icon><InfoFilled /></el-icon>
                             </el-tooltip>
                           </template>
-                          <el-input v-model="rest_conf.token_identifier"  style="width: 100%"/>
+                          <el-input v-model="rest_conf.token_present"  style="width: 100%"/>
                         </el-form-item>
                     </el-form-item>
                     <el-form-item label="请求的自定义Header">
@@ -113,7 +122,16 @@
                         <el-input v-model="composeService.name"></el-input>
                     </el-form-item>
                     <el-form-item label="接口描述" prop="rest_desc">
-                        <el-input v-model="composeService.rest_desc"></el-input>
+                        <el-input v-model="composeService.rest_desc"  type="textarea" :rows="3"></el-input>
+                    </el-form-item>
+                    <el-form-item label="MCP工具" prop="mcp_tool">
+                        <template #label>
+                              MCP工具
+                              <el-tooltip class="box-item" effect="dark" placement="top-start" content="启用后，该方法将公开为一个MCP的工具函数，以便让AI Agent进行调用。">
+                                <el-icon><InfoFilled /></el-icon>
+                              </el-tooltip>
+                        </template>
+                        <el-switch v-model="composeService.mcp_tool"></el-switch>
                     </el-form-item>
                     <el-form-item label="服务URL" prop="rest_url">
                         <el-input v-model="composeService.rest_url">
@@ -140,6 +158,27 @@
                         <el-form-item label="不带Access Token"  prop="no_access_token">
                           <el-switch v-model="composeService.no_access_token" />
                         </el-form-item>
+                        <el-form-item v-if="composeService.rest_api" label="参数需验签"  prop="verify_param_sign">
+                          <template #label>
+                            参数需验签
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="当使用AppId/AppSecret访问该接口时，需要对接口参数进行验签。此时，调用该接口需要传入sign参数，sign参数的生成办法是其它参数名以升序排序，并以&连接起来，使用AppSecret作为Key，进行HmacSHA256来生成Hash并转成HEX字符串。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.verify_param_sign" />
+                        </el-form-item>
+                        <el-form-item v-if="composeService.rest_api" label="请求体加密"  prop="encryption_body">
+                          <template #label>
+                            请求体加密
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="对请求的Body进行加密，优先使用RSA算法，当RSA的密钥未被配置时，而AES的密钥配置后使用AES算法。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.encryption_body" />
+                        </el-form-item>
+                        <el-form-item label="验证参数">
+                          <el-switch v-model="composeService.validate_params" />
+                        </el-form-item>
                     </el-form-item>
                     <el-form-item v-if="composeService.rest_api" label="功能权限">
                       <el-select v-model="composeService.perm_roles" multiple collapse-tags collapse-tags-tooltip placeholder="选择赋予该功能可访问的角色" style="width: 240px">
@@ -157,7 +196,37 @@
                             <el-icon><InfoFilled /></el-icon>
                           </el-tooltip>
                         </template>
-                        <el-input type="textarea" v-model="composeService.rest_body" :rows="8"/>
+                        <el-tabs v-model="scriptPanelActive" class="script-tab">
+                          <el-tab-pane label="脚本" name="scriptpanel">
+                            <el-input type="textarea" v-model="composeService.rest_body" :rows="12"/>
+                          </el-tab-pane>
+                          <el-tab-pane label="参数Schema" name="schemapanel">
+                            <span class="tips">如需直接使用object定义好的Schema，可以在Schema中写{ "$ref": "object://namespace/name"}</span>
+                            <JsonEditorVue v-model="param_schema" class="editor" :expand-depth="0" boxed @update:modelValue="updateParamSchema"/>
+                          </el-tab-pane>
+                          <el-tab-pane label="响应Schema" name="respschemapanel">
+                            <span class="tips">如需直接使用object定义好的Schema，可以在Schema中写{ "$ref": "object://namespace/name"}</span>
+                            <JsonEditorVue v-model="response_schema" class="editor" :expand-depth="0" boxed @update:modelValue="updateResponseSchema" />
+                          </el-tab-pane>
+                        </el-tabs>
+                    </el-form-item>
+                    <el-form-item label="返回二进制"  prop="return_bytes">
+                        <template #label>
+                          返回二进制
+                          <el-tooltip class="box-item" effect="dark" placement="top-start" content="远程接口实现返回二进制数据，但该接口在接收到二进制后会将其进行BASE64处理，然后作为数据体返回">
+                            <el-icon><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
+                        <el-switch v-model="composeService.return_bytes" />
+                        <el-form-item label="返回XML"  prop="return_xml">
+                          <template #label>
+                            返回XML
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="表示该接口会以XML的格式返回数据。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.return_xml" />
+                        </el-form-item>
                     </el-form-item>
                     <el-form-item label="返回验证"  prop="return_validate">
                         <template #label>
@@ -277,10 +346,10 @@
   <script lang="ts" setup name="config">
   import { update, remove, metadata_get, config_get, config_save, lang_list, authorize_roles_get } from "@/http/modules/management";
   import { useRoute } from "vue-router";
-  import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
   import { mergeProps, onMounted, ref, watch } from "vue";
-  import { FormInstance } from "element-plus";
+  import { ElMessageBox, FormInstance } from "element-plus";
   import AddHook from "./add_hook.vue"
+  import JsonEditorVue from 'json-editor-vue3'
 
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -300,7 +369,9 @@
   const currentHook = ref<any>()
   const auth_roles = ref<Array<any>>([])
   const activeNames = ref<Array<any>>([])
-  
+  const scriptPanelActive = ref("scriptpanel")
+  const param_schema = ref<Object>({})
+  const response_schema = ref<Object>({})
 
   watch(
     () => [props.data.protocol, props.data.name],
@@ -311,6 +382,25 @@
       fetchConfig(newVal[0], ns, newVal[1])
     }
   )
+
+
+  function composeEvalParamSchema(param) {
+    const json_schema = {
+      "type": "object",
+      "properties": {
+      }
+    };
+
+    try {
+      if (param && param !== '') {
+        return JSON.parse(param)
+      } else {
+        return json_schema
+      }
+    } catch (ex) {
+      return json_schema
+    }
+  }
 
   function fetchLang(){
     lang_list().then(res => {
@@ -338,14 +428,14 @@
           emit("update:visible", false)
           emit("update:data", true)
         } else {
-          VxeUI.modal.message({ content: '保存失败', status: 'info' })
+          ElMessageBox.alert('保存失败', "提示", { type: 'warning' })
         }
       }).catch(me => {
-        VxeUI.modal.message({ content: '保存失败, ' + me.description, status: 'info' })        
+        ElMessageBox.alert('保存失败，' + me.description, "提示", { type: 'warning' })
       })
 
     }).catch(ex => {
-      VxeUI.modal.message({ content: '保存插件信息失败, ' + ex.description, status: 'info' })
+      ElMessageBox.alert('保存插件信息失败，' + ex.description, "提示", { type: 'warning' })
     })
   }
 
@@ -381,9 +471,19 @@
     })
   }
 
+  function updateParamSchema(e) {
+    // console.log(e)
+    param_schema.value = e
+  }
+
+  function updateResponseSchema(e) {
+    response_schema.value = e
+  }
 
   function onAddComposeService() {
     editingOrAdding.value = 1
+    param_schema.value = composeEvalParamSchema('')
+    response_schema.value = composeEvalParamSchema('')
     composeService.value = {}
   }
 
@@ -396,8 +496,14 @@
   function onSaveEditComposeService() {
     if (editingOrAdding.value === 1) {
         var composes = config_data.value
-        composes.push(composeService.value)
+        var cs = composeService.value
+        cs.mcp_schema = JSON.stringify(param_schema.value, null, 2)
+        cs.response_schema = JSON.stringify(response_schema.value, null, 2)
+        composes.push(cs)
         config_data.value = composes
+    } else if (editingOrAdding.value === 2) {
+        composeService.value.mcp_schema = JSON.stringify(param_schema.value, null, 2)
+        composeService.value.response_schema = JSON.stringify(response_schema.value, null, 2)
     }
     editingOrAdding.value = 0
   }
@@ -412,7 +518,9 @@
 
   function onEditComposeService(raw) {
     editingOrAdding.value = 2
-    composeService.value = raw 
+    param_schema.value = composeEvalParamSchema(raw.mcp_schema)
+    response_schema.value = composeEvalParamSchema(raw.response_schema)
+    composeService.value = raw
   }
 
   function handleRemove() {
@@ -474,15 +582,6 @@
     showHookDialog.value = true
   }
 
-  const submitEvent: VxeFormEvents.Submit = () => {
-    console.log("config: ", config_data.value)
-    VxeUI.modal.message({ content: '保存成功', status: 'success' })
-  }
-
-  const resetEvent: VxeFormEvents.Reset = () => {
-    VxeUI.modal.message({ content: '重置事件', status: 'info' })
-  }
-  
   onMounted(() => {
       if (props.data && props.data.protocol && props.data.name) {
         var ns = route.query.ns as string
@@ -495,9 +594,17 @@
   </script>
   
   <style lang="scss" scoped>
+  @use "index.scss";
   .el-select .el-input {
     width: 130px;
   }
-  @import "index.scss";
+
+  .script-tab {
+    width: 100%;
+  }
+
+  .script-tab .editor {
+    height: 300px;
+  }
   </style>
   

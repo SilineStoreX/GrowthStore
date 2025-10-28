@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use chimes_store_core::config::auth::JwtUserClaims;
 use chimes_store_core::config::PluginConfig;
 use chimes_store_core::service::invoker::InvocationContext;
 use chimes_store_core::service::sdk::{InvokeUri, MethodDescription, RxPluginService};
@@ -33,7 +32,7 @@ impl WeixinPluginService {
         let t = match load_config(conf.config.clone()) {
             Ok(r) => r,
             Err(err) => {
-                log::debug!("Could not load the config file: {:?}", err);
+                log::debug!("Could not load the config file: {err:?}");
                 Some(WeixinPluginConfig::default())
             }
         };
@@ -82,7 +81,7 @@ impl RxPluginService for WeixinPluginService {
         match serde_json::to_value(self.weixin.clone()) {
             Ok(t) => Some(t),
             Err(err) => {
-                log::debug!("Convert to json with error: {:?}", err);
+                log::debug!("Convert to json with error: {err:?}");
                 None
             }
         }
@@ -95,7 +94,7 @@ impl RxPluginService for WeixinPluginService {
                 Ok(())
             }
             Err(err) => {
-                log::info!("Parse JSON value to config with error: {:?}", err);
+                log::info!("Parse JSON value to config with error: {err:?}");
                 Err(anyhow!(err))
             }
         }
@@ -122,15 +121,5 @@ impl RxPluginService for WeixinPluginService {
 
     fn get_openapi(&self, _ns: &str) -> Box<dyn std::any::Any> {
         Box::new(OpenApi::new("title", "version"))
-    }
-
-    fn has_permission(
-        &self,
-        _uri: &InvokeUri,
-        _jwt: &JwtUserClaims,
-        _roles: &[String],
-        _bypass: bool,
-    ) -> bool {
-        true
     }
 }

@@ -1,3 +1,7 @@
+// 最小化编译打包
+// cargo b -r --no-default-features --features "plugin_rlib mqtt mcp synctask"
+//
+
 fn main() {
     // let out_dir = std::env::var("OUT_DIR").unwrap();
     // let out_lib = path::Path::new(&out_dir).join("../../").canonicalize().unwrap();

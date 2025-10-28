@@ -1,9 +1,8 @@
 use std::{
     fs::File,
     io::{BufReader, Read, Write},
-    mem::MaybeUninit,
     path::Path,
-    sync::{Mutex, Once},
+    sync::{Mutex, OnceLock},
 };
 
 use crate::utils::{get_local_timestamp, global_data::i64_from_str};
@@ -16,33 +15,46 @@ pub struct JwtUserClaims {
     pub username: String,
     pub userid: String,
     pub superadmin: bool,
-    pub domain: String,  // use the for multi-organization system (SaaS etc)
+    pub domain: String, // use the for multi-organization system (SaaS etc)
     pub exp: i64,
 }
 
-unsafe impl Send for JwtUserClaims { }
-unsafe impl Sync for JwtUserClaims { }
+unsafe impl Send for JwtUserClaims {}
+unsafe impl Sync for JwtUserClaims {}
 
 impl JwtUserClaims {
     pub fn anonymous() -> Self {
+        let domain = AuthorizationConfig::get().app_name.unwrap_or("default".to_string());
         JwtUserClaims {
             username: "anonymous".to_string(),
             userid: "0".to_owned(),
             superadmin: false,
-            domain: "default".to_string(),
+            domain: domain,
             exp: get_local_timestamp() as i64 + 30 * 60 * 1000,
         }
     }
 
     pub fn username(us: &str) -> Self {
+        let domain = AuthorizationConfig::get().app_name.unwrap_or("default".to_string());
         JwtUserClaims {
             username: us.to_owned(),
             userid: "0".to_owned(),
             superadmin: false,
-            domain: "default".to_string(),
+            domain: domain,
             exp: get_local_timestamp() as i64 + 30 * 60 * 1000,
         }
     }
+
+    pub fn username_with_id(us: &str, uid: &str) -> Self {
+        let domain = AuthorizationConfig::get().app_name.unwrap_or("default".to_string());
+        JwtUserClaims {
+            username: us.to_owned(),
+            userid: uid.to_owned(),
+            superadmin: false,
+            domain: domain,
+            exp: get_local_timestamp() as i64 + 30 * 60 * 1000,
+        }
+    }    
 
     pub fn username_domain(us: &str, dm: &str) -> Self {
         JwtUserClaims {
@@ -57,6 +69,10 @@ impl JwtUserClaims {
     pub fn is_anonymous(&self) -> bool {
         self.username == *"anonymous"
     }
+
+    pub fn is_admin(&self) -> bool {
+        self.superadmin
+    }
 }
 
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
@@ -66,17 +82,24 @@ pub struct AppSecretPair {
     pub app_id: String,
     pub app_secret: String,
     pub username: Option<String>,
+    pub userid: Option<String>,
     pub orgname: Option<String>,
+    pub encryption: Option<bool>,
     pub token: Option<String>,
 }
+
+unsafe impl Send for AppSecretPair {}
+
+unsafe impl Sync for AppSecretPair {}
 
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
 #[serde(default)]
 pub struct AuthorizationConfig {
-    pub enable: bool,                 // 启用Authorization服务
-    pub validate_token_only: bool,    // 只开启Token的验证功能
-    pub enable_captcha: bool,         // 图像码的验证
+    pub schedule_state_uri: Option<String>, // 用于定时器的状态管理服务
+    pub enable: bool,                       // 启用Authorization服务
+    pub validate_token_only: bool,          // 只开启Token的验证功能
+    pub enable_captcha: bool,               // 图像码的验证
     pub validate_url: Option<String>, // 用于验证Authorization的URL，GET请求，返回用户信息。TODO: 产生HTTP请求
     pub validate_basic: bool, // 用于验证Authorization的URL只返回用户取基本的信息，可能只包含用户名(username)，状态(user_state)，锁定(user_locked),
     // 这时，如果需要获取用户详细信息和角色，需要根据用户username查询一次数据库。
@@ -92,9 +115,11 @@ pub struct AuthorizationConfig {
     pub role_name_field: Option<String>,        // role_code ??
     pub role_name_presets: Option<String>,      // 预先定义的role_name表述
     pub credential_hash_method: Option<String>, // 密码加密的方法，md5, sha1, aes (可解密，由credential_solt来作为解密密码)
-    pub credential_key: Option<String>, // 密码加密的盐，如果加密方法为RSA，则其值为Public Key
-    pub credential_solt: Option<String>, // 密码加密的盐，如果加密方法为RSA，则其值为Private Key
-    pub token_solt: Option<String>,     // jwt token生成时的盐
+    pub credential_key: Option<String>,         // 密码加密的盐
+    pub credential_solt: Option<String>,        // 密码加密的盐
+    pub rsa_public_key: Option<String>,         // 如果加密方法为RSA，则其值为Public Key
+    pub rsa_private_key: Option<String>,        // 如果加密方法为RSA，则其值为Private Key
+    pub token_solt: Option<String>,             // jwt token生成时的盐
     #[serde(default)]
     #[serde(deserialize_with = "i64_from_str")]
     pub token_expire: Option<i64>, // jwt token的过期时长 default 30m
@@ -116,10 +141,11 @@ pub struct AuthorizationConfig {
     pub permit_userfield: Option<String>, // 与用户ID相关联的字段
     pub permit_relative_field: Option<String>, // 数据权限相关联的字段
     #[serde(default)]
-    pub enable_api_secure: bool,     // 启用APPID AppSecret对来交换获取Token
+    pub enable_api_secure: bool, // 启用APPID AppSecret对来交换获取Token
     #[serde(default)]
     pub check_relative_user: bool,
     pub appsecret_provider: Option<String>, // InvokeURI，用于查询AppSecretPair信息
+    pub appsecret_redis: Option<String>,
     pub app_secret_keys: Vec<AppSecretPair>, // 有效的AppSecretPair对
 }
 
@@ -129,18 +155,23 @@ unsafe impl Sync for AuthorizationConfig {}
 impl AuthorizationConfig {
     fn get_lock() -> &'static Mutex<AuthorizationConfig> {
         // 使用MaybeUninit延迟初始化
-        static mut AUTH_CONF: MaybeUninit<Mutex<AuthorizationConfig>> = MaybeUninit::uninit();
+        static _AUTH_CONF: OnceLock<Mutex<AuthorizationConfig>> = OnceLock::new();
+        // static mut AUTH_CONF: MaybeUninit<Mutex<AuthorizationConfig>> = MaybeUninit::uninit();
         // Once带锁保证只进行一次初始化
-        static AUTH_ONCE: Once = Once::new();
+        // static AUTH_ONCE: Once = Once::new();
 
-        AUTH_ONCE.call_once(|| unsafe {
-            AUTH_CONF
-                .as_mut_ptr()
-                .write(Mutex::new(AuthorizationConfig {
-                    ..Default::default()
-                }));
-        });
-        unsafe { &*AUTH_CONF.as_ptr() }
+        // AUTH_ONCE.call_once(|| unsafe {
+        //     AUTH_CONF
+        //         .as_mut_ptr()
+        //         .write(Mutex::new(AuthorizationConfig {
+        //             ..Default::default()
+        //         }));
+        // });
+
+        _AUTH_CONF.get_or_init(|| {
+            // log::warn!("First time init authorization");
+            Mutex::new(AuthorizationConfig::default())
+        })
     }
 
     pub fn get() -> AuthorizationConfig {

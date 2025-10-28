@@ -1,11 +1,14 @@
-use std::{process::{self, Stdio}, str::FromStr};
+use std::{
+    process::{self, Stdio},
+    str::FromStr,
+};
 
 use anyhow::anyhow;
 use jsonpath_rust::JsonPathInst;
 use reqwest::Client;
 use serde_json::Value;
 
-use crate::config::{Config, ProcessDeamon};
+use crate::{config::{Config, ProcessDeamon}, get_current_dir};
 
 async fn do_request(url: &str, jsonpath: Option<String>) -> Result<bool, anyhow::Error> {
     let builder = Client::builder();
@@ -18,7 +21,7 @@ async fn do_request(url: &str, jsonpath: Option<String>) -> Result<bool, anyhow:
             for vcl in veclist.iter() {
                 log::info!("json check result: {:?}", vcl.to_string());
             }
-            return Ok(!veclist.is_empty()) 
+            return Ok(!veclist.is_empty());
         } else {
             log::error!("could not parse the jsonpath {jsonpath}. ignored.");
         }
@@ -32,18 +35,22 @@ pub async fn do_process(proc: &ProcessDeamon) -> Result<(), anyhow::Error> {
         match do_request(&health_url, proc.json_cheker.clone()).await {
             Ok(t) => {
                 if !t {
-                    proc.failures.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
-                    proc.failures_total.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                    proc.failures
+                        .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                    proc.failures_total
+                        .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
                 } else {
                     proc.failures.store(0, std::sync::atomic::Ordering::Release);
                 }
-            },
+            }
             Err(err) => {
                 log::error!("error {err:?}");
-                proc.failures.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
-                proc.failures_total.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                proc.failures
+                    .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                proc.failures_total
+                    .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
             }
-         }
+        }
     }
     Ok(())
 }
@@ -56,7 +63,11 @@ pub fn execute_start(_conf: &Config, proc: &ProcessDeamon) -> Result<String, any
         .collect::<Vec<String>>()
         .join(" && ");
 
-    let currdir = proc.current_dir.clone().map(|f| f.into()).unwrap_or(std::env::current_dir().unwrap());
+    let currdir = proc
+        .current_dir
+        .clone()
+        .map(|f| f.into())
+        .unwrap_or(get_current_dir().unwrap());
 
     #[cfg(windows)]
     let res = process::Command::new("cmd")
@@ -68,7 +79,7 @@ pub fn execute_start(_conf: &Config, proc: &ProcessDeamon) -> Result<String, any
 
     #[cfg(not(windows))]
     let res = process::Command::new("bash")
-        .current_dir(&currdir)    
+        .current_dir(&currdir)
         .arg("-c")
         .arg(lines)
         .stdout(Stdio::null())
@@ -77,18 +88,20 @@ pub fn execute_start(_conf: &Config, proc: &ProcessDeamon) -> Result<String, any
     match res {
         Ok(child) => {
             let id = child.id();
-            proc.process_id.store(id as i64, std::sync::atomic::Ordering::Release);
-            proc.manual_stop.store(0, std::sync::atomic::Ordering::Release);
-            proc.failures.store(0u32, std::sync::atomic::Ordering::Release);
+            proc.process_id
+                .store(id as i64, std::sync::atomic::Ordering::Release);
+            proc.manual_stop
+                .store(0, std::sync::atomic::Ordering::Release);
+            proc.failures
+                .store(0u32, std::sync::atomic::Ordering::Release);
             Ok(format!("{id}"))
-        },
+        }
         Err(err) => {
-            log::warn!("Could not execute the shell script {:?}", err);
+            log::warn!("Could not execute the shell script {err:?}");
             Err(anyhow!(err))
         }
     }
 }
-
 
 pub fn execute_stop(conf: &Config, proc: &ProcessDeamon) -> Result<String, anyhow::Error> {
     let cs = proc.stop_command.clone().unwrap();
@@ -105,7 +118,11 @@ pub fn execute_stop(conf: &Config, proc: &ProcessDeamon) -> Result<String, anyho
 
     log::warn!("Stop Command: {lines}");
 
-    let currdir = proc.current_dir.clone().map(|f| f.into()).unwrap_or(std::env::current_dir().unwrap());
+    let currdir = proc
+        .current_dir
+        .clone()
+        .map(|f| f.into())
+        .unwrap_or(get_current_dir().unwrap());
 
     #[cfg(windows)]
     let res = process::Command::new("cmd")
@@ -117,34 +134,33 @@ pub fn execute_stop(conf: &Config, proc: &ProcessDeamon) -> Result<String, anyho
 
     #[cfg(not(windows))]
     let res = process::Command::new("bash")
-        .current_dir(&currdir)    
+        .current_dir(&currdir)
         .arg("-c")
         .arg(lines)
         .stdout(Stdio::piped())
         .spawn();
 
     match res {
-        Ok(child) => { 
-            match child.wait_with_output() {
-                Ok(output) => {
-                    proc.process_id.store(0, std::sync::atomic::Ordering::Release);
-                    let codepage = conf.codepage.clone().unwrap_or("utf-8".to_owned());
-                    let (text, _enc, _repl) =
-                        match encoding_rs::Encoding::for_label(codepage.as_bytes()) {
-                            Some(enc) => enc.decode(&output.stdout),
-                            None => encoding_rs::UTF_8.decode(&output.stdout),
-                        };
-                    log::debug!("{}", text.to_string());
-                    Ok(text.to_string())
-                }
-                Err(err) => {
-                    log::warn!("Could not wait to execute the shell script {:?}", err);
-                    Err(anyhow!(err))
-                }
+        Ok(child) => match child.wait_with_output() {
+            Ok(output) => {
+                proc.process_id
+                    .store(0, std::sync::atomic::Ordering::Release);
+                let codepage = conf.codepage.clone().unwrap_or("utf-8".to_owned());
+                let (text, _enc, _repl) =
+                    match encoding_rs::Encoding::for_label(codepage.as_bytes()) {
+                        Some(enc) => enc.decode(&output.stdout),
+                        None => encoding_rs::UTF_8.decode(&output.stdout),
+                    };
+                log::debug!("{text}");
+                Ok(text.to_string())
+            }
+            Err(err) => {
+                log::warn!("Could not wait to execute the shell script {err:?}");
+                Err(anyhow!(err))
             }
         },
         Err(err) => {
-            log::warn!("Could not execute the shell script {:?}", err);
+            log::warn!("Could not execute the shell script {err:?}");
             Err(anyhow!(err))
         }
     }

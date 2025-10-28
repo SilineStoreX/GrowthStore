@@ -2,7 +2,7 @@
     <el-dialog
       v-model="props.visible"
       title="添加/编辑执行变量"
-      width="800"
+      width="760"
       align-center
       @close="onDialogClosed"
     >
@@ -21,8 +21,18 @@
             <el-form-item label="变量当前值">
                 <el-input type="textarea" v-model="hook.var_value" :rows="6" style="width: 600px" />
             </el-form-item>
-            <el-form-item label="变更更新方式">
-                <el-input type="textarea" v-model="hook.var_write" :rows="6" style="width: 600px" placeholder="可以使用CURRENT_DATE代表当前日期，CURRENT_DATETIME代表当前日期时间，或者填写SQL来执行查询，或者填写InvokeURI来执行预先定义好的查询，当使用SQL查询或InvokeURI时，返回的结果最好只有一个字段，或者只包含一个以_value结尾的字段作为该变更最终的更新值。"/>
+            <el-form-item label="更新方式">
+                <el-radio-group v-model="hook.var_write" style="width: 600px">
+                    <el-radio-button value="MAX">MAX</el-radio-button>
+                    <el-radio-button value="MIN">MIN</el-radio-button>
+                    <el-radio-button value="CURRENT_DATE">当前日期</el-radio-button>
+                    <el-radio-button value="CURRENT_DATETIME">当前日期时间</el-radio-button>
+                    <el-radio-button value="SQL">SQL</el-radio-button>
+                    <el-radio-button value="INVOKEURI">InvokeURI</el-radio-button>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item v-if="hook.var_write !== 'CURRENT_DATETIME' && hook.var_write !== 'CURRENT_DATE'" label="表达式">
+                <el-input type="textarea" v-model="hook.var_data_express" :rows="3" style="width: 600px" placeholder="请输入对应的表达式，更新方式为MAX/MIN时输入需要取值的JSONPath；为SQL时填写获取该变量SQL语句，为InvokeURI时，填写获取该变量的InvokeURI"/>
             </el-form-item>
       </el-form>
       <template #footer>

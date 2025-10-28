@@ -8,29 +8,35 @@
     "serve": "vite",
     "build:dev": "vue-tsc --noEmit && vite build --mode development",
     "build:pro": "vue-tsc --noEmit && vite build --mode production",
+    "build:notsc": "vite build --mode production",
     "preview": "vite preview"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@originjs/vite-plugin-commonjs": "^1.0.3",
     "@vueuse/core": "^9.13.0",
     "axios": "^1.3.4",
+    "crypto-js": "^4.2.0",
     "echarts": "^4.2.1",
     "element-plus": "^2.4.4",
+    "growthai-webui": "^0.2",
     "gsap": "^3.11.5",
-    "jsencrypt": "^3.0.0-rc.1",
+    "jsencrypt": "^3.5.0",
+    "json-editor-vue3": "^1.1.1",
+    "markdown-it": "^14.0.0",
     "md-editor-v3": "^4.17.3",
     "monaco-editor": "^0.52.0",
     "monaco-editor-vue3": "^0.1.10",
     "nprogress": "^0.2.0",
     "pinia": "^2.0.33",
     "pinia-plugin-persistedstate": "^3.1.0",
+    "uuid": "^11.1.0",
     "vue": "^3.5.10",
     "vue-i18n": "^9.2.2",
     "vue-json-viewer": "^3.0.4",
     "vue-router": "^4.2.5",
     "vue3-cron-plus": "*",
-    "vue3-page-split": "^2.2.2",
-    "vxe-table": "^4.7.8"
+    "vue3-page-split": "^2.2.2"
   },
   "devDependencies": {
     "@types/node": "^18.15.3",
@@ -39,8 +45,10 @@
     "sass": "^1.59.2",
     "typescript": "^5.3.3",
     "vite": "^5.3.3",
+    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-svg-icons": "^2.0.1",
     "vite-plugin-vue-setup-extend": "^0.4.0",
+    "vite-plugin-wasm": "^3.5.0",
     "vue-tsc": "^2.0.0"
   }
 }

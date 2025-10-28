@@ -16,19 +16,6 @@
                 </el-form-item>
             </el-form>
             <el-divider />
-            <vxe-form
-              v-if="data.enable"
-              :data="config_data"
-              :items="protocol_forms"
-              titleColon
-              title-align="right"
-              title-width="160"
-              @submit="submitEvent"
-              @reset="resetEvent">
-              <template #myregion="{ data }">
-                <vxe-input v-model="data.region" placeholder="自定义插槽模板"></vxe-input>
-              </template>
-            </vxe-form>
         </el-scrollbar>
       <div class="drawer-footer">
         <el-button @click="$emit('update:visible', false)">关闭</el-button>
@@ -55,7 +42,6 @@
   <script lang="ts" setup name="config">
   import { update, remove, metadata_get, config_get, config_save } from "@/http/modules/management";
   import { useRoute } from "vue-router";
-  import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
   import { mergeProps, onMounted, ref, watch } from "vue";
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -160,6 +146,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

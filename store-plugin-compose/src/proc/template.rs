@@ -1,11 +1,11 @@
-use std::str::FromStr;
 use serde_json::Value;
+use std::str::FromStr;
 
 pub fn json_path_get(t: &Value, path: &str) -> Option<Value> {
     let jspath = if path.starts_with("$.") {
         path.to_owned()
     } else {
-        format!("$.{}", path)
+        format!("$.{path}")
     };
 
     if let Ok(inst) = jsonpath_rust::JsonPathInst::from_str(&jspath) {
@@ -26,10 +26,10 @@ pub fn json_path_get(t: &Value, path: &str) -> Option<Value> {
 
 #[allow(dead_code)]
 pub fn json_path_get_string(t: &Value, path: &str) -> String {
-    json_path_get(t, path).map(|f| {
-        match f {
+    json_path_get(t, path)
+        .map(|f| match f {
             Value::String(t) => t,
-            _ => f.to_string()
-        }
-    }).unwrap_or_default()
+            _ => f.to_string(),
+        })
+        .unwrap_or_default()
 }

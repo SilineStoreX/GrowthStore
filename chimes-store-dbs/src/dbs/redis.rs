@@ -17,7 +17,6 @@ pub struct RedisInvocation();
  * TODO: 实现Redis的请求命令
  * 目前只实现了GET/SET/DEL三个命令，后续继续实现
  */
-
 impl Invocation for RedisInvocation {
     fn invoke_return_option(
         &'static self,
@@ -36,6 +35,12 @@ impl Invocation for RedisInvocation {
                 )
             }
             "del" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "lpush" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "rpush" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "llen" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "sadd" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "scard" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
+            "srem" => redis_del(&uri.namespace, &uri.query.clone().unwrap_or_default()),
             _ => Err(anyhow!("Not implemented")),
         };
 

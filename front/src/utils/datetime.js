@@ -224,5 +224,5 @@ const local_labels = {
 export default Date
 
 export function format_date(dt, fmt) {
-  dt.strftime(fmt)
+  return dt.strftime(fmt);
 }

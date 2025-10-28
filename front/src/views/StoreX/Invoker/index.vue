@@ -1,5 +1,5 @@
 <template>
-    <div class="login-container">
+    <div v-loading="loading" class="login-container">
       <div class="login-left">
         <div class="header">
           <el-form>
@@ -9,7 +9,7 @@
               </el-select>
             </el-form-item>
           </el-form>
-        </div>        
+        </div>
         <el-collapse v-model="activeNames" accordion @change="onMapInvocation">
             <el-collapse-item v-for="p in paths" :key="p.path" :name="p.fullname" :class="'opblock-' + p.method.toLowerCase() ">
               <template #title>
@@ -134,7 +134,7 @@
   <script lang="ts" setup>
   import JsonViewer from 'vue-json-viewer'
   import { ref, reactive, onMounted, onActivated, onUpdated } from "vue";
-  import { call_api } from "@/http/modules/common";
+  import { call_invoke_api, call_api } from "@/http/modules/common";
    import { ElMessage, ElNotification } from "element-plus";
   import { useRoute } from "vue-router";
   import { GlobalStore } from "@/stores";
@@ -272,7 +272,7 @@
     let cpname = spns.length > 2 ? spns[2] : null
     var filter_ = "/api/" + protocol + "/" + namespace + "/" + ( cpname ? cpname + '/' : '')
     var filter_passoff = "/api/passoff/" + protocol + "/" + namespace + "/" + ( cpname ? cpname + '/' : '')
-
+    loading.value = true
     call_api(`/api/metadata/${namespace}/api-doc/openapi.json`, "GET", {}).then((res: any) => {
       servers.value = res.servers
       var ps = Array<any>()
@@ -292,9 +292,11 @@
           }
         }
       }
+      loading.value = false
       paths.value = ps
     }).catch(ex => {
       console.log(ex)
+      loading.value = true
     })
   }
   
@@ -303,10 +305,16 @@
     var inv = invocation.value
     var p = invocation.value.detail
     var path = inv.path
+    var pathparam = {}
+    var has_pathparam = false
     if (p.parameters) {
       for (var param of p.parameters) {
         let pval = inv[param.name]
-        path = path.replace("{" + param.name + "}", pval)
+        if (path.indexOf('{') > 0 && path.indexOf('}') > 0) {
+          path = path.replace("{" + param.name + "}", pval)
+          pathparam[param.name] = pval
+          has_pathparam = true
+        }
       }
     }
     console.log('Request Path: ' + path)
@@ -325,9 +333,21 @@
     packed_code.value = get_javascript_packaged_code_md(path, inv, cp);
     rhai_code.value = get_rhai_code_md(path, inv, cp);
 
+    console.log('Call ', inv);
+
+    let ink_uri = `${inv.schema}://${inv.namespace}/${inv.name}#${inv.fragement}`
+    if (has_pathparam) {
+      cp = pathparam
+    }
+
+
     call_api(path, inv.method, cp).then(res => {
       jsonbody.value = res
     })
+
+    // call_invoke_api(ink_uri, inv.fragement, inv.method, cp).then(res => {
+    //  jsonbody.value = res
+    // })
   }
 
   function onMapInvocation(dp: any) {
@@ -447,6 +467,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

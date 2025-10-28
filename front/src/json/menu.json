@@ -49,12 +49,60 @@
         }
       },
       {
+        "path": "/storex/schedulers",
+        "name": "schedulers",
+        "component": "/StoreX/Schedulers/index",
+        "meta": {
+          "icon": "Clock",
+          "title": "定时任务与长时间任务",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/scheduler-test",
+        "name": "scheduler-test",
+        "component": "/StoreX/Schedulers/tasks",
+        "meta": {
+          "icon": "Clock",
+          "title": "长时间任务测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },      
+      {
         "path": "/storex/redis",
         "name": "redis",
         "component": "/StoreX/Redis/index",
         "meta": {
           "icon": "SetUp",
           "title": "Redis管理",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/filesystem",
+        "name": "filesystem",
+        "component": "/StoreX/FileSystem/index",
+        "meta": {
+          "icon": "FolderChecked",
+          "title": "文件系统",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+            {
+        "path": "/storex/growthai",
+        "name": "growthai",
+        "component": "/StoreX/GrowthAI/index",
+        "meta": {
+          "icon": "Avatar",
+          "title": "GrowthAI",
           "isFull": false,
           "isAffix": false,
           "isKeepAlive": true
@@ -151,6 +199,18 @@
         "meta": {
           "icon": "Notebook",
           "title": "Tera模板测试",
+          "isFull": false,
+          "isAffix": false,
+          "isKeepAlive": true
+        }
+      },
+      {
+        "path": "/storex/tools/logs",
+        "name": "logs",
+        "component": "/Tools/readlogs",
+        "meta": {
+          "icon": "Memo",
+          "title": "日志",
           "isFull": false,
           "isAffix": false,
           "isKeepAlive": true

@@ -1,7 +1,7 @@
-use std::{any::Any, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use anyhow::anyhow;
-use chimes_store_core::pin_blockon_async;
+use chimes_store_core::pin_blockon_async_v2;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Client, Method,
@@ -112,15 +112,15 @@ impl RhaiHttpClient {
         option: Option<Value>,
     ) -> Result<Option<Value>, Box<EvalAltResult>> {
         let url_text = url.to_owned();
-        pin_blockon_async!(async move {
-            let ret = match Self::send_http_request(&url_text, method, data, option).await {
+        pin_blockon_async_v2!(async move {
+            // Box::new(ret) as Box<dyn Any + Send + Sync>
+            match Self::send_http_request(&url_text, method, data, option).await {
                 Ok(ret) => Ok(ret),
                 Err(err) => Err(Box::new(EvalAltResult::ErrorRuntime(
                     Dynamic::from_str(&err.to_string()).unwrap(),
                     Position::new(1, 1),
                 ))),
-            };
-            Box::new(ret) as Box<dyn Any + Send + Sync>
+            }
         })
         .unwrap_or(Ok(None))
     }

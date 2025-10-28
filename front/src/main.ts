@@ -15,13 +15,11 @@ import router from "@/routers/index";
 import I18n from "@/i18n/index";
 // pinia(大菠萝) store
 import pinia from "@/stores/index";
-import VXEUITable from 'vxe-table'
-import 'vxe-table/lib/style.css'
-import VxeUI from 'vxe-pc-ui'
-import 'vxe-pc-ui/lib/style.css'
 import "virtual:svg-icons-register"
 import SvgIcon from "@/components/SvgIcon/index.vue"
 import './userWorker'
+import JsonEditorVue from 'json-editor-vue3'
+
 
 const app = createApp(App);
 // 注册element Icons组件
@@ -31,4 +29,4 @@ Object.keys(Icons).forEach((key) => {
 
 app.component('SvgIcon', SvgIcon)
 
-app.use(router).use(pinia).use(VXEUITable).use(VxeUI).use(I18n).use(ElementPlus, {  }).mount("#app");
+app.use(router).use(pinia).use(I18n).use(JsonEditorVue).use(ElementPlus, {  }).mount("#app");

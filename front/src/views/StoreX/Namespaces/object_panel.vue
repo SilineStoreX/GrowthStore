@@ -12,14 +12,58 @@
             <el-form-item label="对象类型">
                 <el-input disabled v-model="data.object_type" />
             </el-form-item>
+            <el-form-item label="对象描述">
+                <el-input v-model="data.rest_desc" placeholder="详细描述该对象的意义与作用" />
+            </el-form-item>
             <el-form-item label="数据校验">
+                <template #label>
+                  数据校验
+                  <el-tooltip class="box-item" effect="dark" placement="top-start" content="验证（insert, upsert, update, update_by）操作时传入的对象的属性是否满足相应的描述。">
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
+                </template>
                 <el-switch v-model="data.validation" />
                 <el-form-item label="不完全验证"><el-switch v-model="data.parti_valid" /></el-form-item>
-            </el-form-item>
-            <el-form-item label="对象缓存">
+                <el-form-item label="对象缓存">
                 <el-switch v-model="data.enable_cache" />
-                <el-form-item v-if="data.enable_cache" label="缓存时间">
-                  <el-input v-model="data.cache_time" placeholder="缓存时间（单位：秒）"/>
+                  <el-form-item v-if="data.enable_cache" label="缓存时间">
+                    <el-input v-model="data.cache_time" placeholder="缓存时间（单位：秒）"/>
+                  </el-form-item>
+                </el-form-item>
+            </el-form-item>
+            <el-form-item label="MCP工具">
+                <template #label>
+                  MCP工具
+                  <el-tooltip class="box-item" effect="dark" placement="top-start" content="将指定的能力公开为MCP的工具函数，以便让AI Agent进行调用。">
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
+                </template>
+                <el-form-item label="查询功能">
+                  <template #label>
+                    查询功能
+                    <el-tooltip class="box-item" effect="dark" placement="top-start" content="将查询该对象的能力（select, find_one, query, paged_query）公开为MCP的工具函数，以便让AI Agent进行调用。">
+                      <el-icon><InfoFilled /></el-icon>
+                    </el-tooltip>
+                  </template>
+                  <el-switch v-model="data.mcp_tool_query" />
+                </el-form-item>
+                <el-form-item label="新增和修改">
+                  <template #label>
+                    新增和修改
+                    <el-tooltip class="box-item" effect="dark" placement="top-start" content="将修改该对象的能力（insert, upsert, update, update_by）公开为MCP的工具函数，以便让AI Agent进行调用。">
+                      <el-icon><InfoFilled /></el-icon>
+                    </el-tooltip>
+                  </template>
+                  <el-switch v-model="data.mcp_tool_update" />
+                </el-form-item>
+                <el-form-item label="删除功能">
+                  <template #label>
+                    删除功能
+                    <el-tooltip class="box-item" effect="dark" placement="top-start" content="将删除该对象的能力（delete, delete_by）公开为MCP的工具函数，以便让AI Agent进行调用。">
+                      <el-icon><InfoFilled /></el-icon>
+                    </el-tooltip>
+                  </template>
+                  <el-switch v-model="data.mcp_tool_delete" />
                 </el-form-item>
             </el-form-item>
             <el-form-item label="功能权限">
@@ -87,13 +131,20 @@
                         <el-checkbox v-model="scoped.row.pkey" />
                     </template>
                 </el-table-column>
+                <el-table-column label="必填" prop="required"  width="60px">
+                    <template #default="scoped">
+                        <el-checkbox v-model="scoped.row.required" />
+                    </template>
+                </el-table-column>                
                 <el-table-column label="类型" prop="col_type"  width="140px">
                     <template #default="scoped">
                         <el-select v-model="scoped.row.col_type">
                             <el-option value="" label="原始类型">原始类型</el-option>
                             <el-option value="string"  label="String">String</el-option>
                             <el-option value="integer"  label="整型">整型</el-option>
+                            <el-option value="bigint"  label="大整数">大整数</el-option>
                             <el-option value="double"  label="浮点型">浮点型</el-option>
+                            <el-option value="bigdecimal"  label="大型浮点数">大型浮点数</el-option>
                             <el-option value="bool"  label="布尔型">布尔型</el-option>
                             <el-option value="date"  label="日期">日期</el-option>
                             <el-option value="time"  label="时间">时间</el-option>
@@ -113,6 +164,22 @@
                     </template>
                     <template #default="scoped">
                         <el-input v-model="scoped.row.field_type" />
+                    </template>
+                </el-table-column>
+                <el-table-column label="长度" prop="col_length">
+                    <template #default="scoped">
+                        <el-input v-model="scoped.row.col_length" />
+                    </template>
+                </el-table-column>
+                <el-table-column label="验证" prop="validation"  width="160px">
+                    <template #header>
+                      验证
+                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="用于在新增或修改时进行对值进行验证。字符串，通常以正则表达式来表示。对于数值类型，可以使用min:<val>, max:<val>来表示最大最小值范围。">
+                        <el-icon><InfoFilled /></el-icon>
+                      </el-tooltip>
+                    </template>
+                    <template #default="scoped">
+                        <el-input v-model="scoped.row.validation" />
                     </template>
                 </el-table-column>
                 <el-table-column label="生成器" prop="generator"  width="140px">
@@ -185,49 +252,49 @@
                         <el-input :disabled="!(scoped.row.col_type === 'relation' && scoped.row.relation_array)" v-model="scoped.row.relation_middle" />
                     </template>
                 </el-table-column>
-                <el-table-column label="长度" prop="col_length">
-                    <template #default="scoped">
-                        <el-input v-model="scoped.row.col_length" />
-                    </template>
-                </el-table-column>
-                <el-table-column label="验证" prop="validation"  width="160px">
+                <el-table-column label="附带字段" prop="incidental" width="100px">
                     <template #header>
-                      验证
-                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="用于在新增或修改时进行对值进行验证，通常以正则表达式来表示。">
+                      附带字段
+                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="表示该字段不用于存储，只用于显示">
                         <el-icon><InfoFilled /></el-icon>
                       </el-tooltip>
                     </template>
                     <template #default="scoped">
-                        <el-input v-model="scoped.row.validation" />
-                    </template>
-                </el-table-column>
-                <el-table-column label="Base64" prop="base64" width="100px">
-                    <template #header>
-                      Base64
-                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="当列类型为Binnary时，是否以Base64字符串来表示">
-                        <el-icon><InfoFilled /></el-icon>
-                      </el-tooltip>
-                    </template>
-                    <template #default="scoped">
-                        <el-checkbox v-model="scoped.row.base64" :disabled="scoped.row.col_type !== 'binnary'"/>
+                        <el-checkbox v-model="scoped.row.incidental"/>
                     </template>
                 </el-table-column>
                 <el-table-column label="脱敏" prop="desensitize"  width="150px">
                     <template #header>
-                      脱敏
-                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="对于字符串信息，是否通过脱敏算法来将这些内容进行改变。">
+                      脱敏/转换
+                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="对于原字段是否通过脱敏算法或转换来将这些内容进行改变。">
                         <el-icon><InfoFilled /></el-icon>
                       </el-tooltip>
                     </template>                  
                     <template #default="scoped">
-                        <el-select v-model="scoped.row.desensitize" :disabled="!(scoped.row.col_type === 'string' || scoped.row.col_type === 'String' || scoped.row.col_type === 'varchar' || scoped.row.col_type === 'str' || scoped.row.col_type === 'text')">
+                        <el-select v-model="scoped.row.desensitize">
                             <el-option value="none" label="不作处理">不作处理</el-option>
                             <el-option value="aes"  label="AES加密">AES加密</el-option>
                             <el-option value="rsa"  label="RSA加密">RSA加密</el-option>
                             <el-option value="base64"  label="Base64">Base64</el-option>
                             <el-option value="replace"  label="替换部分值">替换部分值</el-option>
+                            <el-option value="base64"  label="Base64">Base64</el-option>
                             <el-option value="null"  label="返回空">返回空</el-option>
+                            <el-option value="dict"  label="字典转换">字典转换</el-option>
+                            <el-option value="range"  label="区间值转换">区间值转换</el-option>
+                            <el-option value="subquery"  label="查询转换">查询转换</el-option>
+                            <el-option value="dateformat"  label="日期格式化">日期格式化</el-option>
                         </el-select>
+                    </template>
+                </el-table-column>
+                <el-table-column label="参数" prop="conv_params"  width="160px">
+                    <template #header>
+                      参数
+                      <el-tooltip class="box-item" effect="dark" placement="top-start" content="使用字典或查询进行转换时需要给定的参数">
+                        <el-icon><InfoFilled /></el-icon>
+                      </el-tooltip>
+                    </template>
+                    <template #default="scoped">
+                        <el-input v-model="scoped.row.conv_params" :disabled="!(scoped.row.desensitize === 'dict' || scoped.row.desensitize === 'range' || scoped.row.desensitize === 'subquery' || scoped.row.desensitize === 'dateformat')"/>
                     </template>
                 </el-table-column>
                 <el-table-column label="加密存储" prop="crypto_store" width="100px">
@@ -633,6 +700,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

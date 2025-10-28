@@ -21,8 +21,8 @@ pub fn process_filepart(
         .unwrap_or(Mime::from_str("application/octet-stream").unwrap());
     let down_url = fm.get_access_url(&file_id, &dest_name);
     let source_path = filepart.path(); //.with_file_name(source);
-    log::info!("Source: {:?}", source_path);
-    log::info!("Dest: {:?}", dest_file);
+    log::info!("Source: {source_path:?}");
+    log::info!("Dest: {dest_file:?}");
     if filesize > fm.max_filesize() {
         return UploadFileInfo {
             file_size: filesize,
@@ -31,7 +31,7 @@ pub fn process_filepart(
         };
     }
     if let Err(err) = std::fs::copy(source_path, dest_file.clone()) {
-        log::info!("copy file with error {}", err);
+        log::info!("copy file with error {err}");
         UploadFileInfo {
             file_id: Some(file_id),
             source: Some(source.to_string()),

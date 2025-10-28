@@ -1,19 +1,29 @@
 app_keys = []
 rsa_private_key = "MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAoX7UzJgx7+N2XQ5/QWBHNSEe/l6EnWcC7PI03o3oal3nlBRJfRW6RGkw9rcg/2h08X4j2kAKFUkl9l5jff23XwIDAQABAkB+h1OMtNWzQMDU6e3UN+2yd6/D1iQK+tF0+dNoZ0CoTIntMvvhrzaYRXPc5CXjUmZ7BthNDpkiHGsSOp3OKthxAiEAzCdplSfyrLhyKSl+Y+M5HCd6WYSd1o99S7lO9Rt1A9cCIQDKghNnRoS3U60kVocBTpQtpp1kiYpCUQ4SS1nOtuN3uQIgPn3t/t9clGxdXaY67x6V071t4UsL+aqwouZVegfumL8CIQCp9IUIVdyoZ2eWabAgXqxpq73IVM5eXdxraiXTIRbCsQIgbP7KXXuloNG5/O8FeKTN+ThcZrkPqka98KiBTx+Jmgo="
 rsa_public_key = "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKF+1MyYMe/jdl0Of0FgRzUhHv5ehJ1nAuzyNN6N6Gpd55QUSX0VukRpMPa3IP9odPF+I9pAChVJJfZeY339t18CAwEAAQ=="
-
+aes_encrytion_key = "growthxhpo9x32xdkllkcvlwkcdewkglqw"
+aes_encrytion_solt = "r93lkxkddkksa3ex"
+log_level = "info"
 log_file = "storex.log"
-log_console = true
-log_json = true
+log_writemode = "bufferandflush"
 log_rotation = "50MB"
-log_keepfiles = 5
+log_keepfiles = 10
+log_console = true
+log_perfs = true
+log_json = true
+trace_level = "info"
+enable_tracing = true
 
 [web]
 app_name = "store-server"
 code_page = "gbk"
+work_threads = 200
+pool_size = 40
 
 [listen]
 ip = "0.0.0.0"
+using_management_port = false
+management_port = 17801
 port = 17800
 domain = "local"
 acme = false
@@ -24,70 +34,154 @@ force_pass = true
 [[managers]]
 username = "admin"
 full_name = "Admin"
-credentials = "rsa:FJq5gIN9u28lT/IuRVqNjQ4KTFWVCZHKBmHC2CXoIa1ElW9gzGtOJtUK/XvY3lfwETSeRDfYovWahfw8vSoPFg=="
+credentials = "rsa:lwMtxTSstpdCV9u1OuawBbHVfGO3WKfHpAstyc1IWxCDWryO40mLfnLXyFFULRzPeY9R4uBD+FFIffJ4ufw7Ng=="
 
 [[plugins]]
 protocol = "weixin"
 plugin_dylib = "store_plugin_weixin"
-logger = "debug"
+logger = "warn"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "rhai"
 plugin_dylib = "store_plugin_rhai"
-logger = "debug"
+logger = "warn"
 plugin_type = "lang"
 
 [[plugins]]
 protocol = "compose"
 plugin_dylib = "store_plugin_compose"
-logger = "debug"
+logger = "warn"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "python"
+plugin_dylib = "store_plugin_python"
+logger = "warn"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "restapi"
 plugin_dylib = "store_plugin_restapi"
-logger = "debug"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "filesystem"
+plugin_dylib = "store_plugin_filesystem"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "imagination"
+plugin_dylib = "store_plugin_imagination"
+logger = "info"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "mqtt"
 plugin_dylib = "store_plugin_mqtt"
-logger = "debug"
+logger = "warn"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "kafka"
 plugin_dylib = "store_plugin_kafka"
-logger = "info"
+logger = "warn"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "elasticsearch"
 plugin_dylib = "store_plugin_es"
-logger = "info"
+logger = "warn"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "rivermap"
 plugin_dylib = "store_plugin_rivermap"
+logger = "warn"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "datagraph"
+plugin_dylib = "store_plugin_datagraph"
 logger = "info"
 plugin_type = "func"
 
 [[plugins]]
 protocol = "synctask"
 plugin_dylib = "store_plugin_synctask"
+logger = "warn"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "voice"
+plugin_dylib = "store_plugin_voice"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "rag"
+plugin_dylib = "store_plugin_rag"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "mcp"
+plugin_dylib = "store_plugin_mcp"
+logger = "info"
+plugin_type = "func"
+
+[[plugins]]
+protocol = "ragent"
+plugin_dylib = "store_plugin_ragent"
 logger = "info"
 plugin_type = "func"
 
 [[loggers]]
 logger = "chimes_store_core"
-level = "debug"
-
-[[loggers]]
-logger = "kafka"
 level = "info"
 
 [[loggers]]
+logger = "chimes_store_dbs"
+level = "info"
+
+[[loggers]]
+logger = "kafka"
+level = "warn"
+
+[[loggers]]
 logger = "paho_mqtt"
+level = "warn"
+
+[[loggers]]
+logger = "hyper"
+level = "warn"
+
+[[loggers]]
+logger = "globset"
+level = "warn"
+
+[[loggers]]
+logger = "reqwest"
+level = "warn"
+
+[[loggers]]
+logger = "rbatis"
+level = "info"
+
+[[loggers]]
+logger = "salvo"
+level = "info"
+
+[[loggers]]
+logger = "salvo-core"
+level = "info"
+
+[[loggers]]
+logger = "salvo-http3"
+level = "info"
+
+[[loggers]]
+logger = "salvo-extra"
 level = "info"

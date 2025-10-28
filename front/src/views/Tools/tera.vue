@@ -69,6 +69,22 @@
                   <td>执行BASE64解码处理。示例：<span>&lbrace;&lbrace; base64_decode(text = "dGhpc2lzYWtleXM=") &rbrace;&rbrace;</span></td>
                 </tr>
                 <tr>
+                  <td>sha256_with_rsa_sign</td>
+                  <td>使用ns指定的包中的RSA密钥对指定内容进行RSA with SHA256签名：<span>&lbrace;&lbrace; sha256_with_rsa_sign(text = "dGhpc2lzYWtleXM=", ns="com.siline.test") &rbrace;&rbrace;</span></td>
+                </tr>
+                <tr>
+                  <td>md5string</td>
+                  <td>获取指定文本的MD5 Hash值，返回值使用HEX编码<span>&lbrace;&lbrace; base64_decode(text = "dGhpc2lzYWtleXM=") &rbrace;&rbrace;</span></td>
+                </tr>
+                <tr>
+                  <td>random_string</td>
+                  <td>生成一个指定长度的随机字符串<span>&lbrace;&lbrace; random_string(len = 12) &rbrace;&rbrace;</span></td>
+                </tr>
+                <tr>
+                  <td>snowflake_id</td>
+                  <td>产生一个雪花Id的值。示例：<span>&lbrace;&lbrace; snowflake_id() &rbrace;&rbrace;</span></td>
+                </tr>
+                <tr>
                   <td>canonicalized_query</td>
                   <td>对指定的JSON对象的Key值进行排序，并按此顺序生成QueryString，常用于支付宝等接口的调用。示例：<span>&lbrace;&lbrace; canonicalized_query(value = args[0]) &rbrace;&rbrace;</span></td>
                 </tr>
@@ -211,5 +227,5 @@ onUnmounted(() => {
 })
 </script>
 <style lang="scss" scoped>
-@import "index.scss";
+@use "index.scss";
 </style>

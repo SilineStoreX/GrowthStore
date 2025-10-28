@@ -1,5 +1,5 @@
 use chimes_store_core::{
-    pin_submit,
+    pin_async_process,
     service::{registry::SchemaRegistry, starter::MxStoreService},
     utils::redis::init_ns_scoped_redis,
 };
@@ -9,7 +9,6 @@ use dbs::{
 };
 pub mod api;
 pub mod dbs;
-pub mod docs;
 pub mod utils;
 
 pub fn register_objects_and_querys(ns: &str) {
@@ -17,9 +16,9 @@ pub fn register_objects_and_querys(ns: &str) {
     SchemaRegistry::get_mut().register("query", Box::new(DbQueryServiceInvocation()));
     SchemaRegistry::get_mut().register("redis", Box::new(RedisInvocation()));
     let nms = ns.to_owned();
-    pin_submit!(async move {
+    // 初始REDIS时，如果REDIS的配置是错误的，则会出现一堆的异常，而影响其它部分的启动
+    pin_async_process!(async move {
         if let Some(ms) = MxStoreService::get(&nms) {
-            log::info!("init redis connection for {}", ms.get_namespace());
             init_ns_scoped_redis(&ms.get_config());
         }
     });

@@ -1,11 +1,14 @@
 <template>
-    <add-app-secret :visible="showVariableDialog" :hook="currentVariable" @update:visible="handleVariableDialogVisibleChange" @update:hook="handleUpdateVariable" />
     <div class="home">
+      <add-app-secret :visible="showVariableDialog" :hook="currentVariable" @update:visible="handleVariableDialogVisibleChange" @update:hook="handleUpdateVariable" />
       <div>登录与认证配置</div>
       <div class="tips">登录与认证配置的配置的修改影响面比较广，对这些配置修改后，请重新启动GrowthStore，以确保正确生效。</div>
       <el-form label-position="top" label-width="auto" >
           <el-form-item label="应用名称">
               <el-input v-model="authconf.app_name" />
+          </el-form-item>
+          <el-form-item label="定时器状态管理">
+              <el-input v-model="authconf.schedule_state_uri" placeholder="用于管理定时器的任务执行状态的InvokeURI，必须是存储服务，即以object://开头的服务URI" />
           </el-form-item>
           <el-form-item label="启用登录/认证服务">
               <el-switch v-model="authconf.enable" />
@@ -101,6 +104,9 @@
           </el-form-item>
           <el-form-item label="AppId和AppSecret的提供者（用于查询AppId/AppSecret的InvokeURI，可选。如果没有提供，则会使用下表中自定义AppId/AppSecret）">
               <el-input v-model="authconf.appsecret_provider" />
+          </el-form-item>
+          <el-form-item v-if="authconf.appsecret_provider && authconf.appsecret_provider !== ''" label="使用Redis管理AppId/AppSecret，此处填写Redis配置所在的Namespace。通常，当AppId/Secret对数量比较大的时候，才需要配置Redis管理方式。">
+              <el-input v-model="authconf.appsecret_redis" />
           </el-form-item>
           <el-form-item v-if="!authconf.appsecret_provider || authconf.appsecret_provider === ''" label="AppId和AppSecret管理">
               <el-table :data="authconf.app_secret_keys" :border="true">
@@ -276,6 +282,6 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
   </style>
   

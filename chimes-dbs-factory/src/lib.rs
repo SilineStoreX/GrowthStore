@@ -52,36 +52,71 @@ pub fn get_load_tables_sql(_driver: &rbatis::RBatis) -> &str {
     FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?"#
 }
 
-pub fn get_load_one_tables_sql(_driver: &rbatis::RBatis) -> &str {
-    r#"SELECT table_catalog as table_catalog, table_schema as table_schema, table_type as table_type, 
-    table_name as table_name
-    FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name = ?"#
+pub fn get_load_one_tables_sql(driver: &rbatis::RBatis) -> &str {
+    match get_driver_name(driver) {
+        "postgres" | "oracle" => {
+            r#"SELECT table_catalog as table_catalog, table_schema as table_schema, table_type as table_type, 
+            table_schema || '.' || table_name as table_name
+            FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name = ?"#
+        },
+        _ => {
+            r#"SELECT table_catalog as table_catalog, table_schema as table_schema, table_type as table_type, 
+            table_name as table_name
+            FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name = ?"#
+        }
+    }
 }
-
 
 pub fn get_load_table_pkey_sql(_driver: &rbatis::RBatis) -> &str {
     r#"select table_schema as table_schema, table_name as table_name, column_name as column_name, ordinal_position as ordinal_position
     from INFORMATION_SCHEMA.key_column_usage where  table_schema = ? and table_name = ? and (CONSTRAINT_NAME = 'PRIMARY' OR CONSTRAINT_NAME like '%_pk' OR CONSTRAINT_NAME like '%_pkey') order by ORDINAL_POSITION ASC "#
 }
 
-pub fn get_update_field_value_present(driver: &rbatis::RBatis, field: &str, field_type: &str) -> String {
+pub fn get_update_field_value_present(
+    driver: &rbatis::RBatis,
+    field: &str,
+    field_type: &str,
+) -> String {
     match get_driver_name(driver) {
         "postgres" => {
-            format!("{field} = ?::{field_type}")
-        },
+            if field_type.is_empty() {
+                format!("{field} = ?")
+            } else {
+                format!("{field} = ?::{field_type}")
+            }
+        }
         _ => {
             format!("{field} = ?")
         }
     }
 }
 
-pub fn get_insert_field_value_present(driver: &rbatis::RBatis, _field: &str, field_type: &str) -> String {
+pub fn get_insert_field_value_present(
+    driver: &rbatis::RBatis,
+    _field: &str,
+    field_type: &str,
+) -> String {
     match get_driver_name(driver) {
         "postgres" => {
-            format!("?::{field_type}")
-        },
-        _ => {
-            "?".to_string()
+            if field_type.is_empty() {
+                "?".to_string()
+            } else {
+                format!("?::{field_type}")
+            }
         }
+        _ => "?".to_string(),
+    }
+}
+
+pub fn get_query_field_value_present(driver_name: &str, field_type: &str) -> String {
+    match driver_name {
+        "postgres" => {
+            if field_type.is_empty() {
+                "?".to_string()
+            } else {
+                format!("?::{field_type}")
+            }
+        }
+        _ => "?".to_string(),
     }
 }

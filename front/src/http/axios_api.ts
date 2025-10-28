@@ -6,7 +6,7 @@ import { GlobalStore } from "@/stores";
 import { ResultEnum } from '@/enums/httpEnum';
 import { LOGIN_URL } from '@/config/config';
 import router from '@/routers';
-import { checkStatus } from './status';
+import { checkStatusForAPI } from './status';
 
 
 interface Options {
@@ -112,7 +112,7 @@ function createAxios<Data = any, T = ApiPromise<Data>>(axiosConfig: AxiosRequest
           if (error.message.indexOf("Network Error") !== -1)
             ElMessage.error("网络错误！请您稍后重试");
           // 根据响应的错误状态码，做不同的处理
-          if (response) checkStatus(response.status);
+          if (response) checkStatusForAPI(response.status, router);
           if (response.data) {
             return Promise.resolve(response.data)
           }

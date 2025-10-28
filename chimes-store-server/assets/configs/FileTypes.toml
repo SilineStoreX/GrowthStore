@@ -1,0 +1,659 @@
+# This configuration is used to provided the filesystem plugin
+# The are some kinds of file typed configuration.
+# which is that the Content retrieved from file-typed document, 
+# and the icon provided for each file-type. 
+enable-file-secure = true
+
+[[file_types]]
+ext_name = "jpg"
+content_type = "image/jpeg"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[file_types.options]
+det_path = "./models/ch_PP-OCRv4_det_server_infer.onnx"
+cls_path = "./models/ch_PP-OCRv4_cls_infer.onnx"
+rec_path = "./models/ch_PP-OCRv4_rec_server_infer.onnx"
+keys_path = "./models/ppocr_keys_v1.txt"
+num_thread = 2
+padding = 10
+max_side_len = 102400
+box_score_thresh = 0.5
+box_thresh = 0.3
+un_clip_ratio = 1.6
+do_angle = true
+most_angle = true
+
+[[file_types]]
+ext_name = "png"
+content_type = "image/png"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[file_types.options]
+det_path = "./models/ch_PP-OCRv4_det_server_infer.onnx"
+cls_path = "./models/ch_PP-OCRv4_cls_infer.onnx"
+rec_path = "./models/ch_PP-OCRv4_rec_server_infer.onnx"
+keys_path = "./models/ppocr_keys_v1.txt"
+num_thread = 2
+padding = 10
+max_side_len = 102400
+box_score_thresh = 0.5
+box_thresh = 0.3
+un_clip_ratio = 1.6
+do_angle = true
+most_angle = true
+
+
+[[file_types]]
+ext_name = "bmp"
+content_type = "image/bmp"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "gif"
+content_type = "image/gif"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "jpeg"
+content_type = "image/jpeg"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "jpe"
+content_type = "image/jpeg"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "jfif"
+content_type = "image/pipeg"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "svg"
+content_type = "image/svg+xml"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "tiff"
+content_type = "image/tiff"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "tif"
+content_type = "image/tiff"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "webp"
+content_type = "image/webp"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "ico"
+content_type = "image/x-icon"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "xpm"
+content_type = "image/x-xpixmap"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "xbm"
+content_type = "image/x-xbitmap"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+[[file_types]]
+ext_name = "pbm"
+content_type = "image/x-portable-bitmap"
+icon = "fa-file-image"
+library = "plugin_ocr_extractor"
+factory = "extract_file"
+
+
+[[file_types]]
+ext_name = "rs"
+content_type = "text/plain"
+icon = "fa-file-text"
+factory = "python"
+scriptor = "scripts/files/image_regure.py"
+
+[[file_types]]
+ext_name = "json"
+content_type = "text/json"
+icon = "fa-file-json"
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+[[file_types]]
+ext_name = "txt"
+content_type = "text/plain"
+icon = "fa-file-txt"
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "csv"
+content_type = "text/csv"
+icon = "fa-file-text"
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "css"
+content_type = "text/css"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "323"
+content_type = "text/h323"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "htm"
+content_type = "text/html"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "html"
+content_type = "text/html"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "stm"
+content_type = "text/html"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "uls"
+content_type = "text/iuls"
+icon = "fa-file-text"
+
+
+[[file_types]]
+ext_name = "bas"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "c"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "cpp"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "cc"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "h"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "hpp"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+
+[[file_types]]
+ext_name = "rtx"
+content_type = "text/richtext"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "sct"
+content_type = "text/scriptlet"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "tsv"
+content_type = "text/tab-separated-values"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "htt"
+content_type = "text/webviewhtml"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "htc"
+content_type = "text/x-component"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "etx"
+content_type = "text/x-setext"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "vcf"
+content_type = "text/x-vcard"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "pas"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "js"
+content_type = "text/javscript"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "go"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "toml"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "xml"
+content_type = "text/xml"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "yml"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+[[file_types]]
+ext_name = "yaml"
+content_type = "text/plain"
+icon = "fa-file-text"
+
+
+[[file_types]]
+ext_name = "pdf"
+content_type = "application/pdf"
+icon = "fa-file-image"
+library = "plugin_doc_extractor"
+factory = "extract_file"
+document = true
+
+[[file_types]]
+ext_name = "doc"
+content_type = "application/msword"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+[[file_types]]
+ext_name = "dot"
+content_type = "application/msword"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "docx"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+icon = "fa-file-document"
+document = true
+#library = "plugin_markdown_extractor"
+library = "plugin_doc_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "dotx"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "xls"
+content_type = "application/vnd.ms-excel"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "xlt"
+content_type = "application/vnd.ms-excel"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+[[file_types]]
+ext_name = "xlsx"
+content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "xlst"
+content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "ppt"
+content_type = "application/vnd.ms-powerpoint"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "pptx"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+
+[[file_types]]
+ext_name = "wps"
+content_type = "application/kswps"
+icon = "fa-file-document"
+library = "plugin_doc_extractor"
+factory = "extract_file"
+document = true
+
+[[file_types]]
+ext_name = "et"
+content_type = "application/kset"
+icon = "fa-file-document"
+document = true
+library = "plugin_markdown_extractor"
+factory = "extract_file"
+
+[file_types.options]
+python_path = "E:/mishmash/conda/envs/pytorch"
+site_package = "E:/mishmash/conda/envs/pytorch/Lib/site-packages"
+
+[[file_types]]
+ext_name = "dps"
+content_type = "application/ksdps"
+icon = "fa-file-document"
+library = "plugin_doc_extractor"
+factory = "extract_file"
+document = true
+
+[[file_types]]
+ext_name = "rtf"
+content_type = "application/rtf"
+icon = "fa-file-document"
+library = "plugin_doc_extractor"
+factory = "extract_file"
+document = true
+
+[[file_types]]
+ext_name = "mp3"
+content_type = "audio/mpeg"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "mp2"
+content_type = "audio/mpeg"
+icon = "fa-file-audio"
+
+
+[[file_types]]
+ext_name = "wav"
+content_type = "audio/x-wav"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "mid"
+content_type = "audio/midi"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "rmi"
+content_type = "audio/midi"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "midi"
+content_type = "audio/midi"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "m3u"
+content_type = "audio/x-mpegurl"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "ogg"
+content_type = "audio/ogg"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "m4a"
+content_type = "audio/x-m4a"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "ra"
+content_type = "audio/x-realaudio"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "ram"
+content_type = "audio/x-realaudio"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "aiff"
+content_type = "audio/x-aiff"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "aif"
+content_type = "audio/x-aiff"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "aifc"
+content_type = "audio/x-aiff"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "snd"
+content_type = "audio/basic"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "au"
+content_type = "audio/basic"
+icon = "fa-file-audio"
+
+[[file_types]]
+ext_name = "mp4"
+content_type = "video/mp4"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "m4v"
+content_type = "video/x-m4v"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "wmv"
+content_type = "video/x-ms-wmv"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "avi"
+content_type = "video/x-msvideo"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "webm"
+content_type = "video/webm"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "flv"
+content_type = "video/x-flv"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "qt"
+content_type = "video/quicktime"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "mov"
+content_type = "video/quicktime"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "mpg"
+content_type = "video/mpeg"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "mpe"
+content_type = "video/mpeg"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "mpeg"
+content_type = "video/mpeg"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "mpv2"
+content_type = "video/mpeg"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "lsf"
+content_type = "video/x-la-asf"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "lsx"
+content_type = "video/x-la-asf"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "asf"
+content_type = "video/x-ms-asf"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "asr"
+content_type = "video/x-ms-asf"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "asx"
+content_type = "video/x-ms-asf"
+icon = "fa-file-video"
+
+[[file_types]]
+ext_name = "movie"
+content_type = "video/x-sgi-movie"
+icon = "fa-file-video"

@@ -8,6 +8,12 @@ pub struct RhaiDateTime {
 }
 
 impl RhaiDateTime {
+    pub fn from_1970() -> Self {
+        Self {
+            inner: fastdate::DateTime::from_timestamp(0),
+        }
+    }
+
     pub fn now() -> Self {
         Self {
             inner: fastdate::DateTime::now(),
@@ -18,6 +24,14 @@ impl RhaiDateTime {
         Self {
             inner: fastdate::DateTime::utc(),
         }
+    }
+
+    pub fn with_offset(&mut self) {
+        self.inner = self.inner.clone().set_offset(fastdate::offset_sec());
+    }
+
+    pub fn set_offset_with(&mut self, sec: i32) {
+        self.inner = self.inner.clone().set_offset(sec);
     }
 
     #[allow(clippy::wrong_self_convention)]
@@ -55,17 +69,35 @@ impl RhaiDateTime {
         self.inner.format(fmt)
     }
 
-    pub fn parse(&mut self, val: &str, fmt: &str) -> RhaiDateTime {
+    pub fn parse_date(val: &str, fmt: &str) -> RhaiDateTime {
         match fastdate::DateTime::parse(fmt, val) {
             Ok(t) => Self { inner: t },
-            Err(_) => Self::now(),
+            Err(_) => Self::from_1970(),
         }
     }
 
-    pub fn parse_default(&mut self, val: &str) -> RhaiDateTime {
+    pub fn parse_date_default(val: &str) -> RhaiDateTime {
         match fastdate::DateTime::parse("YYYY-MM-DD hh:mm:ss", val) {
             Ok(t) => Self { inner: t },
-            Err(_) => Self::now(),
+            Err(_) => Self::from_1970(),
+        }
+    }
+
+    pub fn from_timestamp_millis(ts: i64) -> RhaiDateTime {
+        Self {
+            inner: fastdate::DateTime::from_timestamp_millis(ts),
+        }
+    }
+
+    pub fn from_timestamp_second(ts: i64) -> RhaiDateTime {
+        Self {
+            inner: fastdate::DateTime::from_timestamp(ts),
+        }
+    }
+
+    pub fn from_timestamp_micros(ts: i64) -> RhaiDateTime {
+        Self {
+            inner: fastdate::DateTime::from_timestamp_micros(ts),
         }
     }
 

@@ -134,9 +134,8 @@
   <script lang="ts" setup name="mqtt">
   import { update, remove, metadata_get, config_get, config_save, lang_list, authorize_roles_get } from "@/http/modules/management";
   import { useRoute } from "vue-router";
-  import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
   import { mergeProps, onMounted, ref, watch } from "vue";
-  import { FormInstance } from "element-plus";
+  import { ElMessageBox, FormInstance } from "element-plus";
 
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -194,14 +193,14 @@
           emit("update:visible", false)
           emit("update:data", true)
         } else {
-          VxeUI.modal.message({ content: '保存失败', status: 'info' })
+          ElMessageBox.alert('保存失败', "提示", { type: 'warning' })
         }
       }).catch(me => {
-        VxeUI.modal.message({ content: '保存失败, ' + me.description, status: 'info' })        
+        ElMessageBox.alert('保存失败，' + me.description, "提示", { type: 'warning' })
       })
 
     }).catch(ex => {
-      VxeUI.modal.message({ content: '保存插件信息失败, ' + ex.description, status: 'info' })
+      ElMessageBox.alert('保存插件信息失败，' + ex.description, "提示", { type: 'warning' })
     })
   }
 
@@ -290,15 +289,6 @@
     console.log("config: ", config_data.value)
     handleUpdate()
   }
-
-  const submitEvent: VxeFormEvents.Submit = () => {
-    console.log("config: ", config_data.value)
-    VxeUI.modal.message({ content: '保存成功', status: 'success' })
-  }
-
-  const resetEvent: VxeFormEvents.Reset = () => {
-    VxeUI.modal.message({ content: '重置事件', status: 'info' })
-  }
   
   onMounted(() => {
       if (props.data && props.data.protocol && props.data.name) {
@@ -312,9 +302,9 @@
   </script>
   
   <style lang="scss" scoped>
+  @use "index.scss";
   .el-select .el-input {
     width: 130px;
   }
-  @import "index.scss";
   </style>
   

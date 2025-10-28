@@ -12,11 +12,21 @@ border: 1px solid #ced4da;
 .label_titel {
 float: left;
 font-size: 20pt;
-padding-bottom: 5px;
+padding-bottom: 0px;
 width: 100%;
 display: flex;
 justify-content: space-between;
 }
+
+.label_titel2 {
+    float: left;
+    font-size: 20pt;
+    padding-bottom: 0px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
 
 .split {
 display: flex;
@@ -25,7 +35,7 @@ flex-direction: row;
 
 .split .editor {
 width: calc(50% - 10px);
-padding: 10px;
+padding: 0px;
 }
 
 .split .editor span {
@@ -63,6 +73,7 @@ display: block;
 }
 
 .label {
-line-height: 14px;
+line-height: 16px;
 padding-right: 10px;
+padding-left: 10px;
 }

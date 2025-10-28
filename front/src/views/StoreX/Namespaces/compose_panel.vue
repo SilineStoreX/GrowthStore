@@ -22,6 +22,18 @@
                     <el-form-item label="名称" prop="name">
                         <el-input v-model="composeService.name"></el-input>
                     </el-form-item>
+                    <el-form-item label="接口描述" prop="rest_desc">
+                        <el-input v-model="composeService.rest_desc" type="textarea" :rows="3"></el-input>
+                    </el-form-item>
+                    <el-form-item label="MCP工具" prop="mcp_tool">
+                        <template #label>
+                            MCP工具
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="启用后，该方法将公开为一个MCP的工具函数，以便让AI Agent进行调用。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                        </template>
+                        <el-switch v-model="composeService.mcp_tool"></el-switch>
+                    </el-form-item>
                     <el-form-item label="脚本语言"  prop="lang">
                         <el-radio-group v-model="composeService.lang">
                             <el-radio-button key="shell" value="shell">Shell</el-radio-button>
@@ -45,8 +57,48 @@
                           <el-switch v-model="composeService.fileupload" />
                           <el-input v-if="composeService.fileupload" v-model="composeService.file_field" placeholder="上传文件字段名" style="margin-left:10px; width: 120px"/>
                         </el-form-item>
-                        <el-form-item label="定时器任务"  prop="schedule_on">
-                          <el-switch v-model="composeService.schedule_on" />
+                        <el-form-item v-if="composeService.rest_api" label="参数需验签"  prop="verify_param_sign">
+                          <template #label>
+                            参数需验签
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="当使用AppId/AppSecret访问该接口时，需要对接口参数进行验签。此时，调用该接口需要传入sign参数，sign参数的生成办法是其它参数名以升序排序，并以&连接起来，使用AppSecret作为Key，进行HmacSHA256来生成Hash并转成HEX字符串。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.verify_param_sign" />
+                        </el-form-item>
+                        <el-form-item v-if="composeService.rest_api" label="请求体加密"  prop="encryption_body">
+                          <template #label>
+                            请求体加密
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="对请求的Body进行加密，优先使用RSA算法，当RSA的密钥未被配置时，而AES的密钥配置后使用AES算法。">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.encryption_body" />
+                        </el-form-item>
+                    </el-form-item>
+                    <el-form-item label="数据库连接"  prop="prepare_connection">
+                        <template #label>
+                          数据库连接
+                          <el-tooltip class="box-item" effect="dark" placement="top-start" content="指示该脚本功能是否提前创建数据库连接，如果该脚本功能不直接访问数据库，则选择自动，否则根据是否更新数据而选择事务或只查询。">
+                            <el-icon><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
+                        <el-radio-group v-model="composeService.prepare_connection">
+                            <el-radio-button value="auto">自动</el-radio-button>
+                            <el-radio-button value="connection">只查询</el-radio-button>
+                            <el-radio-button value="transaction">事务</el-radio-button>
+                        </el-radio-group>
+                        <el-form-item label="不可重入"  prop="avoid_reentry">
+                          <template #label>
+                            不可重入
+                            <el-tooltip class="box-item" effect="dark" placement="top-start" content="防止代码在同一时间有多个实例并发执行，慎用！会严重影响性能！">
+                              <el-icon><InfoFilled /></el-icon>
+                            </el-tooltip>
+                          </template>
+                          <el-switch v-model="composeService.avoid_reentry" />
+                        </el-form-item>
+                        <el-form-item label="验证参数">
+                          <el-switch v-model="composeService.validate_params" />
                         </el-form-item>
                     </el-form-item>
                     <el-form-item v-if="composeService.rest_api" label="功能权限">
@@ -58,6 +110,12 @@
                         <el-switch v-model="composeService.bypass_permission" />
                       </el-form-item>
                     </el-form-item>
+                    <el-form-item label="定时器任务"  prop="schedule_on">
+                      <el-switch v-model="composeService.schedule_on" style="width: 280px;" />
+                      <el-form-item v-if="composeService.schedule_on"  prop="interval" label="间隔时间">
+                        <el-input v-model="composeService.interval_second" placeholder="每次执行间隔指定秒数，如该值有效，则忽略CRON表达式" />
+                      </el-form-item>
+                    </el-form-item>                    
                     <el-form-item v-if="composeService.schedule_on"  prop="cron_express" label="CRON表达式">
                         <el-input v-model="composeService.cron_express" placeholder="定时器任务的CRON表达式" style="width: 280px">
                           <template #append>
@@ -89,7 +147,19 @@
                       </el-form-item>
                   </el-form-item>                    
                     <el-form-item label="脚本"  prop="script">
-                        <el-input type="textarea" v-model="composeService.script" :rows="12"/>
+                      <el-tabs v-model="scriptPanelActive" class="script-tab">
+                        <el-tab-pane label="脚本" name="scriptpanel">
+                          <el-input type="textarea" v-model="composeService.script" :rows="12"/>
+                        </el-tab-pane>
+                        <el-tab-pane label="参数Schema" name="schemapanel">
+                          <span class="tips">如需直接使用object定义好的Schema，可以在Schema中写{ "$ref": "object://namespace/name"}</span>
+                          <JsonEditorVue v-model="param_schema" class="editor" :expand-depth="0" @update:modelValue="updateParamSchema" />
+                        </el-tab-pane>
+                        <el-tab-pane label="响应Schema" name="respschemapanel">
+                          <span class="tips">如需直接使用object定义好的Schema，可以在Schema中写{ "$ref": "object://namespace/name"}</span>
+                          <JsonEditorVue v-model="response_schema" class="editor" :expand-depth="0" @update:modelValue="updateResponseSchema" />
+                        </el-tab-pane>
+                      </el-tabs>
                     </el-form-item>
                     <el-form-item label="Hook"  prop="hooks">
                         <el-table :data="composeService.hooks">
@@ -170,12 +240,12 @@
   <script lang="ts" setup name="config">
   import { update, remove, metadata_get, config_get, config_save, lang_list, authorize_roles_get } from "@/http/modules/management";
   import { useRoute } from "vue-router";
-  import { VxeUI, VxeFormPropTypes, VxeFormEvents } from 'vxe-table'
   import { mergeProps, onMounted, ref, watch } from "vue";
-  import { FormInstance } from "element-plus";
+  import { ElMessageBox, FormInstance } from "element-plus";
   import AddHook from "./add_hook.vue"
   import { vue3CronPlus } from 'vue3-cron-plus'
   import 'vue3-cron-plus/dist/index.css'
+  import JsonEditorVue from 'json-editor-vue3'
 
   const props = defineProps<{ data: any }>();
   const emit = defineEmits(['update:data', 'update:visible'])
@@ -193,8 +263,10 @@
   const showHookDialog = ref<boolean>(false)
   const currentHook = ref<any>()
   const auth_roles = ref<Array<any>>([])
-
+  const scriptPanelActive = ref("scriptpanel")
   const showCron = ref<boolean>(false)
+  const param_schema = ref<Object>({})
+  const response_schema = ref<Object>({})
   
   const onShowCronExpress = () => {
     showCron.value = true
@@ -230,6 +302,33 @@
     })
   }
 
+  function updateParamSchema(e) {
+    // console.log(e)
+    param_schema.value = e
+  }
+
+  function updateResponseSchema(e) {
+    response_schema.value = e
+  }
+ 
+  function composeEvalParamSchema(param) {
+    const json_schema = {
+      "type": "object",
+      "properties": {
+      }
+    };
+
+    try {
+      if (param && param !== '') {
+        return JSON.parse(param)
+      } else {
+        return json_schema
+      }
+    } catch (ex) {
+      return json_schema
+    }
+  }
+
   function fetchAuthRoles() {
     var ns = route.query.ns as string  
     authorize_roles_get().then(res => {
@@ -247,14 +346,14 @@
           emit("update:visible", false)
           emit("update:data", true)
         } else {
-          VxeUI.modal.message({ content: '保存失败', status: 'info' })
+          ElMessageBox.alert('保存失败', "提示", { type: 'warning' })
         }
       }).catch(me => {
-        VxeUI.modal.message({ content: '保存失败, ' + me.description, status: 'info' })        
+        ElMessageBox.alert('保存失败，' + me.description, "提示", { type: 'warning' })
       })
 
     }).catch(ex => {
-      VxeUI.modal.message({ content: '保存插件信息失败, ' + ex.description, status: 'info' })
+      ElMessageBox.alert('保存插件信息失败，' + ex.description, "提示", { type: 'warning' })
     })
   }
 
@@ -291,6 +390,8 @@
 
   function onAddComposeService() {
     editingOrAdding.value = 1
+    param_schema.value = composeEvalParamSchema('')
+    response_schema.value = composeEvalParamSchema('')
     composeService.value = {}
   }
 
@@ -303,8 +404,14 @@
   function onSaveEditComposeService() {
     if (editingOrAdding.value === 1) {
         var composes = config_data.value
-        composes.push(composeService.value)
+        var cs = composeService.value
+        cs.mcp_schema = JSON.stringify(param_schema.value, null, 2)
+        cs.response_schema = JSON.stringify(response_schema.value, null, 2)
+        composes.push(cs)
         config_data.value = composes
+    } else if (editingOrAdding.value === 2) {
+        composeService.value.mcp_schema = JSON.stringify(param_schema.value, null, 2)
+        composeService.value.response_schema = JSON.stringify(response_schema.value, null, 2)
     }
     editingOrAdding.value = 0
   }
@@ -319,6 +426,8 @@
 
   function onEditComposeService(raw) {
     editingOrAdding.value = 2
+    param_schema.value = composeEvalParamSchema(raw.mcp_schema)
+    response_schema.value = composeEvalParamSchema(raw.response_schema)
     composeService.value = raw 
   }
 
@@ -380,15 +489,6 @@
     currentHook.value = hk
     showHookDialog.value = true
   }
-
-  const submitEvent: VxeFormEvents.Submit = () => {
-    console.log("config: ", config_data.value)
-    VxeUI.modal.message({ content: '保存成功', status: 'success' })
-  }
-
-  const resetEvent: VxeFormEvents.Reset = () => {
-    VxeUI.modal.message({ content: '重置事件', status: 'info' })
-  }
   
   onMounted(() => {
       if (props.data && props.data.protocol && props.data.name) {
@@ -402,10 +502,18 @@
   </script>
   
   <style lang="scss" scoped>
-  @import "index.scss";
+  @use "index.scss";
 
   :deep(.vue3-cron-plus-container) .language {
     display: none;
+  }
+
+  .script-tab {
+    width: 100%;
+  }
+
+  .script-tab .editor {
+    height: 300px;
   }
   </style>
   

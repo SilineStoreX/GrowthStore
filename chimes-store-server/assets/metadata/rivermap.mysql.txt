@@ -1,0 +1,167 @@
+-- rivermap.rivermap_asset_mapping definition
+
+CREATE TABLE `rivermap_asset_mapping` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `asset_id` bigint DEFAULT NULL COMMENT '资产ID',
+  `source_id` bigint DEFAULT NULL COMMENT '数据源ID',
+  `link_id` varchar(100) DEFAULT NULL COMMENT '边ID',
+  `field_name` varchar(100) DEFAULT NULL COMMENT '字段名称',
+  `source_field` varchar(200) DEFAULT NULL COMMENT '源数据字段',
+  `conversion` text COMMENT '简单转换',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资产与数据源之间的映射关系';
+
+
+-- rivermap.rivermap_asset_replacement definition
+
+CREATE TABLE `rivermap_asset_replacement` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `asset_id` bigint DEFAULT NULL COMMENT '资产ID',
+  `field_name` varchar(100) DEFAULT NULL COMMENT '字段名称',
+  `source_value` varchar(300) DEFAULT NULL COMMENT '源值',
+  `replace_to` varchar(300) DEFAULT NULL COMMENT '替换',
+  `replacement_type` varchar(30) DEFAULT NULL COMMENT '替换查询类型',
+  `query_type` varchar(30) DEFAULT NULL COMMENT '源类型, API, JDBC, File',
+  `query_method` varchar(300) DEFAULT NULL COMMENT '查询名称',
+  `query_addr` varchar(300) DEFAULT NULL COMMENT '查询地址, API时为URL，JDBC时不使用，File时不使用',
+  `query_body` text COMMENT '查询提交时的模板，API时为提交的JSON查询体，JDBC时为查询的SQL，File时暂不使用',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资产的替换规则';
+
+
+-- rivermap.rivermap_asset_source definition
+
+CREATE TABLE `rivermap_asset_source` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `asset_id` bigint DEFAULT NULL COMMENT '资产ID',
+  `source_name` varchar(100) DEFAULT NULL COMMENT '源名称',
+  `source_type` varchar(30) DEFAULT NULL COMMENT '源类型, API, JDBC, File',
+  `data_source` varchar(100) DEFAULT NULL COMMENT '数据源',
+  `query_method` varchar(300) DEFAULT NULL COMMENT '查询名称',
+  `query_addr` varchar(300) DEFAULT NULL COMMENT '查询地址, API时为URL，JDBC时不使用，File时不使用',
+  `query_body` text COMMENT '查询提交时的模板，API时为提交的JSON查询体，JDBC时为查询的SQL，File时暂不使用',
+  `schedule_on` tinyint(1) DEFAULT NULL COMMENT '启用定时执行',
+  `schedule_cron` varchar(100) DEFAULT NULL COMMENT '定时执行CRON表达式',
+  `scolling` tinyint(1) DEFAULT NULL COMMENT '是否滚动执行，主要是于分页试查询',
+  `x` double DEFAULT NULL,
+  `y` double DEFAULT NULL,
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资产的数据来源';
+
+
+-- rivermap.rivermap_asset_struct definition
+
+CREATE TABLE `rivermap_asset_struct` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `asset_id` bigint DEFAULT NULL COMMENT '资产ID',
+  `field_name` varchar(100) DEFAULT NULL COMMENT '字段名称',
+  `field_caption` varchar(100) DEFAULT NULL COMMENT '字段标题',
+  `field_type` varchar(40) DEFAULT NULL COMMENT '类型',
+  `uniqueness` tinyint(1) DEFAULT NULL COMMENT '唯一性验证，数据资产的唯一性校验是该结构中所有的uniqueness字段的组合',
+  `is_scoped` tinyint(1) DEFAULT NULL COMMENT '是否为数据范围字段',
+  `scoped_name` varchar(40) DEFAULT NULL COMMENT '数据范围名称',
+  `indicator_type` varchar(50) DEFAULT NULL COMMENT '指标，None从不作为指标，Value其值为指标，衍生出来则有Sum, Average, StdDev 等等, Count计数作为指标',
+  `is_external` tinyint(1) DEFAULT NULL COMMENT '外部对象，其值指向外部对象如文件等',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资产定义';
+
+
+-- rivermap.rivermap_assets definition
+
+CREATE TABLE `rivermap_assets` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `asset_name` varchar(120) DEFAULT NULL COMMENT '资产名称',
+  `asset_code` varchar(60) DEFAULT NULL COMMENT '资产编码',
+  `asset_desc` varchar(600) DEFAULT NULL COMMENT '资产介绍',
+  `content_map` text COMMENT '资产定义-缓存',
+  `subset_only` tinyint(1) DEFAULT NULL COMMENT '作为子集',
+  `image_url` varchar(200) DEFAULT NULL COMMENT '图标',
+  `x` double DEFAULT NULL COMMENT '坐标X',
+  `y` double DEFAULT NULL COMMENT '坐标Y',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据资产';
+
+
+-- rivermap.rivermap_embedding definition
+
+CREATE TABLE `rivermap_embedding` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `query` varchar(800) DEFAULT NULL COMMENT '查询提问',
+  `exec_type` varchar(40) DEFAULT NULL COMMENT '执行类型',
+  `exec_body` text COMMENT '执行体',
+  `exec_param` varchar(800) DEFAULT NULL COMMENT '执行参数',
+  `replacement` varchar(800) DEFAULT NULL COMMENT 'Token替换',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- rivermap.rivermap_files definition
+
+CREATE TABLE `rivermap_files` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `file_name` varchar(260) DEFAULT NULL COMMENT '文件名称',
+  `original_name` varchar(200) DEFAULT NULL COMMENT '原文件名称',
+  `folder` bigint DEFAULT NULL COMMENT '文件目录',
+  `tags` varchar(260) DEFAULT NULL COMMENT '标签',
+  `remark` varchar(260) DEFAULT NULL COMMENT '描述',
+  `file_size` bigint DEFAULT NULL COMMENT '文件大小',
+  `file_size_display` varchar(200) DEFAULT NULL,
+  `file_type` varchar(260) DEFAULT NULL COMMENT '文件类型',
+  `storage_path` varchar(260) DEFAULT NULL COMMENT '保存路径',
+  `access_url` varchar(260) DEFAULT NULL COMMENT '访问的URL',
+  `create_date` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_date` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=487 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- rivermap.rivermap_folder definition
+
+CREATE TABLE `rivermap_folder` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `parent_id` bigint DEFAULT NULL COMMENT '父目录',
+  `folder_name` varchar(260) DEFAULT NULL COMMENT '文件名称',
+  `remark` varchar(400) DEFAULT NULL COMMENT '描述',
+  `create_date` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_date` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- rivermap.rivermap_icons definition
+
+CREATE TABLE `rivermap_icons` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `image_url` varchar(200) DEFAULT NULL COMMENT 'Image',
+  `image_name` varchar(100) DEFAULT NULL COMMENT '名称',
+  `catalog` varchar(100) DEFAULT NULL COMMENT '目录',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='预定义的资产图标';
+
+
+-- rivermap.rivermap_rivermap definition
+
+CREATE TABLE `rivermap_rivermap` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `map_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图谱名称',
+  `map_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图谱编码',
+  `map_desc` varchar(600) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图谱介绍',
+  `content_graph` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT '图谱定义',
+  `subset_only` tinyint(1) DEFAULT NULL COMMENT '作为子集',
+  `image_url` varchar(200) DEFAULT NULL COMMENT '图标',
+  `create_time` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据图谱';

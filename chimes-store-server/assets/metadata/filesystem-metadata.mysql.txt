@@ -1,0 +1,23 @@
+-- rivermap.filesystem_metadata definition
+
+CREATE TABLE `filesystem_metadata` (
+  `id` varchar(128) NOT NULL,
+  `namespace` varchar(128) DEFAULT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `service_name` varchar(128) DEFAULT NULL,
+  `fullpath` varchar(400) DEFAULT NULL,
+  `filename` varchar(200) DEFAULT NULL,
+  `extname` varchar(100) DEFAULT NULL,
+  `content_type` varchar(120) DEFAULT NULL,
+  `isfolder` tinyint(1) DEFAULT NULL,
+  `file_size` bigint DEFAULT NULL,
+  `readonly` tinyint(1) DEFAULT NULL,
+  `hash` varchar(260) DEFAULT NULL,
+  `content` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `processed` tinyint(1) DEFAULT NULL,
+  `access_time` bigint DEFAULT NULL,
+  `modify_time` bigint DEFAULT NULL,
+  `create_time` bigint DEFAULT NULL,
+  `last_update` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

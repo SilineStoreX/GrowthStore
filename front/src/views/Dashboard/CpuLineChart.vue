@@ -65,8 +65,8 @@ export default {
     setOptions({ data, title } = {}) {
       console.log(data)
       const xaxis = data.map(t => new Date(t.timestamp).strftime('%H:%M:%S'))
-      const kerndata = data.map(t => t.kernel_cpu_usages / t.now_cpu_time * 100.0)
-      const userdata = data.map(t => t.user_cpu_usages / t.now_cpu_time * 100.0)
+      const kerndata = data.map(t => t.kernel_cpu_usages)
+      const userdata = data.map(t => t.user_cpu_usages)
       this.chart.setOption({
         title: {
           text: this.$t('CPU使用率'),
@@ -110,12 +110,12 @@ export default {
           }
         },
         legend: {
-          data: [this.$t('系统CPU使用率'), this.$t('用户CPU使用率')],
+          data: [this.$t('进程CPU使用率'), this.$t('系统CPU使用率')],
           left: 'right',
           top: '5px'
         },
         series: [{
-          name: this.$t('系统CPU使用率'), itemStyle: {
+          name: this.$t('进程CPU使用率'), itemStyle: {
             normal: {
               color: '#FF005A',
               lineStyle: {
@@ -130,7 +130,7 @@ export default {
           animationDuration: 2800,
           animationEasing: 'cubicInOut'
         }, {
-          name: this.$t('用户CPU使用率'), itemStyle: {
+          name: this.$t('系统CPU使用率'), itemStyle: {
             normal: {
               color: '#4455CA',
               lineStyle: {

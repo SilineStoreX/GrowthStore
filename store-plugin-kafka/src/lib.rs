@@ -16,13 +16,12 @@ mod proc;
  * 在Plugin中，无法使用主程序中定义的全局变量
  * 函数是一样的，但因为导出的方式不同  
  */
-
-pub  fn get_plugin_name() -> &'static str {
+pub fn get_plugin_name() -> &'static str {
     "kafka"
 }
 
 pub fn plugin_router_register() -> Vec<Router> {
-    vec![Router::with_path("/kafka/<ns>/<name>/<method>/publish").post(api::publish_kafka_request)]
+    vec![Router::with_path("/kafka/{ns}/{name}/{method}/publish").post(api::publish_kafka_request)]
 }
 
 pub fn plugin_anonymous_router_register() -> Vec<Router> {
@@ -49,11 +48,9 @@ pub fn plugin_init(ns: &str, conf: &PluginConfig) -> Pin<Box<dyn Future<Output =
             get_schema_registry().register_plugin_invocation("kafka");
         }
         Err(err) => {
-            log::warn!(
-                "Plugin kafka was not be apply to {ns}. The config of this plugin was not be parsed. The error is {:?}", 
-                err
-            );
+            log::warn!("Plugin kafka was not be apply to {ns}. The config of this plugin was not be parsed. The error is {err:?}");
         }
     }
+
     Box::pin(async {})
 }

@@ -2,21 +2,53 @@ use anyhow::{anyhow, Result};
 use rbatis::executor::{Executor, RBatisTxExecutor};
 use salvo::jwt_auth::{JwtAuthDepotExt, JwtAuthState};
 use salvo::Depot;
+use substring::Substring;
+use uuid::Uuid;
 
+use std::collections::BTreeMap;
+use std::fmt::{self, Debug};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::{Mutex, OnceLock};
 use std::{
-    any::{Any, TypeId}, collections::HashMap, mem::MaybeUninit, sync::{atomic::AtomicU64, Arc, Once}
+    any::{Any, TypeId},
+    collections::HashMap,
+    sync::Arc,
 };
 
-use crate::pin_blockon_async;
 use crate::config::auth::JwtUserClaims;
+use crate::pin_blockon_async_v2;
+use crate::utils::redis::{redis_del, redis_lock_expire_nx};
 
-static INVOCATION_CTX_ID_REF: AtomicU64 = AtomicU64::new(1);
+type FnGenerateAuthorizationToken = fn(username: &str, user_id: &str, org: Option<String>) -> Result<String, anyhow::Error>;
+
+static FUNC_GENERATE_AUTHORIZATION_TOKEN: OnceLock<FnGenerateAuthorizationToken> = OnceLock::new();
+
+/**
+ * 该函数只能调用一次，且必须在应用启动时调用
+ */
+pub fn setup_generate_authorization_token_func(newfunc: FnGenerateAuthorizationToken) {
+    let _ = FUNC_GENERATE_AUTHORIZATION_TOKEN.get_or_init(|| newfunc);
+}
+
+pub fn proxy_generate_jwt_authorization_token(username: &str, user_id: &str, org: Option<String>) -> Result<String, anyhow::Error> {
+    match FUNC_GENERATE_AUTHORIZATION_TOKEN.get() {
+        Some(func) => {
+            func(username, user_id, org)
+        },
+        None => {
+            Err(anyhow!("generate_authorization_token func was not setup."))
+        }
+    }
+}
 
 pub struct InvocationContext {
     id: u64,
     map: HashMap<String, Box<dyn Any + Send + Sync>>,
-    tx: HashMap<String, Arc<RBatisTxExecutor>>,
-    conn: HashMap<String, Arc<dyn Executor>>,
+    tx: BTreeMap<String, Arc<RBatisTxExecutor>>,
+    // conn: HashMap<String, Arc<dyn Executor>>,
+    conn: BTreeMap<String, Arc<dyn Executor>>,
+    lockmap: HashMap<String, String>,
     success: bool,
 }
 
@@ -28,6 +60,14 @@ fn type_key<T: 'static>() -> String {
     format!("{:?}", TypeId::of::<T>())
 }
 
+impl Debug for InvocationContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("InvocationContext")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
 impl Default for InvocationContext {
     fn default() -> Self {
         Self::new()
@@ -35,54 +75,13 @@ impl Default for InvocationContext {
 }
 
 impl InvocationContext {
-    pub fn get_static_hashmap() -> &'static mut HashMap<u64, InvocationContext> {
-        static mut INVOCATION_CTX_HOLDER: MaybeUninit<HashMap<u64, InvocationContext>> =
-            MaybeUninit::uninit();
-        // Once带锁保证只进行一次初始化
-        static INVOCATION_CTX_HOLDER_ONCE: Once = Once::new();
-
-        INVOCATION_CTX_HOLDER_ONCE.call_once(|| unsafe {
-            INVOCATION_CTX_HOLDER.as_mut_ptr().write(HashMap::new());
-        });
-
-        unsafe { &mut (*INVOCATION_CTX_HOLDER.as_mut_ptr()) }
-    }
-
-    pub fn get_static() -> &'static mut Self {
-        let n = Self::new_with_id(
-            INVOCATION_CTX_ID_REF.fetch_add(1, std::sync::atomic::Ordering::Acquire),
-        );
-        let id = n.id;
-        Self::get_static_hashmap().insert(n.id, n);
-        Self::get_static_hashmap().get_mut(&id).unwrap()
-    }
-
-    pub fn get_static_id(id: u64) -> &'static mut Self {
-        Self::get_static_hashmap().get_mut(&id).unwrap()
-    }
-
-    pub fn remove_static_id(id: u64) {
-        Self::get_static_hashmap().remove(&id);
-    }
-
-    pub async fn finalizeby_id(id: u64) {
-        if id > 0 {
-            if let Some(t) = Self::get_static_hashmap().get_mut(&id) {
-                log::info!("executing commit or rollback;");
-                if let Err(err) = t.commit_or_rollback(true).await {
-                    log::info!("Error on transaction commit {}", err);
-                }
-            }
-            Self::remove_static_id(id);
-        }
-    }
-
     pub fn new() -> Self {
         Self {
             id: 0,
             map: HashMap::new(),
-            tx: HashMap::new(),
-            conn: HashMap::new(),
+            tx: BTreeMap::new(),
+            conn: BTreeMap::new(),
+            lockmap: HashMap::new(),
             success: true,
         }
     }
@@ -97,14 +96,27 @@ impl InvocationContext {
         Self {
             id,
             map: HashMap::new(),
-            tx: HashMap::new(),
-            conn: HashMap::new(),
+            tx: BTreeMap::new(),
+            conn: BTreeMap::new(),
+            lockmap: HashMap::new(),
             success: true,
         }
     }
 
+    pub fn arcnew() -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self::new()))
+    }
+
     pub fn get_id(&self) -> u64 {
         self.id
+    }
+
+    pub fn get_span_id(&self) -> Option<String> {
+        self.get_string("__SPAN_ID")
+    }
+
+    pub fn set_span_id(&mut self, id: &str) {
+        self.insert("__SPAN_ID", id.to_string());
     }
 
     /// Get reference to depot inner map.
@@ -121,8 +133,9 @@ impl InvocationContext {
         Self {
             id: 0,
             map: HashMap::with_capacity(capacity),
-            tx: HashMap::new(),
-            conn: HashMap::new(),
+            tx: BTreeMap::new(),
+            conn: BTreeMap::new(),
+            lockmap: HashMap::new(),
             success: true,
         }
     }
@@ -154,6 +167,33 @@ impl InvocationContext {
             Ok(t) => Some(t.clone()),
             Err(_) => Some(JwtUserClaims::anonymous()),
         }
+    }
+
+    pub fn get_domain(&self) -> Option<String> {
+        self.obtain_jwt_user_info().map(|s| s.domain)
+    }
+
+    pub fn set_current_user(&mut self, username: &str, userid: Option<&str>) {
+        self.inject(JwtUserClaims::username_with_id(username, userid.unwrap_or_default()));
+    }
+
+    pub fn get_current_user(&self) -> Option<String> {
+        self.obtain_jwt_user_info().map(|j| j.username)
+    }
+
+    pub fn get_current_userid(&self) -> Option<String> {
+        self.obtain_jwt_user_info().map(|j| j.userid)
+    }
+
+
+    pub fn get_authorization(&self, username: &str, userid: &str, org: Option<String>) -> Option<String> {
+        proxy_generate_jwt_authorization_token(username, userid, org).map(Some).unwrap_or(None)
+    }
+
+    pub fn get_current_authorization(&self) -> Option<String> {
+        let curr_username = self.get_current_user().unwrap_or("".to_string());
+        let curr_userid = self.get_current_userid().unwrap_or("0".to_string());
+        proxy_generate_jwt_authorization_token(&curr_username, &curr_userid, None).map(Some).unwrap_or(None)
     }
 
     /// Obtain a mutable reference to a value previous inject to the depot.
@@ -237,6 +277,49 @@ impl InvocationContext {
     }
 
     #[inline]
+    pub fn get_status(&self) -> i64 {
+        self.get_i64("RETURN_STATUS")
+    }
+
+    #[inline]
+    pub fn get_message(&self) -> String {
+        self.get_string("RETURN_MESSAGE")
+            .unwrap_or("SUCCESS".to_owned())
+    }
+
+    #[inline]
+    pub fn set_status(&mut self, st: i64) {
+        self.insert("RETURN_STATUS", st);
+    }
+
+    #[inline]
+    pub fn set_message(&mut self, msg: &str) {
+        self.insert("RETURN_MESSAGE", msg.to_string());
+    }
+
+    #[inline]
+    pub fn set_return_rawdata(&mut self, cust: bool) {
+        let custom = if cust { 1i64 } else { 0i64 };
+        self.insert("CUSTOM_RETURN_RAWDATA", custom);
+    }
+
+    #[inline]
+    pub fn get_return_rawdata(&self) -> bool {
+        self.get_i64("CUSTOM_RETURN_RAWDATA") == 1i64
+    }
+
+    #[inline]
+    pub fn set_response_xml(&mut self, cust: bool) {
+        let custom = if cust { 1i64 } else { 0i64 };
+        self.insert("CUSTOM_RESPONSE_XML", custom);
+    }
+
+    #[inline]
+    pub fn get_response_xml(&self) -> bool {
+        self.get_i64("CUSTOM_RESPONSE_XML") == 1i64
+    }
+
+    #[inline]
     pub fn get_u64(&self, key: &str) -> u64 {
         match self.get::<u64>(key) {
             Ok(t) => *t,
@@ -293,11 +376,15 @@ impl InvocationContext {
     }
 
     pub fn get_tx_executor_sync(&mut self, ns: &str) -> Option<Arc<RBatisTxExecutor>> {
-        self.tx.get(ns).map(|f| f.to_owned())
+        self.tx.get(ns).cloned()
     }
 
     pub fn set_tx_executor_sync(&mut self, ns: &str, tx: Arc<RBatisTxExecutor>) {
-        self.tx.insert(ns.to_string(), tx);
+        self.tx.insert(ns.to_string(), tx.clone());
+
+        if let Some(cn) = self.conn.insert(ns.to_string(), tx) {
+            drop(cn);
+        }
     }
 
     pub fn set_rbatis_connection(&mut self, ns: &str, conn: Arc<dyn Executor>) {
@@ -305,7 +392,7 @@ impl InvocationContext {
     }
 
     pub fn get_rbatis_connection(&self, ns: &str) -> Option<Arc<dyn Executor>> {
-        self.conn.get(ns).map(|f| f.to_owned())
+        self.conn.get(ns).cloned()
     }
 
     pub fn set_failed(&mut self) {
@@ -314,6 +401,42 @@ impl InvocationContext {
 
     pub fn is_success(&self) -> bool {
         self.success
+    }
+
+    pub fn get_locks(&self) -> HashMap<String, String> {
+        self.lockmap.clone()
+    }
+
+    pub fn lock(
+        &mut self,
+        ns: &str,
+        key: &str,
+        expire: i64,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let _ = redis_lock_expire_nx(
+            ns,
+            key,
+            &Uuid::new_v4().to_string(),
+            expire as u64,
+            Some(true),
+        )?;
+        self.lockmap.insert(format!("{ns}-{key}"), ns.to_owned());
+        Ok(None)
+    }
+
+    pub fn unlock(&mut self, ns: &str, key: &str) -> Result<Option<String>, anyhow::Error> {
+        let _ = redis_del(ns, key)?;
+        self.lockmap.remove(&format!("{ns}-{key}"));
+        Ok(None)
+    }
+
+    fn release_locks(&mut self) {
+        for (k, v) in self.lockmap.iter() {
+            let key = k.substring(v.len() + 1, k.len());
+            let ns = v.clone();
+            let _ = redis_del(&ns, key);
+        }
+        self.lockmap.clear();
     }
 
     pub async fn commit_or_rollback(&mut self, commit: bool) -> Result<(), anyhow::Error> {
@@ -326,7 +449,7 @@ impl InvocationContext {
                     log::info!("error for commit {err}");
                     ret_err = Some(err);
                     should_commit = false;
-                } 
+                }
             } else {
                 log::info!("execute rollback on conn directly {ns}.");
                 if let Err(err) = tx_.conn.lock().await.rollback().await {
@@ -336,7 +459,7 @@ impl InvocationContext {
                 }
             }
         }
-        
+
         self.tx.clear();
 
         if ret_err.is_none() {
@@ -346,44 +469,59 @@ impl InvocationContext {
         }
     }
 
-    pub async fn finalize_async(&mut self) {
-        if let Err(err) = self.commit_or_rollback(self.success).await {
+    pub fn finalize_async(&mut self) -> Pin<Box<dyn Future<Output = ()> + Send>> {
+        let tx_ = self.tx.clone();
+        let commit = self.success;
+        self.conn.clear();
+        self.tx.clear();
+        Box::pin(async move {
+            if let Err(err) = context_finalize(&tx_, commit).await {
+                log::info!("error for commit or rollback {err}");
+            }
+        })
+    }
+
+    pub async fn finalize_async_v2(&mut self) {
+        let tx_ = self.tx.clone();
+        let commit = self.success;
+        self.finalize();
+
+        if let Err(err) = context_finalize(&tx_, commit).await {
             log::info!("error for commit or rollback {err}");
         }
-        self.finalize();
     }
 
     fn finalize(&mut self) {
-        let id = self.id;
         self.tx.clear();
         self.map.clear();
-        self.conn.clear();
-        
-        if id > 0 {
-            Self::remove_static_id(id);
-        }
+        // self.conn.clear();
     }
 }
 
-async fn context_finalize(tx: HashMap<String, Arc<RBatisTxExecutor>>, commit: bool) -> Result<(), anyhow::Error> {
+async fn context_finalize(
+    tx: &BTreeMap<String, Arc<RBatisTxExecutor>>,
+    commit: bool,
+) -> Result<(), anyhow::Error> {
     let mut should_commit = commit;
     let mut ret_err = None;
-    for (ns, tx_) in &tx {
+    for (ns_, tx_) in tx {
+        log::debug!("commit({should_commit}) or rollback for {ns_}");
         if should_commit {
-            log::info!("execute commit on conn {ns}.");
+            // log::info!("execute commit on conn {ns}.");
             if let Err(err) = tx_.conn.lock().await.commit().await {
-                log::info!("error for commit {err}");
+                log::warn!("error for commit {err}");
                 ret_err = Some(err);
                 should_commit = false;
             }
         } else {
-            log::info!("execute rollback on conn {ns}.");
+            // log::info!("execute rollback on conn {ns}.");
             if let Err(err) = tx_.conn.lock().await.rollback().await {
-                log::info!("error for rollback {err}");
+                log::warn!("error for rollback {err}");
                 ret_err = Some(err);
                 should_commit = false;
             }
         }
+        // drop(tx_);
     }
 
     if ret_err.is_none() {
@@ -393,18 +531,61 @@ async fn context_finalize(tx: HashMap<String, Arc<RBatisTxExecutor>>, commit: bo
     }
 }
 
+pub async fn release_all_connections(ictx: &Arc<std::sync::Mutex<InvocationContext>>) {
+    let (tx_, commit) = if let Ok(mut ctx) = ictx.lock() {
+        let tx_ = ctx.tx.clone();
+        let succ = ctx.success;
+        ctx.conn.clear();
+        ctx.tx.clear();
+        (tx_, succ)
+    } else {
+        return;
+    };
+
+    log::debug!("Release Ctx by commit({commit}).");
+
+    if let Err(err) = context_finalize(&tx_, commit).await {
+        log::warn!("could not finalized the context with error {err}");
+    }
+}
+
+pub async fn release_context(ictx: &Arc<std::sync::Mutex<InvocationContext>>) {
+    let (tx_, commit) = if let Ok(mut ctx) = ictx.lock() {
+        let tx_ = ctx.tx.clone();
+        let succ = ctx.success;
+        ctx.tx.clear();
+        (tx_, succ)
+    } else {
+        return;
+    };
+
+    log::debug!("Release Ctx by commit({commit}).");
+
+    if let Err(err) = context_finalize(&tx_, commit).await {
+        log::warn!("could not finalized the context with error {err}");
+    }
+}
+
 impl Drop for InvocationContext {
     fn drop(&mut self) {
-        log::info!("InvocationContext dropped.");
+        // log::info!("InvocationContext dropped.");
+
         let tx_ = self.tx.clone();
-        let commit = self.success;
-        let _ = pin_blockon_async!(async move {
-            if let Err(err) = context_finalize(tx_, commit).await {
-                log::info!("error on finallize {err}");
-            }
-            Box::new(0) as Box<dyn Any + Send + Sync>
-        }).unwrap_or(0);
-        self.finalize();
+        self.tx.clear();
+        if !tx_.is_empty() {
+            let commit = self.success;
+            let _ = pin_blockon_async_v2!(async move {
+                if let Err(err) = context_finalize(&tx_, commit).await {
+                    log::info!("error on finallize {err}");
+                }
+                // Box(0) as Box<dyn Any + Send + Sync>
+            })
+            .is_ok();
+        }
+
+        self.release_locks();
+        // self.finalize();
+        // self.conn.drain();
     }
 }
 
@@ -419,6 +600,10 @@ impl JwtFromDepot for InvocationContext {
             if let Some(jwtdata) = depot.jwt_auth_data::<JwtUserClaims>() {
                 ctx_inner.inject(jwtdata.claims.clone());
             }
+        }
+
+        if let Ok(spid) = depot.get::<String>("__SPAN_ID") {
+            ctx_inner.set_span_id(&spid);
         }
         ctx_inner
     }

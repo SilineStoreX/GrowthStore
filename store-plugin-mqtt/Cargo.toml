@@ -26,7 +26,3 @@ jsonpath-rust.workspace = true
 chimes-store-utils.workspace = true
 chimes-store-core = { workspace = true, features=["plugin"]}
 salvo.workspace = true
-
-[profile.dev]
-opt-level = 3
-panic = 'abort'
